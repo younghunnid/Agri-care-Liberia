@@ -44,7 +44,9 @@ export default defineConfig(() => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // 'prompt': a new service worker waits until the user taps "Update now", so an
+        // update never reloads the page under a farmer who is mid-way through a form.
+        registerType: 'prompt',
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
           id: '/',
@@ -78,12 +80,18 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff2}'],
+          cleanupOutdatedCaches: true,
+          // Take control on the very first install so the first visit is already offline-capable.
+          // Updates still wait for the user's "Update now" tap (skipWaiting is NOT enabled).
+          clientsClaim: true,
           navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
             {
-              urlPattern: /^\/src\/assets\/images\/.*/i,
+              // Matched on pathname: Workbox tests RegExp routes against the FULL URL (http://host/...),
+              // so a `^/path` regex would never match same-origin requests.
+              urlPattern: ({url}: {url: URL}) => url.pathname.startsWith('/src/assets/images/'),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'agri-local-images',
@@ -97,8 +105,26 @@ export default defineConfig(() => {
               },
             },
             {
+              // Web fonts: stylesheet revalidates, font files are immutable.
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'agri-google-fonts-css',
+                cacheableResponse: {statuses: [0, 200]},
+              },
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'agri-google-fonts-files',
+                expiration: {maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365},
+                cacheableResponse: {statuses: [0, 200]},
+              },
+            },
+            {
               // Never cache auth, private messages, profile, admin, or AI endpoints
-              urlPattern: /^\/api\/v1\/(crops|categories|guides)/i,
+              urlPattern: ({url}: {url: URL}) => /^\/api\/v1\/(crops|categories|guides)(\/|$)/.test(url.pathname),
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'agri-public-guides-api',
@@ -114,9 +140,10 @@ export default defineConfig(() => {
             },
           ],
         },
+        // The service worker is only active in production builds. Offline behavior must be
+        // tested with `npm run build && npm start`, never against the Vite dev server.
         devOptions: {
-          enabled: true,
-          type: 'module',
+          enabled: false,
         },
       }),
       {

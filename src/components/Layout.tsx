@@ -1,3 +1,4 @@
+import {PwaUpdatePrompt} from './PwaUpdatePrompt';
 import React, {useState} from 'react';
 import {Link, NavLink, useLocation, useNavigate} from 'react-router-dom';
 import {
@@ -250,6 +251,8 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
           </span>
         </div>
       )}
+
+      <PwaUpdatePrompt />
 
       {/* Main Content */}
       <main id="main-content" className="flex-1 pb-24 md:pb-12">
