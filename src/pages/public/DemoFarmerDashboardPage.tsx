@@ -166,7 +166,7 @@ export const DemoFarmerDashboardPage: React.FC = () => {
                     type="button"
                     onClick={() => handleRemoveSaved(item.id)}
                     aria-label={`Remove ${item.title}`}
-                    className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-red-700 hover:bg-red-50 shrink-0"
+                    className="min-h-[44px] min-w-[40px] flex items-center justify-center rounded-xl text-red-700 hover:bg-red-50 shrink-0"
                   >
                     <Trash2 className="w-4 h-4" aria-hidden="true" />
                   </button>

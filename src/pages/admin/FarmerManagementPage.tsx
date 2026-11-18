@@ -66,7 +66,7 @@ export const FarmerManagementPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => void toggleStatus(u)}
-                    className="min-h-[40px] px-3 py-1.5 rounded-xl border border-[#183B2B]/20 text-xs font-semibold hover:bg-[#F3F8F0]"
+                    className="min-h-[44px] px-3 py-1.5 rounded-xl border border-[#183B2B]/20 text-xs font-semibold hover:bg-[#F3F8F0]"
                   >
                     {u.status === 'active' ? 'Suspend' : 'Activate'}
                   </button>

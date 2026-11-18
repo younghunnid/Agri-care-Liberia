@@ -529,7 +529,7 @@ export const AdvisorPage: React.FC = () => {
                   setTopic(item.id);
                   if (item.cropDefault && !cropSlug) setCropSlug(item.cropDefault);
                 }}
-                className={`min-h-[40px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-colors ${
+                className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-colors ${
                   topic === item.id
                     ? 'bg-[#16803C] border-[#16803C] text-white'
                     : 'bg-[#F3F8F0] border-[#183B2B]/15 text-[#183B2B] hover:bg-[#DDEFE0]'
@@ -584,7 +584,7 @@ export const AdvisorPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleConfirmVoiceDraft}
-                  className="inline-flex items-center gap-1.5 min-h-[40px] px-4 py-1.5 rounded-xl bg-[#16803C] text-white text-xs font-semibold"
+                  className="inline-flex items-center gap-1.5 min-h-[44px] px-4 py-1.5 rounded-xl bg-[#16803C] text-white text-xs font-semibold"
                 >
                   <Check className="w-4 h-4" aria-hidden="true" />
                   <span>Confirm &amp; Add</span>
@@ -592,7 +592,7 @@ export const AdvisorPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setVoiceDraft('')}
-                  className="min-h-[40px] px-4 py-1.5 rounded-xl border border-[#183B2B]/15 text-xs font-semibold"
+                  className="min-h-[44px] px-4 py-1.5 rounded-xl border border-[#183B2B]/15 text-xs font-semibold"
                 >
                   Discard
                 </button>
@@ -633,7 +633,7 @@ export const AdvisorPage: React.FC = () => {
                       setQuestion(sample.text);
                       if (sample.crop) setCropSlug(sample.crop);
                     }}
-                    className="min-h-[40px] px-3 py-1.5 rounded-xl bg-[#DDEFE0] text-xs font-semibold text-[#183B2B] hover:bg-[#16803C] hover:text-white transition-colors"
+                    className="min-h-[44px] px-3 py-1.5 rounded-xl bg-[#DDEFE0] text-xs font-semibold text-[#183B2B] hover:bg-[#16803C] hover:text-white transition-colors"
                   >
                     {sample.label}
                   </button>
@@ -700,7 +700,7 @@ export const AdvisorPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={clearPhoto}
-                  className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-50 text-red-700 text-xs font-semibold"
+                  className="min-h-[44px] inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-50 text-red-700 text-xs font-semibold"
                 >
                   <X className="w-4 h-4" aria-hidden="true" />
                   <span>Remove Photo</span>

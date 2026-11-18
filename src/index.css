@@ -50,3 +50,37 @@
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/*
+ * Mobile reading sizes. Real-phone testing found 12-14 px text too small. On phones the Tailwind
+ * type scale is raised so normal body text (text-sm) is 16 px, captions/labels (text-xs) are 14 px, and
+ * buttons/links styled text-xs are 15 px. Desktop sizes are unchanged. Touch targets stay >= 44 px.
+ */
+@media (max-width: 767px) {
+  :root {
+    --text-xs: 0.9375rem;
+    --text-xs--line-height: 1.4;
+    --text-sm: 1rem;
+    --text-sm--line-height: 1.5;
+    --text-base: 1.0625rem;
+    --text-base--line-height: 1.55;
+    --text-lg: 1.1875rem;
+    --text-xl: 1.375rem;
+  }
+  body {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  button[class*="text-xs"],
+  a[class*="text-xs"],
+  select[class*="text-xs"],
+  label[class*="text-xs"] {
+    font-size: 0.9375rem;
+  }
+  [class*="text-[11px]"] {
+    font-size: 0.875rem;
+  }
+  [class*="text-[10px]"] {
+    font-size: 0.875rem;
+  }
+}

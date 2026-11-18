@@ -58,7 +58,7 @@ export const AdminOverviewPage: React.FC = () => {
           </p>
           <a
             href="/management"
-            className="min-h-[40px] inline-flex items-center px-4 py-1.5 rounded-xl bg-[#16803C] text-white text-xs font-bold"
+            className="min-h-[44px] inline-flex items-center px-4 py-1.5 rounded-xl bg-[#16803C] text-white text-xs font-bold"
           >
             Open Prototype Management Console
           </a>

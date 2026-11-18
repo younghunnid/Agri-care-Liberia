@@ -41,6 +41,17 @@ import {LANGUAGE_OPTIONS, type LanguageCode} from '../lib/i18n';
 import {PWAInstallButton} from './PWAInstallButton';
 import {ListenModeBar} from './ListenModeBar';
 
+function useNarrowScreen(): boolean {
+  const [narrow, setNarrow] = React.useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches);
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return narrow;
+}
+
 export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
   const {
     user,
@@ -75,11 +86,12 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
     }`;
 
   const mobileTabClass = (active: boolean) =>
-    `flex flex-col items-center justify-center min-h-[48px] text-[10px] font-medium transition-colors ${
+    `flex flex-col items-center justify-center min-h-[52px] text-sm font-medium transition-colors ${
       active ? 'text-[#16803C] font-semibold' : 'text-[#183B2B]/70 hover:text-[#183B2B]'
     }`;
 
   const isHome = location.pathname === '/';
+  const narrow = useNarrowScreen();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F3F8F0] text-[#183B2B]">
@@ -145,62 +157,66 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
         </div>
       </header>
 
-      {/* Non-sticky Accessibility & Quick Navigation Strip (keeps mobile sticky height <= 15%) */}
+      {/* Compact utility strip: one row on phones (icon buttons, 44 px targets); labels appear from sm up. */}
       <div className="bg-white/80 border-b border-[#183B2B]/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            {!isHome && (
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-1.5 flex items-center gap-1.5 sm:gap-2">
+          {!isHome && (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                aria-label="Go back"
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 px-2.5 rounded-xl bg-[#F3F8F0] border border-[#183B2B]/15 text-sm font-semibold text-[#183B2B] hover:bg-[#DDEFE0] shrink-0"
+              >
+                <ArrowLeft className="w-5 h-5 text-[#16803C]" aria-hidden="true" />
+                <span className="hidden sm:inline">Back</span>
+              </button>
+              <Link
+                to="/"
+                aria-label="Home"
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 px-2.5 rounded-xl bg-[#F3F8F0] border border-[#183B2B]/15 text-sm font-semibold text-[#183B2B] hover:bg-[#DDEFE0] shrink-0"
+              >
+                <Home className="w-5 h-5 text-[#16803C]" aria-hidden="true" />
+                <span className="hidden sm:inline">Home</span>
+              </Link>
+            </>
+          )}
+
+          {/* Connectivity: a dot when online (quiet), a clear label when offline (important). */}
+          <span role="status" className="inline-flex items-center gap-1.5 text-sm font-medium px-1 shrink-0">
+            {isOnline ? (
               <>
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F3F8F0] border border-[#183B2B]/15 text-xs font-semibold text-[#183B2B] hover:bg-[#DDEFE0] whitespace-nowrap"
-                >
-                  <ArrowLeft className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
-                  <span>Back</span>
-                </button>
-                <Link
-                  to="/"
-                  className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F3F8F0] border border-[#183B2B]/15 text-xs font-semibold text-[#183B2B] hover:bg-[#DDEFE0] whitespace-nowrap"
-                >
-                  <Home className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
-                  <span>Home</span>
-                </Link>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#16803C]" aria-hidden="true" />
+                <span className="sr-only sm:not-sr-only text-[#183B2B]/80">Online</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 text-amber-700" aria-hidden="true" />
+                <span className="text-amber-800 font-bold">Offline</span>
               </>
             )}
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#183B2B]/80 px-2">
-              {isOnline ? (
-                <>
-                  <Wifi className="w-3.5 h-3.5 text-[#16803C]" aria-hidden="true" />
-                  <span>Online</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-3.5 h-3.5 text-amber-700" aria-hidden="true" />
-                  <span className="text-amber-800 font-semibold">Offline</span>
-                </>
-              )}
-            </span>
-          </div>
+          </span>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2 min-w-0">
             {/* Smart Listen Mode Toggle */}
             <button
               type="button"
               onClick={toggleListenMode}
               aria-pressed={listenMode}
-              className={`min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors whitespace-nowrap ${
+              aria-label={listenMode ? 'Smart Listen Mode is on' : 'Smart Listen Mode is off'}
+              title="Smart Listen Mode"
+              className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 px-2.5 rounded-xl text-sm font-semibold border transition-colors whitespace-nowrap ${
                 listenMode
                   ? 'bg-[#16803C] border-[#16803C] text-white'
                   : 'bg-[#F3F8F0] border-[#183B2B]/15 text-[#183B2B] hover:bg-[#DDEFE0]'
               }`}
             >
               {listenMode ? (
-                <Volume2 className="w-4 h-4" aria-hidden="true" />
+                <Volume2 className="w-5 h-5" aria-hidden="true" />
               ) : (
-                <VolumeX className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
+                <VolumeX className="w-5 h-5 text-[#16803C]" aria-hidden="true" />
               )}
-              <span>{listenMode ? 'Listen Mode: On' : 'Listen Mode'}</span>
+              <span className="hidden sm:inline">{listenMode ? 'Listen Mode: On' : 'Listen Mode'}</span>
             </button>
 
             {/* Low-Bandwidth Toggle */}
@@ -208,17 +224,19 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
               type="button"
               onClick={toggleLowBandwidth}
               aria-pressed={lowBandwidth}
-              className={`min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors whitespace-nowrap ${
+              aria-label={lowBandwidth ? 'Low-Data Mode is on' : 'Low-Data Mode is off'}
+              title="Low-Data Mode"
+              className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 px-2.5 rounded-xl text-sm font-semibold border transition-colors whitespace-nowrap ${
                 lowBandwidth
                   ? 'bg-[#F5B942] border-[#F5B942] text-[#183B2B]'
                   : 'bg-[#F3F8F0] border-[#183B2B]/15 text-[#183B2B] hover:bg-[#DDEFE0]'
               }`}
             >
-              <Gauge className="w-4 h-4" aria-hidden="true" />
-              <span>{lowBandwidth ? 'Low-Data: On' : 'Low-Data'}</span>
+              <Gauge className="w-5 h-5" aria-hidden="true" />
+              <span className="hidden sm:inline">{lowBandwidth ? 'Low-Data: On' : 'Low-Data'}</span>
             </button>
 
-            {/* Language Selector */}
+            {/* Language Selector (short codes on phones so it stays narrow) */}
             <label htmlFor="utility-language-select" className="sr-only">
               Select language
             </label>
@@ -227,11 +245,11 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
               value={language}
               onChange={(e) => void setLanguage(e.target.value as LanguageCode)}
               aria-label="Language selector"
-              className="min-h-[40px] rounded-xl border border-[#183B2B]/15 bg-[#F3F8F0] px-2.5 text-xs font-semibold text-[#183B2B] cursor-pointer"
+              className="min-h-[44px] max-w-[5.5rem] sm:max-w-none rounded-xl border border-[#183B2B]/15 bg-[#F3F8F0] px-2 sm:px-2.5 text-sm font-semibold text-[#183B2B] cursor-pointer"
             >
               {LANGUAGE_OPTIONS.map((opt) => (
                 <option key={opt.code} value={opt.code}>
-                  {opt.shortCode} · {opt.name}
+                  {narrow ? opt.shortCode : `${opt.shortCode} · ${opt.name}`}
                 </option>
               ))}
             </select>
@@ -257,7 +275,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
       <PwaUpdatePrompt />
 
       {/* Main Content */}
-      <main id="main-content" className="flex-1 pb-24 md:pb-12">
+      <main id="main-content" className="flex-1 pb-28 md:pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3">
           <ListenModeBar />
         </div>
@@ -316,7 +334,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
         aria-label="Mobile navigation"
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#183B2B]/10 pb-safe"
       >
-        <div className="grid grid-cols-5 h-16 items-center">
+        <div className="grid grid-cols-5 h-[4.25rem] items-center">
           <Link to="/" className={mobileTabClass(location.pathname === '/')}>
             <Home className="w-5 h-5 mb-0.5" aria-hidden="true" />
             <span>Home</span>
@@ -382,7 +400,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
                   <button
                     type="button"
                     onClick={toggleListenMode}
-                    className={`min-h-[40px] px-3 rounded-xl text-xs font-bold ${
+                    className={`min-h-[44px] px-3 rounded-xl text-xs font-bold ${
                       listenMode ? 'bg-[#16803C] text-white' : 'bg-white border border-[#183B2B]/15 text-[#183B2B]'
                     }`}
                   >
@@ -394,7 +412,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
                   <button
                     type="button"
                     onClick={toggleLowBandwidth}
-                    className={`min-h-[40px] px-3 rounded-xl text-xs font-bold ${
+                    className={`min-h-[44px] px-3 rounded-xl text-xs font-bold ${
                       lowBandwidth ? 'bg-[#F5B942] text-[#183B2B]' : 'bg-white border border-[#183B2B]/15 text-[#183B2B]'
                     }`}
                   >
@@ -439,45 +457,77 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
                 </div>
               </div>
 
-              {/* Prototype Features */}
-              <div className="space-y-1">
-                <p className="text-xs font-semibold text-[#183B2B]/60 px-1 pb-1">8 Problem Statements &amp; Modules</p>
+              {/* Grouped navigation: the eight problem-statement modules keep their numbers and names. */}
+              <nav aria-label="All pages" className="space-y-4">
                 {[
-                  {to: '/demo', label: 'Hackathon Demo Mode (4 Journeys)', icon: Presentation},
-                  {to: '/marketplace', label: '1. Agricultural Marketplace', icon: Store},
-                  {to: '/weather', label: '2. Weather Info (Sample)', icon: CloudRain},
-                  {to: '/pests', label: '3. Pests & Diseases Library', icon: Bug},
-                  {to: '/language-lab', label: '4. Local Language Lab', icon: Languages},
-                  {to: '/phone-simulator', label: '4b. Simulated Phone Service', icon: PhoneCall},
-                  {to: '/ministry', label: '5. Ministry Food Security View', icon: BarChart3},
-                  {to: '/soil', label: '6. Soil & Fertilizer Advisory', icon: Layers},
-                  {to: '/crops', label: '7. Crops Library (9 Crops)', icon: Sprout},
-                  {to: '/livestock', label: '8. Livestock & Fish Farming', icon: Fish},
-                  {to: '/guides', label: '16-Topic Knowledge Center', icon: BookOpen},
-                  {to: '/advisor', label: 'AI Agricultural Advisor', icon: Mic},
-                  {to: '/experts', label: 'Ask an Agricultural Expert', icon: Users},
-                  {to: '/dashboard', label: 'Farmer Dashboard (Demo)', icon: LayoutDashboard},
-                  {to: '/management', label: 'Prototype Admin & Review', icon: ShieldCheck},
-                  {to: '/offline', label: 'Offline Saved Library', icon: Download},
-                  {to: '/downloads', label: 'My Offline Downloads', icon: Download},
-                  {to: '/coming-soon', label: 'Coming Soon Innovations', icon: Sparkles},
-                  {to: '/about', label: 'About Team 8 Platform', icon: Info},
-                  {to: '/contact', label: 'Contact & Feedback', icon: MessageSquare},
-                ].map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl min-h-[44px] text-sm font-medium text-[#183B2B] hover:bg-[#F3F8F0]"
-                    >
-                      <Icon className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
+                  {
+                    title: 'Learn',
+                    items: [
+                      {to: '/crops', label: '7. Crops Library (9 Crops)', icon: Sprout},
+                      {to: '/livestock', label: '8. Livestock & Fish Farming', icon: Fish},
+                      {to: '/pests', label: '3. Pests & Diseases Library', icon: Bug},
+                      {to: '/soil', label: '6. Soil & Fertilizer Advisory', icon: Layers},
+                      {to: '/guides', label: '16-Topic Knowledge Center', icon: BookOpen},
+                      {to: '/weather', label: '2. Weather Info (Sample)', icon: CloudRain},
+                    ],
+                  },
+                  {
+                    title: 'Ask & Sell',
+                    items: [
+                      {to: '/advisor', label: 'AI Agricultural Advisor', icon: Mic},
+                      {to: '/experts', label: 'Ask an Agricultural Expert', icon: Users},
+                      {to: '/marketplace', label: '1. Agricultural Marketplace', icon: Store},
+                    ],
+                  },
+                  {
+                    title: 'Saved on this phone',
+                    items: [
+                      {to: '/offline', label: 'Offline Saved Library', icon: Download},
+                      {to: '/downloads', label: 'My Offline Downloads', icon: Download},
+                    ],
+                  },
+                  {
+                    title: 'Programme & demo views',
+                    items: [
+                      {to: '/demo', label: 'Hackathon Demo Mode (4 Journeys)', icon: Presentation},
+                      {to: '/ministry', label: '5. Ministry Food Security View', icon: BarChart3},
+                      {to: '/language-lab', label: '4. Local Language Lab', icon: Languages},
+                      {to: '/phone-simulator', label: '4b. Simulated Phone Service', icon: PhoneCall},
+                      {to: '/dashboard', label: 'Farmer Dashboard (Demo)', icon: LayoutDashboard},
+                      {to: '/management', label: 'Prototype Admin & Review', icon: ShieldCheck},
+                    ],
+                  },
+                  {
+                    title: 'About',
+                    items: [
+                      {to: '/coming-soon', label: 'Coming Soon Innovations', icon: Sparkles},
+                      {to: '/about', label: 'About Team 8 Platform', icon: Info},
+                      {to: '/contact', label: 'Contact & Feedback', icon: MessageSquare},
+                    ],
+                  },
+                ].map((group) => (
+                  <div key={group.title} className="space-y-1">
+                    <h3 className="px-1 pb-1 text-sm font-bold uppercase tracking-wide text-[#16803C]">{group.title}</h3>
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setMenuOpen(false)}
+                          aria-current={location.pathname === item.to ? 'page' : undefined}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl min-h-[48px] text-base font-medium text-[#183B2B] hover:bg-[#F3F8F0] ${
+                            location.pathname === item.to ? 'bg-[#DDEFE0]' : ''
+                          }`}
+                        >
+                          <Icon className="w-5 h-5 text-[#16803C] shrink-0" aria-hidden="true" />
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ))}
+              </nav>
 
               {/* Account & Role Links */}
               <div className="space-y-1 border-t border-[#183B2B]/10 pt-4">

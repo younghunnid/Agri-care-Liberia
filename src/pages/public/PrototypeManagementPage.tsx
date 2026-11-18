@@ -284,7 +284,7 @@ export const PrototypeManagementPage: React.FC = () => {
                 <p className="text-sm font-bold text-[#183B2B]">{r.title}</p>
                 {r.expert_reply && <p className="text-xs text-[#183B2B]/75 mt-1">Reply: {r.expert_reply}</p>}
               </div>
-              <Link to="/experts?tab=dashboard" className="min-h-[40px] inline-flex items-center px-3.5 py-1.5 rounded-xl bg-[#DDEFE0] text-xs font-bold text-[#183B2B] shrink-0">
+              <Link to="/experts?tab=dashboard" className="min-h-[44px] inline-flex items-center px-3.5 py-1.5 rounded-xl bg-[#DDEFE0] text-xs font-bold text-[#183B2B] shrink-0">
                 Manage Reply
               </Link>
             </div>
@@ -306,7 +306,7 @@ export const PrototypeManagementPage: React.FC = () => {
                 aria-label={`Review status for ${rec.question_text}`}
                 value={rec.review_status}
                 onChange={(e) => void handleRecordingStatus(rec.id, e.target.value as RecordingRow['review_status'])}
-                className="min-h-[40px] rounded-xl border border-[#183B2B]/20 px-3 text-xs font-semibold"
+                className="min-h-[44px] rounded-xl border border-[#183B2B]/20 px-3 text-xs font-semibold"
               >
                 <option value="reviewed">Reviewed</option>
                 <option value="pending_review">Pending Review</option>
@@ -335,7 +335,7 @@ export const PrototypeManagementPage: React.FC = () => {
                     key={st}
                     type="button"
                     onClick={() => void handleListingModeration(l.id, st)}
-                    className={`min-h-[38px] px-3 py-1 rounded-xl text-xs font-semibold border ${
+                    className={`min-h-[44px] px-3 py-1 rounded-xl text-xs font-semibold border ${
                       l.moderation_status === st
                         ? 'bg-[#16803C] border-[#16803C] text-white'
                         : 'bg-[#F3F8F0] border-[#183B2B]/15 text-[#183B2B]'

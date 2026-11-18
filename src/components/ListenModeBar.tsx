@@ -96,7 +96,7 @@ export const ListenModeBar: React.FC = () => {
                 key={spd.label}
                 type="button"
                 onClick={() => setSpeechRate(spd.val)}
-                className={`min-h-[36px] px-2.5 rounded-lg text-xs font-bold transition-colors ${
+                className={`min-h-[44px] px-2.5 rounded-lg text-xs font-bold transition-colors ${
                   Math.abs(speechRate - spd.val) < 0.05
                     ? 'bg-[#F5B942] text-[#183B2B]'
                     : 'text-white/85 hover:bg-white/15'

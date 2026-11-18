@@ -212,14 +212,14 @@ export const GuidesLibraryPage: React.FC = () => {
             <button
               type="button"
               onClick={() => void handleDownloadGuide(downloadError.guideId)}
-              className="min-h-[40px] px-4 rounded-xl bg-red-700 text-white text-xs font-bold"
+              className="min-h-[44px] px-4 rounded-xl bg-red-700 text-white text-xs font-bold"
             >
               Try again
             </button>
             <button
               type="button"
               onClick={() => setDownloadError(null)}
-              className="min-h-[40px] px-3 rounded-xl border border-red-300 text-xs font-semibold"
+              className="min-h-[44px] px-3 rounded-xl border border-red-300 text-xs font-semibold"
             >
               Dismiss
             </button>
@@ -389,7 +389,7 @@ export const GuidesLibraryPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleSaveTopicCard(art.id, art.title, cat.shortName, art.summary)}
-                          className="min-h-[38px] inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white border border-[#183B2B]/15 text-xs font-semibold text-[#183B2B] hover:bg-[#DDEFE0]"
+                          className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white border border-[#183B2B]/15 text-xs font-semibold text-[#183B2B] hover:bg-[#DDEFE0]"
                         >
                           <Bookmark className="w-3.5 h-3.5 text-[#16803C]" aria-hidden="true" />
                           <span>Save Advice</span>
@@ -440,7 +440,7 @@ export const GuidesLibraryPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleSaveTopicCard(prob.id, prob.question, prob.categoryName, prob.quickSummary)}
-                  className="min-h-[38px] inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#F3F8F0] text-xs font-semibold text-[#183B2B] hover:bg-[#DDEFE0]"
+                  className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#F3F8F0] text-xs font-semibold text-[#183B2B] hover:bg-[#DDEFE0]"
                 >
                   <Bookmark className="w-3.5 h-3.5 text-[#16803C]" aria-hidden="true" />
                   <span>Save</span>

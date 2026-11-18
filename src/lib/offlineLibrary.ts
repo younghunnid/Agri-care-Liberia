@@ -7,8 +7,9 @@ import {
   OUTDATED_AFTER_DAYS,
 } from '../data/contentVersion';
 import {OFFLINE_IMAGE_BYTES} from '../data/offlineImageManifest';
-import {dbClear, dbDelete, dbGetAll, dbPutMany, isIndexedDbAvailable, isQuotaError, kvGet, kvSet} from './offlineDb';
+import {dbClear, dbDelete, dbGetAll, dbPutMany, isIndexedDbAvailable, isQuotaError, kvSet} from './offlineDb';
 import {getOfflineGuides, type OfflineGuideRecord} from './offlineStorage';
+import {ImageStorageError, getStoredImageStats, isImageStored, pruneImages, removeStoredImage, storeImage} from './offlineImages';
 
 /**
  * Offline library for the bundled agricultural content (Crops, Pests & Diseases, Soil,
@@ -58,8 +59,6 @@ export interface LibraryEntry {
   searchText: string;
   downloadedAt?: string;
 }
-
-const IMAGE_CACHE_NAME = 'agri-local-images'; // must match vite.config.ts
 
 /** `/src/assets/images/x.jpg` -> `/offline-img/x.webp` (null if no optimised copy exists). */
 export function optimizedImage(url: string | null | undefined): string | null {
@@ -321,64 +320,35 @@ export async function clearLibrary(): Promise<void> {
 }
 
 // ---------------------------------------------------------------- images
+// Stored as Blobs in IndexedDB (works on any origin); see offlineImages.ts for why.
 
-type ImageBytes = Record<string, number>;
-
-export async function getCachedImageBytes(): Promise<ImageBytes> {
-  return (await kvGet<ImageBytes>('imageBytes')) ?? {};
+export async function getCachedImageBytes(): Promise<Record<string, number>> {
+  return (await getStoredImageStats()).sizes;
 }
 
-export async function isImageCached(url: string): Promise<boolean> {
-  if (typeof caches === 'undefined') return false;
-  try {
-    const c = await caches.open(IMAGE_CACHE_NAME);
-    return Boolean(await c.match(url));
-  } catch {
-    return false;
-  }
-}
+export const isImageCached = isImageStored;
 
-/** Fetches one optimised image into the service-worker image cache. Throws on failure. */
+/** Downloads one optimised picture and keeps it on the device. Throws on failure. */
 export async function cacheImage(url: string, signal?: AbortSignal): Promise<number> {
-  if (typeof caches === 'undefined') throw new Error('This browser cannot store images offline.');
-  const res = await fetch(url, {signal, cache: 'no-cache'});
-  // A missing file is answered with the app's HTML page (status 200) – never cache that.
-  if (!res.ok || !(res.headers.get('content-type') ?? '').startsWith('image/')) {
-    throw new Error(`Image unavailable (${res.status}).`);
-  }
-  const blob = await res.clone().blob();
   try {
-    const c = await caches.open(IMAGE_CACHE_NAME);
-    await c.put(url, res);
+    return await storeImage(url, signal);
   } catch (err) {
-    if (isQuotaError(err)) throw new LibraryStorageError('Not enough storage on this device.', true);
+    if (err instanceof ImageStorageError && err.quotaExceeded) throw new LibraryStorageError(err.message, true);
     throw err;
   }
-  const map = await getCachedImageBytes();
-  map[url] = blob.size;
-  await kvSet('imageBytes', map).catch(() => undefined);
-  return blob.size;
 }
 
-export async function removeCachedImage(url: string): Promise<void> {
-  try {
-    const c = await caches.open(IMAGE_CACHE_NAME);
-    await c.delete(url);
-    const map = await getCachedImageBytes();
-    delete map[url];
-    await kvSet('imageBytes', map);
-  } catch {
-    // best effort
-  }
-}
+export const removeCachedImage = removeStoredImage;
 
-/** Removes optimised images that no remaining downloaded entry still uses. */
+/** Removes optimised pictures that no remaining saved guide (bundled or server) still uses. */
 export async function pruneUnusedImages(): Promise<void> {
-  const used = new Set(cache.map((e) => e.imageUrl).filter((u): u is string => Boolean(u)));
-  const map = await getCachedImageBytes();
-  for (const url of Object.keys(map)) {
-    if (!used.has(url)) await removeCachedImage(url);
+  const used = new Set<string>();
+  for (const e of cache) if (e.imageUrl) used.add(e.imageUrl);
+  for (const g of getOfflineGuides()) {
+    const small = optimizedImage(g.imageUrl);
+    if (small) used.add(small);
   }
+  await pruneImages(used);
 }
 
 // ---------------------------------------------------------------- search

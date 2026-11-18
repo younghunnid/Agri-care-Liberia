@@ -241,7 +241,7 @@ export const AudioLessonCard: React.FC<{lesson: AudioLesson}> = ({lesson}) => {
             {error}
           </span>
           {!saved && isOnline && (
-            <button type="button" onClick={() => void startDownload()} className="min-h-[40px] px-3 rounded-lg bg-red-700 text-white text-xs font-bold">
+            <button type="button" onClick={() => void startDownload()} className="min-h-[44px] px-3 rounded-lg bg-red-700 text-white text-xs font-bold">
               Try again
             </button>
           )}

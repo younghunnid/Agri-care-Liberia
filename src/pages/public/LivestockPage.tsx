@@ -134,14 +134,14 @@ export const LivestockPage: React.FC = () => {
                 <div className="flex flex-wrap gap-2.5 pt-2">
                   <Link
                     to="/experts"
-                    className="min-h-[42px] inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#183B2B] text-white text-xs font-bold"
+                    className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#183B2B] text-white text-xs font-bold"
                   >
                     <Users className="w-4 h-4 text-[#F5B942]" aria-hidden="true" />
                     <span>Request Veterinary / Expert Help</span>
                   </Link>
                   <Link
                     to={`/advisor?topic=${selected.slug === 'fish-farming' ? 'fish' : selected.slug === 'poultry' ? 'poultry' : 'livestock'}`}
-                    className="min-h-[42px] inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-[#183B2B]/20 text-xs font-bold text-[#183B2B]"
+                    className="min-h-[44px] inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-[#183B2B]/20 text-xs font-bold text-[#183B2B]"
                   >
                     <MessageSquare className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
                     <span>Ask AI Advisor</span>
@@ -264,7 +264,7 @@ export const LivestockPage: React.FC = () => {
               </Link>
               <Link
                 to="/marketplace"
-                className="min-h-[40px] inline-flex items-center px-3 py-1.5 rounded-xl bg-[#F3F8F0] text-xs font-semibold text-[#183B2B]"
+                className="min-h-[44px] inline-flex items-center px-3 py-1.5 rounded-xl bg-[#F3F8F0] text-xs font-semibold text-[#183B2B]"
               >
                 Market
               </Link>

@@ -80,7 +80,7 @@ export const SyncBanner: React.FC = () => {
           : `${s.queued} item${s.queued === 1 ? '' : 's'} saved on this phone waiting to sync${s.failed ? ` · ${s.failed} need attention` : ''}`}
       </span>
       {!s.syncing && isOnline && (
-        <button type="button" onClick={() => void syncNow({manual: true})} className="min-h-[36px] px-3 rounded-lg bg-white/80 border border-current/20 font-bold">
+        <button type="button" onClick={() => void syncNow({manual: true})} className="min-h-[44px] px-3 rounded-lg bg-white/80 border border-current/20 font-bold">
           Sync Now
         </button>
       )}

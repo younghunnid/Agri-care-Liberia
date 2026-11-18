@@ -6,3 +6,6 @@ dist/
 *.db-shm
 *.db-wal
 .DS_Store
+
+# Local HTTPS development certificates and keys (never commit)
+/.dev-certs/

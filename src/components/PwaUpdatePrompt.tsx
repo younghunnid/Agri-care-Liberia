@@ -39,14 +39,14 @@ export const PwaUpdatePrompt: React.FC = () => {
                     setUpdating(true);
                     void applyPwaUpdate().finally(() => setUpdating(false));
                   }}
-                  className="min-h-[40px] px-4 rounded-xl bg-[#F5B942] text-[#183B2B] text-sm font-bold disabled:opacity-60"
+                  className="min-h-[44px] px-4 rounded-xl bg-[#F5B942] text-[#183B2B] text-sm font-bold disabled:opacity-60"
                 >
                   {updating ? 'Updating…' : 'Update now'}
                 </button>
                 <button
                   type="button"
                   onClick={() => dismissPwaNotice('needRefresh')}
-                  className="min-h-[40px] px-3 rounded-xl border border-white/30 text-sm font-semibold"
+                  className="min-h-[44px] px-3 rounded-xl border border-white/30 text-sm font-semibold"
                 >
                   Later
                 </button>
@@ -63,7 +63,7 @@ export const PwaUpdatePrompt: React.FC = () => {
             type="button"
             onClick={() => dismissPwaNotice('offlineReady')}
             aria-label="Dismiss"
-            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg hover:bg-white/10"
+            className="min-h-[44px] min-w-[36px] flex items-center justify-center rounded-lg hover:bg-white/10"
           >
             <X className="w-4 h-4" />
           </button>

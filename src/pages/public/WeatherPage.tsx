@@ -251,7 +251,7 @@ export const WeatherPage: React.FC = () => {
                   <Link
                     key={slug}
                     to={`/crops/${slug}`}
-                    className="min-h-[42px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F3F8F0] border border-[#183B2B]/15 text-xs font-bold text-[#183B2B] hover:bg-[#16803C] hover:text-white transition-colors capitalize"
+                    className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F3F8F0] border border-[#183B2B]/15 text-xs font-bold text-[#183B2B] hover:bg-[#16803C] hover:text-white transition-colors capitalize"
                   >
                     <Sprout className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>{slug} Guide</span>
@@ -259,7 +259,7 @@ export const WeatherPage: React.FC = () => {
                 ))}
                 <Link
                   to="/soil"
-                  className="min-h-[42px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#16803C] text-white text-xs font-bold hover:bg-[#116630]"
+                  className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#16803C] text-white text-xs font-bold hover:bg-[#116630]"
                 >
                   <Layers className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>Soil &amp; Drainage Tool</span>

@@ -244,6 +244,12 @@ export const StarterPackCard: React.FC = () => {
           </button>
         )}
       </div>
+      {typeof window !== 'undefined' && !window.isSecureContext && (
+        <p role="note" className="text-sm text-[#F5B942]">
+          This address is not secure (http://). Guides and pictures are saved to the phone, but the app cannot be installed or opened without
+          internet until you use the https:// address. See "Can this phone use the app offline?" above.
+        </p>
+      )}
       {!isOnline && (
         <p className="text-xs text-[#F5B942]">You are offline. Connect to the internet to download the Starter Pack.</p>
       )}

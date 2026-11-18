@@ -464,7 +464,7 @@ export const ExpertSupportPage: React.FC = () => {
                   value={voiceNoteSummary}
                   onChange={(e) => setVoiceNoteSummary(e.target.value)}
                   placeholder="Optional note: e.g., Spoken in Bassa or Liberian English"
-                  className="w-full min-h-[40px] rounded-xl border border-[#183B2B]/15 bg-white px-3 text-xs"
+                  className="w-full min-h-[44px] rounded-xl border border-[#183B2B]/15 bg-white px-3 text-xs"
                 />
               </div>
             </div>
@@ -509,7 +509,7 @@ export const ExpertSupportPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('dashboard')}
-                className="text-xs font-semibold text-[#16803C] hover:underline"
+                className="inline-flex items-center min-h-[44px] text-xs font-semibold text-[#16803C] hover:underline"
               >
                 Open Simulated Expert Reply View
               </button>
@@ -611,7 +611,7 @@ export const ExpertSupportPage: React.FC = () => {
                     type="text"
                     value={expertNames[req.id] ?? 'Dr. Samuel Tarr (Simulated Extension Officer)'}
                     onChange={(e) => setExpertNames((prev) => ({...prev, [req.id]: e.target.value}))}
-                    className="w-full min-h-[40px] rounded-xl border border-[#183B2B]/15 bg-white px-3 text-xs"
+                    className="w-full min-h-[44px] rounded-xl border border-[#183B2B]/15 bg-white px-3 text-xs"
                   />
                   <textarea
                     rows={3}

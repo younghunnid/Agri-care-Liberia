@@ -155,7 +155,7 @@ export const DemoModePage: React.FC = () => {
             </button>
             <Link
               to="/soil"
-              className="w-full min-h-[42px] inline-flex items-center justify-center gap-1 text-xs font-semibold text-[#16803C] hover:underline"
+              className="w-full min-h-[44px] inline-flex items-center justify-center gap-1 text-xs font-semibold text-[#16803C] hover:underline"
             >
               <span>Inspect Soil &amp; Fertilizer Selector</span>
               <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -201,7 +201,7 @@ export const DemoModePage: React.FC = () => {
             </button>
             <Link
               to="/language-lab"
-              className="w-full min-h-[42px] inline-flex items-center justify-center gap-1 text-xs font-semibold text-[#16803C] hover:underline"
+              className="w-full min-h-[44px] inline-flex items-center justify-center gap-1 text-xs font-semibold text-[#16803C] hover:underline"
             >
               <span>Inspect Bassa &amp; Mano Audio Lab</span>
               <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -287,7 +287,7 @@ export const DemoModePage: React.FC = () => {
             </button>
             <Link
               to="/weather"
-              className="w-full min-h-[42px] inline-flex items-center justify-center gap-1 text-xs font-semibold text-[#16803C] hover:underline"
+              className="w-full min-h-[44px] inline-flex items-center justify-center gap-1 text-xs font-semibold text-[#16803C] hover:underline"
             >
               <span>Inspect Sample Weather Planning</span>
               <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />

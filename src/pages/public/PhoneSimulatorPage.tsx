@@ -224,7 +224,7 @@ export const PhoneSimulatorPage: React.FC = () => {
         </div>
         <Link
           to="/coming-soon"
-          className="min-h-[40px] inline-flex items-center px-3.5 py-2 rounded-xl bg-[#183B2B] text-white text-xs font-bold whitespace-nowrap shrink-0"
+          className="min-h-[44px] inline-flex items-center px-3.5 py-2 rounded-xl bg-[#183B2B] text-white text-xs font-bold whitespace-nowrap shrink-0"
         >
           Telecom Roadmap
         </Link>

@@ -380,7 +380,7 @@ export const LanguageLabPage: React.FC = () => {
                   onChange={(e) =>
                     void handleReviewStatus(rec.id, e.target.value as RecordingItem['review_status'])
                   }
-                  className="min-h-[40px] rounded-xl border border-[#183B2B]/15 bg-[#F3F8F0] px-3 text-xs font-semibold text-[#183B2B]"
+                  className="min-h-[44px] rounded-xl border border-[#183B2B]/15 bg-[#F3F8F0] px-3 text-xs font-semibold text-[#183B2B]"
                 >
                   <option value="reviewed">Reviewed</option>
                   <option value="pending_review">Pending Review</option>

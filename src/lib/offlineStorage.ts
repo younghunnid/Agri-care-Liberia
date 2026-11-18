@@ -11,6 +11,7 @@ import {
   requestPersistentStorage,
 } from './offlineDb';
 import {OFFLINE_IMAGE_BYTES} from '../data/offlineImageManifest';
+import {storeImage} from './offlineImages';
 
 export interface OfflineGuideRecord {
   id: number;
@@ -37,7 +38,6 @@ export interface OfflineGuideRecord {
 const LEGACY_STORAGE_KEY = 'agri_advisory_offline_guides_v1';
 // These names MUST match the runtimeCaching cacheNames in vite.config.ts. Entries added here are
 // then served by the service worker's CacheFirst / NetworkFirst routes while offline.
-const IMAGE_CACHE_NAME = 'agri-local-images';
 const GUIDE_API_CACHE_NAME = 'agri-public-guides-api';
 const MIGRATED_FLAG = 'guidesMigratedFromLocalStorage';
 
@@ -179,19 +179,17 @@ export async function saveGuideOffline(guide: Omit<OfflineGuideRecord, 'download
   guidesCache = next;
   emit();
 
-  // Pre-cache the guide's image asset and API JSON so they render offline too.
+  // Keep the guide's picture (small WebP copy, ~50 KB instead of ~1 MB) in IndexedDB, which works on any origin.
+  const small = optimizedImageUrl(guide.imageUrl);
+  if (small) await storeImage(small).catch(() => undefined);
+
+  // The API JSON snapshot needs Cache Storage (secure context only); the guide text is already in IndexedDB.
   if (typeof window !== 'undefined' && 'caches' in window) {
     try {
-      // Prefer the small WebP copy so a download costs ~50 KB instead of ~1 MB of mobile data.
-      const small = optimizedImageUrl(guide.imageUrl);
-      if (small) {
-        const imageCache = await caches.open(IMAGE_CACHE_NAME);
-        await imageCache.add(small).catch(() => undefined);
-      }
       const apiCache = await caches.open(GUIDE_API_CACHE_NAME);
       await apiCache.add(`/api/v1/guides/${guide.id}?lang=${guide.languageCode}`).catch(() => undefined);
     } catch {
-      // Cache API may be unavailable; structured guide text is already in IndexedDB.
+      // optional
     }
   }
 

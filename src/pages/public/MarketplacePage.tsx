@@ -754,7 +754,7 @@ export const MarketplacePage: React.FC = () => {
                   key={rf.id}
                   type="button"
                   onClick={() => setRoleFilter(rf.id as 'all' | 'farmer' | 'supplier' | 'mine')}
-                  className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                  className={`min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
                     roleFilter === rf.id
                       ? 'bg-[#16803C] border-[#16803C] text-white'
                       : 'bg-white border-[#183B2B]/15 text-[#183B2B] hover:bg-[#F3F8F0]'
@@ -928,7 +928,7 @@ export const MarketplacePage: React.FC = () => {
                                     e.target.value as 'Available' | 'Limited Stock' | 'Sold Out'
                                   )
                                 }
-                                className="min-h-[38px] flex-1 rounded-lg border border-[#183B2B]/15 bg-[#F3F8F0] px-2 text-xs font-semibold text-[#183B2B]"
+                                className="min-h-[44px] flex-1 rounded-lg border border-[#183B2B]/15 bg-[#F3F8F0] px-2 text-xs font-semibold text-[#183B2B]"
                               >
                                 {availabilityOptions.map((opt) => (
                                   <option key={opt} value={opt}>
@@ -940,7 +940,7 @@ export const MarketplacePage: React.FC = () => {
                                 type="button"
                                 onClick={() => handleStartEdit(item)}
                                 aria-label={`Edit ${item.product_name}`}
-                                className="min-h-[38px] min-w-[38px] inline-flex items-center justify-center rounded-lg border border-[#183B2B]/15 text-[#183B2B] hover:bg-[#F3F8F0]"
+                                className="min-h-[44px] min-w-[38px] inline-flex items-center justify-center rounded-lg border border-[#183B2B]/15 text-[#183B2B] hover:bg-[#F3F8F0]"
                               >
                                 <Edit3 className="w-4 h-4" aria-hidden="true" />
                               </button>
@@ -948,7 +948,7 @@ export const MarketplacePage: React.FC = () => {
                                 type="button"
                                 onClick={() => void handleDeleteListing(item.id)}
                                 aria-label={`Delete ${item.product_name}`}
-                                className="min-h-[38px] min-w-[38px] inline-flex items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50"
+                                className="min-h-[44px] min-w-[38px] inline-flex items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50"
                               >
                                 <Trash2 className="w-4 h-4" aria-hidden="true" />
                               </button>
@@ -1236,7 +1236,7 @@ export const MarketplacePage: React.FC = () => {
             <div className="rounded-2xl bg-[#F3F8F0] p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-semibold text-[#183B2B]">Product Photo (Upload or Sample Image)</p>
-                <label className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#183B2B]/15 text-xs font-semibold cursor-pointer">
+                <label className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#183B2B]/15 text-xs font-semibold cursor-pointer">
                   <Camera className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
                   <span>Upload Photo</span>
                   <input type="file" accept="image/*" onChange={(e) => void handlePhotoUpload(e)} className="sr-only" />

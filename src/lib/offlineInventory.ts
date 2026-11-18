@@ -10,6 +10,7 @@ import {
   type SyncOp,
 } from './offlineDrafts';
 import {getCatalog, getLibraryEntries, hasNewerVersion} from './offlineLibrary';
+import {getStoredImageStats} from './offlineImages';
 import {getOfflineGuides} from './offlineStorage';
 import {getDownloadedAudio, type AudioMeta} from './audioStore';
 import {cacheGet, MINISTRY_SUMMARY_KEY, loadWeatherSnapshot, type CachedSnapshot, type LiveWeatherData} from './dataCache';
@@ -83,7 +84,7 @@ export async function takeInventory(): Promise<Inventory> {
 
   const [storage, images, ministry, weatherAll] = await Promise.all([
     getStorageSummary(),
-    cacheBytes('agri-local-images'),
+    getStoredImageStats(),
     cacheGet<Record<string, number>>(MINISTRY_SUMMARY_KEY),
     Promise.all(LIBERIA_COUNTIES.map((c) => loadWeatherSnapshot(c))),
   ]);

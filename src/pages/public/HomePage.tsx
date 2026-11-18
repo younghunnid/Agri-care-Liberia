@@ -480,7 +480,7 @@ export const HomePage: React.FC = () => {
                 <p className="text-xs text-[#183B2B]/75 leading-relaxed">{cat.description}</p>
                 <Link
                   to={`/guides?topic=${cat.id}`}
-                  className="text-xs font-semibold text-[#16803C] hover:underline inline-flex items-center gap-1 min-h-[36px]"
+                  className="text-xs font-semibold text-[#16803C] hover:underline inline-flex items-center gap-1 min-h-[44px]"
                 >
                   <span>Read {cat.articles.length} guide{cat.articles.length === 1 ? '' : 's'}</span>
                   <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />

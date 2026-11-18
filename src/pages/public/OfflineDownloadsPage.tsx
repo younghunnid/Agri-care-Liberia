@@ -4,6 +4,7 @@ import {AlertTriangle, CheckCircle2, CloudUpload, HardDrive, Pause, Play, Refres
 import {useApp} from '../../context/AppContext';
 import {apiFetch} from '../../lib/api';
 import {ConfirmDialog} from '../../components/ConfirmDialog';
+import {DeviceReadinessCard} from '../../components/DeviceReadinessCard';
 import {StarterPackCard} from '../../components/StarterPackCard';
 import {OfflineAudioManager} from '../../components/AudioLessonCard';
 import {SyncBar} from '../../components/SyncStatus';
@@ -28,6 +29,7 @@ import {
   type QuestionRecord,
 } from '../../lib/offlineDrafts';
 import {takeInventory, unsentCount, type Inventory} from '../../lib/offlineInventory';
+import {clearStoredImages} from '../../lib/offlineImages';
 import {clearLibrary, formatDate, pruneUnusedImages, subscribeLibrary} from '../../lib/offlineLibrary';
 import {clearAllOfflineGuides, formatBytes, subscribeOfflineGuides} from '../../lib/offlineStorage';
 import {isAutoSyncPaused, setAutoSyncPaused} from '../../lib/syncEngine';
@@ -117,7 +119,7 @@ export const OfflineDownloadsPage: React.FC = () => {
         await clearLibrary();
         await clearAllOfflineGuides();
         await pruneUnusedImages();
-        if (typeof caches !== 'undefined') await caches.delete('agri-local-images');
+        await clearStoredImages();
       });
     } else if (p.kind === 'audio') {
       void run('Audio lessons removed.', async () => {
@@ -226,6 +228,8 @@ export const OfflineDownloadsPage: React.FC = () => {
           You are offline. You can read, search, listen and manage saved items. Downloading and refreshing need the internet.
         </p>
       )}
+
+      <DeviceReadinessCard />
 
       {!inv ? (
         <p className="text-sm text-[#183B2B]/75" role="status">

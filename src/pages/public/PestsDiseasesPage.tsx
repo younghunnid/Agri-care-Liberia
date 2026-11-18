@@ -173,7 +173,7 @@ export const PestsDiseasesPage: React.FC = () => {
             key={f}
             type="button"
             onClick={() => setSpeciesFilter(f)}
-            className={`min-h-[42px] px-4 py-2 rounded-2xl text-xs sm:text-sm font-semibold border transition-colors ${
+            className={`min-h-[44px] px-4 py-2 rounded-2xl text-xs sm:text-sm font-semibold border transition-colors ${
               speciesFilter === f
                 ? 'bg-[#16803C] border-[#16803C] text-white'
                 : 'bg-white border-[#183B2B]/15 text-[#183B2B]'
@@ -227,13 +227,13 @@ export const PestsDiseasesPage: React.FC = () => {
             <div className="px-5 pb-5 pt-2 border-t border-[#183B2B]/10 flex items-center justify-between gap-2">
               <Link
                 to={`/advisor?q=${encodeURIComponent(`I see signs of: ${card.title}. What should I check carefully?`)}`}
-                className="text-xs font-bold text-[#16803C] hover:underline min-h-[40px] inline-flex items-center"
+                className="text-xs font-bold text-[#16803C] hover:underline min-h-[44px] inline-flex items-center"
               >
                 Ask AI Advisor
               </Link>
               <Link
                 to={`/experts?title=${encodeURIComponent(card.title)}`}
-                className="text-xs font-bold text-[#183B2B] hover:underline min-h-[40px] inline-flex items-center"
+                className="text-xs font-bold text-[#183B2B] hover:underline min-h-[44px] inline-flex items-center"
               >
                 Request Expert Review
               </Link>

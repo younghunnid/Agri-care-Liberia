@@ -338,7 +338,12 @@ export async function downloadStarterPack(opts: DownloadOptions): Promise<PackRe
     return finalize('cancelled', 'Download cancelled. What was already saved is kept; tap Resume to finish.');
   }
   if (failures.length === 0) {
-    return finalize('complete', 'Starter Pack saved. These guides now work without internet.');
+    return finalize(
+      'complete',
+      typeof window !== 'undefined' && !window.isSecureContext
+        ? 'Starter Pack saved on this phone. To install the app and open it without internet, use the secure https:// address.'
+        : 'Starter Pack saved. These guides now work without internet.'
+    );
   }
   if (quotaExceeded) {
     return finalize('partial', 'Storage is full. Part of the Starter Pack was saved; free some space and tap Resume.');

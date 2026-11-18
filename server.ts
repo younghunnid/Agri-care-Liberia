@@ -87,8 +87,9 @@ const isDirectEntry =
 if (isDirectEntry) {
   const port = Number(process.env.PORT || 3000);
   createApp().then((app) => {
-    app.listen(port, '0.0.0.0', () => {
-      console.log(`Agri-Advisory Liberia server running on http://0.0.0.0:${port}`);
+    const host = process.env.HOST || '0.0.0.0';
+    app.listen(port, host, () => {
+      console.log(`Agri-Advisory Liberia server running on http://${host}:${port}`);
     });
   });
 }

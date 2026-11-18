@@ -316,7 +316,7 @@ export const OfflineLibraryPage: React.FC = () => {
               type="button"
               aria-pressed={moduleFilter === m.key}
               onClick={() => setModuleFilter(m.key)}
-              className={`min-h-[40px] px-3.5 rounded-full text-xs font-semibold border ${
+              className={`min-h-[44px] px-3.5 rounded-full text-xs font-semibold border ${
                 moduleFilter === m.key ? 'bg-[#183B2B] text-white border-[#183B2B]' : 'bg-white text-[#183B2B] border-[#183B2B]/20'
               }`}
             >
@@ -364,7 +364,7 @@ export const OfflineLibraryPage: React.FC = () => {
             <button
               type="button"
               onClick={() => void handleRemoveAllLibrary()}
-              className="min-h-[40px] px-3 rounded-xl text-xs font-semibold text-red-700 hover:bg-red-50"
+              className="min-h-[44px] px-3 rounded-xl text-xs font-semibold text-red-700 hover:bg-red-50"
             >
               Remove all Starter Pack guides
             </button>
