@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {
   AlertTriangle,
@@ -12,6 +12,14 @@ import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
 import {SYNTHETIC_MINISTRY_DATA} from '../../data/weatherSoilMinistry';
 import {SpeakButton} from '../../components/SpeakButton';
+import {SavedInfoBar} from '../../components/SavedInfoBar';
+import {
+  cacheGet,
+  cacheSet,
+  MINISTRY_SUMMARY_KEY,
+  summaryFreshness,
+  type CachedSnapshot,
+} from '../../lib/dataCache';
 
 interface PrototypeCounts {
   demoAndExperimentalData: {
@@ -25,14 +33,46 @@ interface PrototypeCounts {
 export const MinistryDashboardPage: React.FC = () => {
   const {isOnline} = useApp();
   const [countyFilter, setCountyFilter] = useState('All Counties');
-  const [liveDemoCounts, setLiveDemoCounts] = useState<PrototypeCounts['demoAndExperimentalData'] | null>(null);
+  const [snap, setSnap] = useState<CachedSnapshot<PrototypeCounts['demoAndExperimentalData']> | null>(null);
+  const [fromSaved, setFromSaved] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [loadedSaved, setLoadedSaved] = useState(false);
+  const liveDemoCounts = snap?.data ?? null;
+
+  // Only the public aggregate counts are saved (see lib/dataCache.ts allow-list).
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    setRefreshError(null);
+    try {
+      const res = await apiFetch<PrototypeCounts>('/prototype/management-summary');
+      // Saved only after the request succeeded, so a failure can never wipe the previous copy.
+      const saved = await cacheSet(MINISTRY_SUMMARY_KEY, res.demoAndExperimentalData);
+      setSnap(saved);
+      setFromSaved(false);
+    } catch {
+      setFromSaved(true); // what is on screen is the older saved copy, not something just retrieved
+      setRefreshError('Could not refresh the counts.');
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!isOnline) return;
-    apiFetch<PrototypeCounts>('/prototype/management-summary')
-      .then((res) => setLiveDemoCounts(res.demoAndExperimentalData))
-      .catch(() => undefined);
-  }, [isOnline]);
+    let alive = true;
+    void cacheGet<PrototypeCounts['demoAndExperimentalData']>(MINISTRY_SUMMARY_KEY).then((saved) => {
+      if (!alive) return;
+      if (saved) setSnap((cur) => cur ?? saved);
+      setLoadedSaved(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isOnline) void refresh();
+  }, [isOnline, refresh]);
 
   const rows =
     countyFilter === 'All Counties'
@@ -103,6 +143,12 @@ export const MinistryDashboardPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {!isOnline && (
+        <p role="status" className="rounded-2xl bg-amber-50 border border-amber-300 px-4 py-3 text-sm font-semibold text-amber-900">
+          You are offline. Everything on this page is saved information, not live.
+        </p>
+      )}
 
       {/* County Filter + Summary KPIs */}
       <div className="rounded-2xl bg-white border border-[#183B2B]/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -321,29 +367,50 @@ export const MinistryDashboardPage: React.FC = () => {
           </Link>
         </div>
 
+        <SavedInfoBar
+          label="Prototype counts from this server (marketplace, simulated expert reports, language entries). Not Ministry statistics."
+          fetchedAt={snap?.fetchedAt ?? null}
+          fromSaved={fromSaved}
+          online={isOnline}
+          refreshing={refreshing}
+          refreshError={refreshError}
+          onRefresh={() => void refresh()}
+        >
+          {snap && summaryFreshness(snap) === 'stale' && (
+            <p role="status" className="text-xs font-bold text-amber-900">
+              These counts are more than 24 hours old. Refresh when you are connected.
+            </p>
+          )}
+          {!snap && loadedSaved && (
+            <p role="status" className="text-sm font-semibold text-[#183B2B]">
+              No counts are saved on this phone yet. Open this page once while connected and they will be saved here.
+            </p>
+          )}
+        </SavedInfoBar>
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="rounded-2xl bg-[#DDEFE0] p-4">
             <p className="text-xs font-bold text-[#16803C]">Prototype Demo Listings</p>
             <p className="font-display text-2xl font-extrabold tabular-nums">
-              {liveDemoCounts?.marketplaceListings ?? '8+'}
+              {liveDemoCounts?.marketplaceListings ?? '—'}
             </p>
           </div>
           <div className="rounded-2xl bg-[#DDEFE0] p-4">
             <p className="text-xs font-bold text-[#16803C]">Prototype Buyer Inquiries</p>
             <p className="font-display text-2xl font-extrabold tabular-nums">
-              {liveDemoCounts?.marketplaceInquiries ?? '1+'}
+              {liveDemoCounts?.marketplaceInquiries ?? '—'}
             </p>
           </div>
           <div className="rounded-2xl bg-[#F3F8F0] p-4">
             <p className="text-xs font-bold text-[#183B2B]/70">Simulated Expert Reports</p>
             <p className="font-display text-2xl font-extrabold tabular-nums">
-              {liveDemoCounts?.simulatedExpertRequests ?? '2+'}
+              {liveDemoCounts?.simulatedExpertRequests ?? '—'}
             </p>
           </div>
           <div className="rounded-2xl bg-[#F3F8F0] p-4">
             <p className="text-xs font-bold text-[#183B2B]/70">Bassa/Mano Voice Entries</p>
             <p className="font-display text-2xl font-extrabold tabular-nums">
-              {liveDemoCounts?.localLanguageRecordings ?? '6+'}
+              {liveDemoCounts?.localLanguageRecordings ?? '—'}
             </p>
           </div>
         </div>

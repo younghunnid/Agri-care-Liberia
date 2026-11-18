@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {
   AlertTriangle,
@@ -13,10 +13,33 @@ import {
 import {LIBERIA_COUNTIES} from '../../../server/constants';
 import {getWeatherForCounty} from '../../data/weatherSoilMinistry';
 import {SpeakButton} from '../../components/SpeakButton';
+import {SavedInfoBar} from '../../components/SavedInfoBar';
+import {useApp} from '../../context/AppContext';
+import {BUNDLED_CONTENT_UPDATED} from '../../data/contentVersion';
+import {
+  forecastFreshness,
+  formatExact,
+  loadWeatherSnapshot,
+  type CachedSnapshot,
+  type LiveWeatherData,
+} from '../../lib/dataCache';
 
 export const WeatherPage: React.FC = () => {
+  const {isOnline} = useApp();
   const [selectedCounty, setSelectedCounty] = useState<string>('Bong');
-  const weather = getWeatherForCounty(selectedCounty);
+  // A saved copy of weather from a real weather service (none is connected yet, so this is normally empty).
+  const [saved, setSaved] = useState<CachedSnapshot<LiveWeatherData> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setSaved(null);
+    void loadWeatherSnapshot(selectedCounty).then((s) => alive && setSaved(s));
+    return () => {
+      alive = false;
+    };
+  }, [selectedCounty]);
+  const weather = saved ? saved.data.profile : getWeatherForCounty(selectedCounty);
+  const freshness = saved ? forecastFreshness(saved) : null;
+  const forecastExpired = freshness === 'expired';
 
   const weatherAudioSummary =
     `Sample agricultural weather report for ${weather.county} County. ` +
@@ -60,6 +83,44 @@ export const WeatherPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Where this information comes from, and how old it is */}
+      {saved ? (
+        <SavedInfoBar
+          label={`Weather for ${selectedCounty} County saved from ${saved.data.provider}. Saved Information, not a live forecast.`}
+          fetchedAt={saved.fetchedAt}
+          fromSaved
+          online={isOnline}
+        >
+          <p className="text-xs text-[#183B2B]">
+            {saved.issuedAt ? `Issued: ${formatExact(saved.issuedAt)}. ` : ''}
+            {saved.validUntil ? `Valid until: ${formatExact(saved.validUntil)}.` : 'The provider did not say how long it is valid.'}
+          </p>
+          {freshness === 'expired' && (
+            <p role="alert" className="rounded-xl bg-red-100 border-2 border-red-400 px-3 py-2 text-sm font-extrabold text-red-900">
+              EXPIRED FORECAST — do not use this to plan today. Reconnect and refresh, and check local sky conditions and official radio updates.
+            </p>
+          )}
+          {freshness === 'stale' && (
+            <p role="status" className="rounded-xl bg-amber-100 border border-amber-400 px-3 py-2 text-sm font-bold text-amber-900">
+              This forecast is getting old. Treat it with caution.
+            </p>
+          )}
+        </SavedInfoBar>
+      ) : (
+        <div className="rounded-2xl bg-white border border-[#183B2B]/15 p-4 space-y-1.5" data-testid="weather-sample-status">
+          <p className="text-sm font-extrabold text-[#183B2B]">
+            {isOnline ? 'Prototype sample profile' : 'Saved Information — Not Live: prototype sample profile'}
+          </p>
+          <p className="text-xs text-[#183B2B]/85">
+            Bundled with the app (content dated {BUNDLED_CONTENT_UPDATED}). It was <strong>not</strong> retrieved from a weather service, it is{' '}
+            <strong>not a forecast for today</strong>, and it never updates by itself. The 3-day outlook below is a sample, not a prediction.
+          </p>
+          <p className="text-xs text-[#183B2B]/70">
+            Refresh: no live weather service is connected in this prototype, so there is nothing to refresh. Nothing is saved from the internet here.
+          </p>
+        </div>
+      )}
+
       {/* County Picker */}
       <div className="rounded-2xl bg-white border border-[#183B2B]/10 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
@@ -89,7 +150,7 @@ export const WeatherPage: React.FC = () => {
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <p className="text-xs font-semibold text-[#16803C]">
-                  {weather.county} County · {weather.region} · Sample Profile
+                  {weather.county} County · {weather.region} · {saved ? 'Saved Information' : 'Sample Profile'}
                 </p>
                 <h2 className="font-display text-2xl font-extrabold text-[#183B2B] mt-1">
                   {weather.conditionSummary}
@@ -134,9 +195,14 @@ export const WeatherPage: React.FC = () => {
             </div>
 
             {/* 3-Day Forecast */}
+            {forecastExpired ? (
+              <p role="alert" className="rounded-2xl bg-red-50 border border-red-300 p-4 text-sm font-bold text-red-900">
+                The saved forecast has expired and is hidden so it cannot be mistaken for today's weather.
+              </p>
+            ) : (
             <div className="space-y-2.5">
               <h3 className="font-display font-bold text-sm text-[#183B2B]">
-                Short-Term Sample Outlook (Demonstration)
+                {saved ? 'Saved Outlook (Not Live)' : 'Short-Term Sample Outlook (Demonstration)'}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {weather.forecast3Day.map((f) => (
@@ -148,6 +214,7 @@ export const WeatherPage: React.FC = () => {
                 ))}
               </div>
             </div>
+            )}
           </div>
         </div>
 
