@@ -144,7 +144,7 @@ Suggested order for a small team: 2 (quick win) → 1 → 4 → 3 → 5. Items 1
 | Milestone | Content | Depends on |
 |---|---|---|
 | M3 *(in progress)* | PHP foundation | M2 |
-| M4 | Auth + audit gaps (separation of duties, new roles, audit actions, request ids) | M3 |
+| M4 | Auth + audit gaps (separation of duties, new roles, audit actions, request ids) — **superseded:** M4 is plain authentication/sessions/audit/RBAC mechanism only (`docs/M4_READINESS.md`); the separation-of-duties and new-role items move to M12 | M3 |
 | M5 | Content read services (+ verified-card data layer if approved) | M4 |
 | M6 | Marketplace/sync parity (+ inquiry idempotency, listing codes) | M5 |
 | **M12 (new)** | Verified Advice Cards + marketplace verification codes/levels | M5/M6 |
