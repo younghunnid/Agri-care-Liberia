@@ -472,7 +472,7 @@ Local dev: `/usr/local/bin/php` 8.5.x + local MySQL (XAMPP's PHP 8.0.28 is too o
 |---|---|---|
 | **M0** | Approval of this plan; answers to D1–D10; hosting plan confirmed (MySQL vs MariaDB, PHP version, SSH availability) | Written sign-off |
 | **M1** | Test harness: refactor `tests/api.test.ts` into a black-box suite driven by `API_BASE_URL`; golden contract snapshots from Node; fixtures API for seeding | Suite runs green against Node unchanged (31 tests) |
-| **M2** | MySQL schema `M001` + migration runner; seed scripts (reference + prototype data) | Schema applies cleanly on MySQL 8 (and MariaDB if applicable); FK/index checks pass |
+| **M2** *(implemented — see `docs/M2_REPORT.md`)* | MySQL schema `M001` + migration runner; seed scripts (reference + prototype data) | Schema applies cleanly on MySQL 8 (and MariaDB if applicable); FK/index checks pass |
 | **M3** | PHP core: front controller, router, request/response, PDO layer, error handler, config, logging, security headers, CORS | Health + `csrf-token` parity tests green; no HTML error leaks |
 | **M4** | Auth: register/login/logout/me/forgot/reset, sessions, CSRF, password rehash, rate limits, audit | Auth parity + security tests green; Node-generated password hashes verify |
 | **M5** | Read APIs: crops, categories, guides, public home, profile, saved advice, farmer questions, expert/admin endpoints | Contract diff identical on seeded data |
@@ -481,6 +481,7 @@ Local dev: `/usr/local/bin/php` 8.5.x + local MySQL (XAMPP's PHP 8.0.28 is too o
 | **M8** | SQLite→MySQL utility + dry run + rehearsal on a copy | Section 8.4 verification all green; rollback rehearsed |
 | **M9** | Staging soak, security review, performance check, cutover rehearsal, **physical Android pass** | Checklists signed; go/no-go |
 | **M10** | Production cutover, monitoring, 2-week Node fallback window | Error-rate/latency within thresholds; rollback not needed |
+| **M11** *(separate, future)* | USSD channel for basic phones (MTN Liberia + Orange Liberia, one shared short code subject to operator approval): see `docs/USSD_PLAN.md` | Plan approved; simulator + adapters + admin green locally; live activation only after operator approval and M10 |
 
 ## 14. Automated parity and security tests
 1. **Black-box suite:** `tests/api.test.ts` is rewritten to take `API_BASE_URL` (default: in-process Node). The 17 assertions that currently read SQLite through `getDb()` (hash storage, legacy rows, counts) move to a small **test-only admin fixture endpoint or CLI seed/inspect tool** that exists only in non-production builds (an adapter per backend), so the same 31 tests run on both servers.
@@ -555,3 +556,7 @@ Consequences recorded: (a) PHP refuses to boot without `SESSION_SECRET` **and** 
 
 ## Appendix C — what this assessment changed in the repository
 Only this document (`docs/PHP_MYSQL_MIGRATION_PLAN.md`) was rewritten. No code, schema, migration, dependency, SQLite file or frontend file was modified. No credentials appear in this document.
+
+
+## Addendum — M2 decisions (approved)
+**D12** portable `LONGTEXT` + `CHECK (JSON_VALID())`, NULL-tolerant. **D13** SQL portable across MySQL 8 and MariaDB 10.4+ until Hostinger is verified. **D14** demo accounts/prototype data never in production; admin from env-supplied credentials or protected CLI. **D15** data URLs preserved; if the production packet limit is too small use protected file storage, never truncate or silently reject. **D16** case-insensitive duplicate emails: stop and report, never merge or delete.

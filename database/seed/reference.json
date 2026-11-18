@@ -1,0 +1,419 @@
+{
+ "roles": [
+  {
+   "id": 1,
+   "name": "farmer",
+   "description": "Farmer account with saved advice, history, and expert consultation access"
+  },
+  {
+   "id": 2,
+   "name": "expert",
+   "description": "Agricultural extension specialist approved to answer farmer questions"
+  },
+  {
+   "id": 3,
+   "name": "admin",
+   "description": "Platform administrator managing users, guides, reviews, and audit logs"
+  }
+ ],
+ "crops": [
+  {
+   "id": 1,
+   "slug": "cassava",
+   "name": "Cassava",
+   "local_names": "Kpokpo / Cassava",
+   "summary": "Resilient staple root crop grown across all 15 Liberian counties for gari, fufu, and dumboy.",
+   "season_note": "Plant at onset of rains (April–June) or late rainy season (August–September).",
+   "image_url": "/src/assets/images/crop_cassava_1794924193991.jpg",
+   "display_order": 1
+  },
+  {
+   "id": 2,
+   "slug": "rice",
+   "name": "Rice",
+   "local_names": "Upland & Lowland Swamp Rice",
+   "summary": "Liberia’s primary staple grain cultivated in upland clearings and inland valley swamps.",
+   "season_note": "Upland planting April–May; swamp nursery & transplanting May–July.",
+   "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+   "display_order": 2
+  },
+  {
+   "id": 3,
+   "slug": "maize",
+   "name": "Maize",
+   "local_names": "Corn / Maize",
+   "summary": "Fast-maturing cereal intercropped with cassava or grown in pure stands for food and feed.",
+   "season_note": "First planting April–May; second season August–September.",
+   "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+   "display_order": 3
+  },
+  {
+   "id": 4,
+   "slug": "pepper",
+   "name": "Pepper",
+   "local_names": "Hot Pepper / Liberian Pepper",
+   "summary": "High-value garden and smallholder spice crop needing well-drained beds and steady moisture.",
+   "season_note": "Nursery starts February–April or late rainy season with mulch protection.",
+   "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+   "display_order": 4
+  },
+  {
+   "id": 5,
+   "slug": "okra",
+   "name": "Okra",
+   "local_names": "Okro / Gumbo",
+   "summary": "Nutritious, fast-harvest vegetable thriving in warm Liberian soils with regular picking.",
+   "season_note": "Sow directly after soil warms and early rains begin; harvest begins 50–60 days.",
+   "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+   "display_order": 5
+  },
+  {
+   "id": 6,
+   "slug": "plantain",
+   "name": "Plantain",
+   "local_names": "Plantain / Musa",
+   "summary": "Perennial cooking fruit crop suited to humid forest zones and backyard agroforestry.",
+   "season_note": "Plant clean suckers at the start of rains; stake heavy bunches against wind.",
+   "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+   "display_order": 6
+  }
+ ],
+ "guide_categories": [
+  {
+   "id": 1,
+   "slug": "planting",
+   "name": "Planting",
+   "description": "Seed selection, stem cuttings, spacing, and planting calendars",
+   "display_order": 1
+  },
+  {
+   "id": 2,
+   "slug": "soil-preparation",
+   "name": "Soil Preparation",
+   "description": "Composting, mulching, raised beds, and drainage",
+   "display_order": 2
+  },
+  {
+   "id": 3,
+   "slug": "watering",
+   "name": "Watering",
+   "description": "Moisture conservation, swamp water control, and dry-spell watering",
+   "display_order": 3
+  },
+  {
+   "id": 4,
+   "slug": "crop-care",
+   "name": "Crop Care",
+   "description": "Weeding intervals, thinning, staking, and nutrient care",
+   "display_order": 4
+  },
+  {
+   "id": 5,
+   "slug": "pest-prevention",
+   "name": "Pest Prevention",
+   "description": "Scouting, mechanical barriers, and integrated pest management",
+   "display_order": 5
+  },
+  {
+   "id": 6,
+   "slug": "disease-awareness",
+   "name": "Disease Awareness",
+   "description": "Early leaf symptom checks, sanitation, and clean planting material",
+   "display_order": 6
+  },
+  {
+   "id": 7,
+   "slug": "harvesting",
+   "name": "Harvesting",
+   "description": "Maturity signs, careful digging/picking, and reducing damage",
+   "display_order": 7
+  },
+  {
+   "id": 8,
+   "slug": "storage",
+   "name": "Storage",
+   "description": "Drying, moisture checks, and safe post-harvest storage",
+   "display_order": 8
+  },
+  {
+   "id": 9,
+   "slug": "climate-resilience",
+   "name": "Climate Resilience",
+   "description": "Handling heavy rains, dry spells, and wind protection",
+   "display_order": 9
+  }
+ ],
+ "agricultural_guides": [
+  {
+   "id": 1,
+   "slug": "cassava-yellow-leaves-mosaic-check",
+   "crop_id": 1,
+   "category_id": 6,
+   "title": "Cassava Yellow Leaves & Mosaic Awareness (Sample Guide)",
+   "summary": "How to tell nutrient or water stress apart from Cassava Mosaic Disease and take safe, low-risk next steps.",
+   "content_markdown": "## Important Notice\nThis is a **sample demonstration guide** prepared for Team 8 hackathon evaluation until reviewed by a certified Liberian agronomist.\n\n## 1. Check the Pattern on the Leaves\n- **Even yellowing on older bottom leaves:** Often linked to wet, poorly drained soil, dry spells, or low soil nitrogen.\n- **Patchy yellow-green mosaic pattern with twisted young leaves:** Possible viral infection (Cassava Mosaic Disease) spread by infected stem cuttings or whiteflies.\n\n## 2. Safe Immediate Steps\n1. Check soil drainage around mounds or ridges—clear standing water channels if the plot is waterlogged.\n2. Inspect the underside of young leaves in the early morning for tiny whiteflies.\n3. Mark healthy, symptom-free plants now so you only cut clean stems for your next planting season.\n4. Remove severely stunted, twisted volunteer shoots if only a few plants are affected, and do not share suspect cuttings with neighbors.\n\n## 3. When to Contact an Expert\nIf more than 1 in 10 plants show twisted yellow-green patches on new growth, request an Agricultural Expert review before replanting.",
+   "image_url": "/src/assets/images/crop_cassava_1794924193991.jpg",
+   "language_code": "en",
+   "source_attribution": "Team 8 Sample Demonstration Dataset (Based on West African Smallholder Extension Practices)",
+   "is_sample_demo": 1,
+   "is_pest_disease": 1,
+   "review_status": "approved",
+   "is_published": 1,
+   "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+   "reviewed_by_user_id": null,
+   "last_reviewed_at": "2026-10-15",
+   "version": 1,
+   "offline_available": 1,
+   "created_by": null,
+   "created_at": "2026-11-18 22:21:11",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "id": 2,
+   "slug": "cassava-healthy-stem-planting",
+   "crop_id": 1,
+   "category_id": 1,
+   "title": "Selecting & Planting Healthy Cassava Cuttings (Sample Guide)",
+   "summary": "Choosing mature 20–25 cm stem cuttings, proper spacing on mounds or ridges, and early weeding.",
+   "content_markdown": "## Important Notice\nThis is a **sample demonstration guide** for offline testing and hackathon demonstration.\n\n## 1. Selecting Clean Cuttings\n- Use mature, woody stems from the middle section of healthy 9–12 month plants.\n- Cut stems 20–25 cm long with 5–7 healthy nodes (buds) using a sharp, clean cutlass.\n\n## 2. Soil & Spacing\n- Plant on loose mounds or ridges in heavy rain areas so roots do not rot.\n- Space plants about 1 meter × 1 meter for good airflow and root swelling.\n- Weed carefully at 3–4 weeks and again at 8–10 weeks after planting.",
+   "image_url": "/src/assets/images/crop_cassava_1794924193991.jpg",
+   "language_code": "en",
+   "source_attribution": "Team 8 Sample Demonstration Dataset",
+   "is_sample_demo": 1,
+   "is_pest_disease": 0,
+   "review_status": "approved",
+   "is_published": 1,
+   "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+   "reviewed_by_user_id": null,
+   "last_reviewed_at": "2026-10-15",
+   "version": 1,
+   "offline_available": 1,
+   "created_by": null,
+   "created_at": "2026-11-18 22:21:11",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "id": 3,
+   "slug": "rice-swamp-water-management",
+   "crop_id": 2,
+   "category_id": 3,
+   "title": "Inland Valley Swamp Rice Water Control (Sample Guide)",
+   "summary": "Practical bunding and shallow water depth practices to support rice tillering and reduce weed pressure.",
+   "content_markdown": "## Important Notice\nThis is a **sample demonstration guide** until formally reviewed by an agricultural extension specialist.\n\n## 1. Bund Maintenance\n- Inspect earthen bunds weekly during heavy rains to prevent breaches.\n- Keep drainage spillways clear so floodwater drains gently without washing away young seedlings.\n\n## 2. Water Depth by Growth Stage\n- **Transplanting:** Keep soil moist to shallow (2–3 cm) so seedlings establish strong roots.\n- **Tillering:** Maintain shallow standing water (3–5 cm) to suppress weeds naturally.\n- **Two weeks before harvest:** Drain the plot gradually so panicles ripen evenly and harvesting is easier.",
+   "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+   "language_code": "en",
+   "source_attribution": "Team 8 Sample Demonstration Dataset",
+   "is_sample_demo": 1,
+   "is_pest_disease": 0,
+   "review_status": "approved",
+   "is_published": 1,
+   "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+   "reviewed_by_user_id": null,
+   "last_reviewed_at": "2026-10-18",
+   "version": 2,
+   "offline_available": 1,
+   "created_by": null,
+   "created_at": "2026-11-18 22:21:11",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "id": 4,
+   "slug": "rice-blast-and-bird-scouting",
+   "crop_id": 2,
+   "category_id": 5,
+   "title": "Rice Leaf Spot & Field Scouting Basics (Sample Guide)",
+   "summary": "Early morning field checks for diamond-shaped leaf spots, stem borers, and timely weeding.",
+   "content_markdown": "## Important Notice\nSample demonstration content — seek local extension confirmation before applying any crop protection products.\n\n## 1. Weekly Scouting Checklist\n- Walk the edges and center of your rice plot once a week.\n- Look for diamond-shaped brown spots on leaves (possible blast) or dead central shoots (\"deadhearts\").\n- Clear grassy weeds along bunds that harbor insects between seasons.\n\n## 2. Low-Risk Prevention\n- Avoid excessive overcrowding during transplanting so air moves freely between rice hills.\n- Save clean seed only from healthy, disease-free panicles.",
+   "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+   "language_code": "en",
+   "source_attribution": "Team 8 Sample Demonstration Dataset",
+   "is_sample_demo": 1,
+   "is_pest_disease": 1,
+   "review_status": "approved",
+   "is_published": 1,
+   "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+   "reviewed_by_user_id": null,
+   "last_reviewed_at": "2026-10-20",
+   "version": 1,
+   "offline_available": 1,
+   "created_by": null,
+   "created_at": "2026-11-18 22:21:11",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "id": 5,
+   "slug": "maize-fall-armyworm-scouting",
+   "crop_id": 3,
+   "category_id": 5,
+   "title": "Early Scouting for Maize Leaf-Feeding Caterpillars (Sample Guide)",
+   "summary": "How to spot pinhole damage and sawdust-like frass inside maize whorls during the first 4 weeks.",
+   "content_markdown": "## Important Notice\nSample demonstration guide — consult an agricultural expert before purchasing or mixing any pesticide.\n\n## 1. Spot Damage Early\n- Check 10–20 maize plants across the field every 3–4 days starting 10 days after emergence.\n- Look inside the central leaf funnel (whorl) for small translucent window-pane marks, pinholes, or wet frass.\n\n## 2. Safe Community Practices\n- Hand-pick small egg masses or caterpillars on small home plots if caught early.\n- Keep plots weeded and encourage natural predators like wasps and birds around field borders.",
+   "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+   "language_code": "en",
+   "source_attribution": "Team 8 Sample Demonstration Dataset",
+   "is_sample_demo": 1,
+   "is_pest_disease": 1,
+   "review_status": "approved",
+   "is_published": 1,
+   "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+   "reviewed_by_user_id": null,
+   "last_reviewed_at": "2026-10-22",
+   "version": 1,
+   "offline_available": 1,
+   "created_by": null,
+   "created_at": "2026-11-18 22:21:11",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "id": 6,
+   "slug": "pepper-raised-beds-wilt-prevention",
+   "crop_id": 4,
+   "category_id": 2,
+   "title": "Raised Beds & Wilt Prevention for Hot Pepper (Sample Guide)",
+   "summary": "Preventing root rot during heavy Liberian rains with composted raised beds and clean mulching.",
+   "content_markdown": "## Important Notice\nSample demonstration content for Team 8 Phase 1 testing.\n\n## 1. Building Raised Beds\n- Raise planting beds 20–30 cm high with drainage furrows between rows so rainwater never pools around pepper stems.\n- Mix well-rotted compost into the top layer before transplanting healthy seedlings.\n\n## 2. Mulching & Sanitation\n- Cover soil with dry grass mulch to stop rain splash from carrying soil fungi onto lower leaves.\n- Avoid working in wet pepper beds when foliage is soaked to reduce spreading bacterial or fungal spots.",
+   "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+   "language_code": "en",
+   "source_attribution": "Team 8 Sample Demonstration Dataset",
+   "is_sample_demo": 1,
+   "is_pest_disease": 1,
+   "review_status": "approved",
+   "is_published": 1,
+   "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+   "reviewed_by_user_id": null,
+   "last_reviewed_at": "2026-10-25",
+   "version": 1,
+   "offline_available": 1,
+   "created_by": null,
+   "created_at": "2026-11-18 22:21:11",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "id": 7,
+   "slug": "okra-harvesting-and-aphid-care",
+   "crop_id": 5,
+   "category_id": 4,
+   "title": "Okra Pod Harvesting & Leaf Curl Awareness (Sample Guide)",
+   "summary": "Picking tender pods every 2–3 days and spotting sap-sucking aphids or leaf curl early.",
+   "content_markdown": "## Important Notice\nSample demonstration guide — not a substitute for in-person extension inspection.\n\n## 1. Frequent Harvesting Boosts Yield\n- Harvest okra pods when they are 7–10 cm long and snap easily; leaving oversized pods on the plant slows new flowering.\n- Wear light gloves or long sleeves when harvesting to protect skin from fine plant hairs.\n\n## 2. Checking Leaf Undersides\n- Curled young leaves with sticky residue often indicate aphids; wash small garden plots gently with plain water or consult an expert if curling spreads.",
+   "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+   "language_code": "en",
+   "source_attribution": "Team 8 Sample Demonstration Dataset",
+   "is_sample_demo": 1,
+   "is_pest_disease": 1,
+   "review_status": "approved",
+   "is_published": 1,
+   "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+   "reviewed_by_user_id": null,
+   "last_reviewed_at": "2026-10-27",
+   "version": 1,
+   "offline_available": 1,
+   "created_by": null,
+   "created_at": "2026-11-18 22:21:11",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "id": 8,
+   "slug": "plantain-wind-staking-and-suckers",
+   "crop_id": 6,
+   "category_id": 9,
+   "title": "Staking Plantain Bunches & Sucker Management (Sample Guide)",
+   "summary": "Supporting heavy bunches during storm winds and selecting one healthy follower sucker per mat.",
+   "content_markdown": "## Important Notice\nSample demonstration guide pending agricultural expert review in Admin Review queue.\n\n## 1. Sucker Selection\n- Keep one main bearing stem, one medium follower sucker, and one small peeper per mat so nutrients go into full bunches.\n\n## 2. Storm Protection\n- Prop heavy fruiting stems with sturdy forked bamboo or hardwood poles before strong squall winds arrive.",
+   "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+   "language_code": "en",
+   "source_attribution": "Team 8 Sample Demonstration Dataset",
+   "is_sample_demo": 1,
+   "is_pest_disease": 0,
+   "review_status": "pending_review",
+   "is_published": 0,
+   "reviewed_by_name": null,
+   "reviewed_by_user_id": null,
+   "last_reviewed_at": null,
+   "version": 1,
+   "offline_available": 1,
+   "created_by": null,
+   "created_at": "2026-11-18 22:21:11",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "id": 9,
+   "slug": "maize-post-harvest-drying-storage",
+   "crop_id": 3,
+   "category_id": 8,
+   "title": "Safe Maize Drying & Weevil-Resistant Storage (Sample Guide)",
+   "summary": "Drying maize cobs off the ground and checking grain dryness before sealing in airtight sacks.",
+   "content_markdown": "## Important Notice\nSample demonstration guide in review queue.\n\n## 1. Clean Drying\n- Dry harvested maize on raised racks, mats, or tarpaulins rather than bare damp soil to reduce mold risk.\n\n## 2. Storage Readiness\n- Store dry grain in clean, dry, tightly sealed containers off the floor and away from walls.",
+   "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+   "language_code": "en",
+   "source_attribution": "Team 8 Sample Demonstration Dataset",
+   "is_sample_demo": 1,
+   "is_pest_disease": 0,
+   "review_status": "pending_review",
+   "is_published": 0,
+   "reviewed_by_name": null,
+   "reviewed_by_user_id": null,
+   "last_reviewed_at": null,
+   "version": 1,
+   "offline_available": 1,
+   "created_by": null,
+   "created_at": "2026-11-18 22:21:11",
+   "updated_at": "2026-11-18 22:21:11"
+  }
+ ],
+ "guide_translations": [
+  {
+   "id": 1,
+   "guide_id": 1,
+   "language_code": "lre",
+   "title": "When Cassava Leaf Turn Yellow (Sample Guide)",
+   "summary": "How for check why cassava leaf turning yellow — water trouble, soil food, or mosaic sickness — and safe small steps for take.",
+   "content_markdown": "## Small Notice First\nDis na **sample demo guide** for Team 8 hackathon testing until one qualified Liberia agricultural officer check am.\n\n## 1. Look Good at the Leaf\n- **All the old bottom leaf turning yellow same-same:** Plenty time water standing too much under the soil, or the soil need compost/food.\n- **Leaf get mix-mix yellow and green spot and young leaf twisting:** Could be Cassava Mosaic sickness from bad stick or small white fly under leaf.\n\n## 2. Safe Steps You Can Take Now\n1. Check if rain water standing round the cassava mound—open small gutter so water can pass.\n2. Turn the young leaf over early morning to look for tiny white fly.\n3. Mark the strong, clean cassava plant them now so next planting time you only cut clean stick.\n\n## 3. When for Call Expert\nIf plenty plant (more than 1 out of 10) get twist-twist yellow leaf on the new top growth, send message to Agricultural Expert on dis app.",
+   "translation_status": "reviewed",
+   "reviewed_by": "Team 8 Language Preview Reviewer (Sample)",
+   "updated_at": "2026-11-18 22:21:11"
+  }
+ ],
+ "platform_settings": [
+  {
+   "setting_key": "allow_public_registration",
+   "value": "true",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "setting_key": "anon_ai_daily_limit",
+   "value": "5",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "setting_key": "auth_ai_hourly_limit",
+   "value": "30",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "setting_key": "daily_tip_body",
+   "value": "Inspect the underside of cassava and pepper leaves early in the morning once a week. Spotting whiteflies or aphids early prevents heavy spread across your plot.",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "setting_key": "daily_tip_title",
+   "value": "Today's Farming Tip (Sample)",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "setting_key": "default_language",
+   "value": "en",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "setting_key": "liberian_english_mode",
+   "value": "preview_reviewed_only",
+   "updated_at": "2026-11-18 22:21:11"
+  },
+  {
+   "setting_key": "platform_name",
+   "value": "Agri-Advisory Liberia",
+   "updated_at": "2026-11-18 22:21:11"
+  }
+ ]
+}

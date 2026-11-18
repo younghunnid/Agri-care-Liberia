@@ -1,0 +1,20 @@
+{
+ "roles": 3,
+ "crops": 6,
+ "guide_categories": 9,
+ "agricultural_guides": 9,
+ "guide_translations": 1,
+ "platform_settings": 8,
+ "users": 2,
+ "user_roles": 2,
+ "farmer_profiles": 1,
+ "expert_profiles": 1,
+ "language_preferences": 1,
+ "advisory_questions": 2,
+ "advisory_messages": 3,
+ "expert_assignments": 1,
+ "marketplace_listings": 11,
+ "marketplace_inquiries": 1,
+ "local_language_recordings": 6,
+ "demo_expert_requests": 2
+}
