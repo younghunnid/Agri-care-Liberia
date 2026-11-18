@@ -1,6 +1,6 @@
 # PHP 8.2+ / MySQL 8 migration plan — Agri-Advisory Liberia (Team 8)
 
-**Status: ASSESSMENT AND DESIGN ONLY. No migration work has been started.** Nothing here has changed the React frontend, the PWA service
+**Status: M1 (test harness) implemented and verified; M2 onward NOT started.** (Originally: assessment and design only.) Nothing here has changed the React frontend, the PWA service
 worker, IndexedDB, the Node/Express backend, the SQLite files (`data/agri_advisory.db*` is untouched), or any existing migration.
 Written against branch `feature/offline-first` at commit `a6e8416`. **Approval is requested for the decisions in section 17 before any implementation starts.**
 
@@ -518,6 +518,11 @@ Local dev: `/usr/local/bin/php` 8.5.x + local MySQL (XAMPP's PHP 8.0.28 is too o
 - **Never** delete SQLite files, Node code, or old migrations during the migration; archive them after the fallback window ends.
 
 ## 17. Decisions requested before implementation (approval gate)
+
+**Owner decisions received (M1 authorisation):** React frontend, PHP 8.2+/PDO and the architecture approved; target MySQL 8 **with local and Hostinger compatibility to be verified**; IndexedDB/PWA/offline features preserved; **fresh authentication required when PHP goes live (D3 = force re-login; sessions are not carried over)**; existing accounts and password hashes preserved (D4 = libsodium verify + rehash on login); sensitive uploads and private data protected; **Language Lab privacy protections (D9: L1–L4 mandatory) required before public launch**; **production secrets must be explicit — never silently fall back to development credentials**; secure first-party cookies (D11 = `SameSite=Lax; Secure`, iframe-preview mode only behind a flag).
+Consequences recorded: (a) PHP refuses to boot without `SESSION_SECRET` **and** `OWNER_KEY_HMAC_SECRET`; if production Node ran on the development fallback constant, that value must be set *explicitly and knowingly* for migrated owner-key hashes to keep working (flagged as a risk, §8.3); (b) because sessions are not carried over, the session cookie format may be changed freely.
+**Still open:** D1, D2, D5 (local engine verified as **MariaDB 10.4.28**, not MySQL 8; Hostinger engine still unverified), D6, D7, D8, D10. D1/D2/D5 are needed at the start of M2; D6 at M4; D10 at M7.
+
 | ID | Decision | Recommendation |
 |---|---|---|
 | D1 | Timestamp type/precision (`DATETIME(3)` UTC; optional `version` column for conflicts) | `DATETIME(3)` + accept both formats; add `version` only if stricter conflicts are wanted |

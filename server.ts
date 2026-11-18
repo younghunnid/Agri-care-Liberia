@@ -1,3 +1,4 @@
+import {assertSafeTestEnvironment} from './server/testGuard.ts';
 import 'dotenv/config';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,6 +12,7 @@ import {v1Router} from './server/routes/v1.ts';
 
 export async function createApp() {
   // Initialize isolated database, run migrations, and seed sample demonstration dataset
+  assertSafeTestEnvironment(); // refuses APP_ENV=test on the default database BEFORE anything is opened
   getDb();
   seedInitialData();
 
@@ -53,6 +55,12 @@ export async function createApp() {
 
   // Versioned API routes
   app.use('/api/v1', v1Router);
+
+  // Test-only fixture API for the black-box test harness. Mounted only when APP_ENV=test (see server/testFixtures.ts).
+  if (process.env.APP_ENV === 'test') {
+    const {mountTestFixtures} = await import('./server/testFixtures.ts');
+    mountTestFixtures(app);
+  }
 
   // Vite dev middleware or production static build
   if (process.env.NODE_ENV !== 'production') {

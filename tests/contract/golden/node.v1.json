@@ -1,0 +1,3221 @@
+{
+  "schema": 1,
+  "source": "node-express-sqlite (reference)",
+  "steps": [
+    {
+      "name": "health",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/health"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [
+        {
+          "name": "agri_anon",
+          "httpOnly": true,
+          "secure": false,
+          "sameSite": "Lax",
+          "path": "/",
+          "hasMaxAge": true
+        },
+        {
+          "name": "agri_csrf",
+          "httpOnly": false,
+          "secure": false,
+          "sameSite": "Lax",
+          "path": "/",
+          "hasMaxAge": true
+        }
+      ],
+      "body": {
+        "aiConfigured": false,
+        "apiVersion": "v1",
+        "database": "connected",
+        "latestMigration": "001_initial_schema.sql",
+        "publishedGuides": 7,
+        "service": "agri-advisory-liberia-api",
+        "status": "ok",
+        "timestamp": "<timestamp>"
+      }
+    },
+    {
+      "name": "csrf token",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/csrf-token"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "csrfToken": "<token>"
+      }
+    },
+    {
+      "name": "crops list",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/crops"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "crops": [
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_cassava_1794924193991.jpg",
+            "local_names": "Kpokpo / Cassava",
+            "name": "Cassava",
+            "season_note": "Plant at onset of rains (April–June) or late rainy season (August–September).",
+            "slug": "cassava",
+            "summary": "Resilient staple root crop grown across all 15 Liberian counties for gari, fufu, and dumboy."
+          },
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+            "local_names": "Upland & Lowland Swamp Rice",
+            "name": "Rice",
+            "season_note": "Upland planting April–May; swamp nursery & transplanting May–July.",
+            "slug": "rice",
+            "summary": "Liberia’s primary staple grain cultivated in upland clearings and inland valley swamps."
+          },
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+            "local_names": "Corn / Maize",
+            "name": "Maize",
+            "season_note": "First planting April–May; second season August–September.",
+            "slug": "maize",
+            "summary": "Fast-maturing cereal intercropped with cassava or grown in pure stands for food and feed."
+          },
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+            "local_names": "Hot Pepper / Liberian Pepper",
+            "name": "Pepper",
+            "season_note": "Nursery starts February–April or late rainy season with mulch protection.",
+            "slug": "pepper",
+            "summary": "High-value garden and smallholder spice crop needing well-drained beds and steady moisture."
+          },
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+            "local_names": "Okro / Gumbo",
+            "name": "Okra",
+            "season_note": "Sow directly after soil warms and early rains begin; harvest begins 50–60 days.",
+            "slug": "okra",
+            "summary": "Nutritious, fast-harvest vegetable thriving in warm Liberian soils with regular picking."
+          },
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+            "local_names": "Plantain / Musa",
+            "name": "Plantain",
+            "season_note": "Plant clean suckers at the start of rains; stake heavy bunches against wind.",
+            "slug": "plantain",
+            "summary": "Perennial cooking fruit crop suited to humid forest zones and backyard agroforestry."
+          }
+        ]
+      }
+    },
+    {
+      "name": "categories list",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/categories"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "categories": [
+          {
+            "description": "Seed selection, stem cuttings, spacing, and planting calendars",
+            "id": "<id>",
+            "name": "Planting",
+            "slug": "planting"
+          },
+          {
+            "description": "Composting, mulching, raised beds, and drainage",
+            "id": "<id>",
+            "name": "Soil Preparation",
+            "slug": "soil-preparation"
+          },
+          {
+            "description": "Moisture conservation, swamp water control, and dry-spell watering",
+            "id": "<id>",
+            "name": "Watering",
+            "slug": "watering"
+          },
+          {
+            "description": "Weeding intervals, thinning, staking, and nutrient care",
+            "id": "<id>",
+            "name": "Crop Care",
+            "slug": "crop-care"
+          },
+          {
+            "description": "Scouting, mechanical barriers, and integrated pest management",
+            "id": "<id>",
+            "name": "Pest Prevention",
+            "slug": "pest-prevention"
+          },
+          {
+            "description": "Early leaf symptom checks, sanitation, and clean planting material",
+            "id": "<id>",
+            "name": "Disease Awareness",
+            "slug": "disease-awareness"
+          },
+          {
+            "description": "Maturity signs, careful digging/picking, and reducing damage",
+            "id": "<id>",
+            "name": "Harvesting",
+            "slug": "harvesting"
+          },
+          {
+            "description": "Drying, moisture checks, and safe post-harvest storage",
+            "id": "<id>",
+            "name": "Storage",
+            "slug": "storage"
+          },
+          {
+            "description": "Handling heavy rains, dry spells, and wind protection",
+            "id": "<id>",
+            "name": "Climate Resilience",
+            "slug": "climate-resilience"
+          }
+        ]
+      }
+    },
+    {
+      "name": "guides list",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/guides?lang=en"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "guides": [
+          {
+            "category": {
+              "id": "<id>",
+              "name": "Disease Awareness",
+              "slug": "disease-awareness"
+            },
+            "crop": {
+              "id": "<id>",
+              "name": "Cassava",
+              "slug": "cassava"
+            },
+            "fallbackApplied": false,
+            "id": "<id>",
+            "imageUrl": "/src/assets/images/crop_cassava_1794924193991.jpg",
+            "isPestDisease": true,
+            "isSampleDemo": true,
+            "languageCode": "en",
+            "lastReviewedAt": "2026-10-15",
+            "offlineAvailable": true,
+            "reviewStatus": "approved",
+            "reviewedByName": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "cassava-yellow-leaves-mosaic-check",
+            "sourceAttribution": "Team 8 Sample Demonstration Dataset (Based on West African Smallholder Extension Practices)",
+            "summary": "How to tell nutrient or water stress apart from Cassava Mosaic Disease and take safe, low-risk next steps.",
+            "title": "Cassava Yellow Leaves & Mosaic Awareness (Sample Guide)",
+            "translationStatus": "en_default",
+            "updatedAt": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category": {
+              "id": "<id>",
+              "name": "Planting",
+              "slug": "planting"
+            },
+            "crop": {
+              "id": "<id>",
+              "name": "Cassava",
+              "slug": "cassava"
+            },
+            "fallbackApplied": false,
+            "id": "<id>",
+            "imageUrl": "/src/assets/images/crop_cassava_1794924193991.jpg",
+            "isPestDisease": false,
+            "isSampleDemo": true,
+            "languageCode": "en",
+            "lastReviewedAt": "2026-10-15",
+            "offlineAvailable": true,
+            "reviewStatus": "approved",
+            "reviewedByName": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "cassava-healthy-stem-planting",
+            "sourceAttribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Choosing mature 20–25 cm stem cuttings, proper spacing on mounds or ridges, and early weeding.",
+            "title": "Selecting & Planting Healthy Cassava Cuttings (Sample Guide)",
+            "translationStatus": "en_default",
+            "updatedAt": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category": {
+              "id": "<id>",
+              "name": "Watering",
+              "slug": "watering"
+            },
+            "crop": {
+              "id": "<id>",
+              "name": "Rice",
+              "slug": "rice"
+            },
+            "fallbackApplied": false,
+            "id": "<id>",
+            "imageUrl": "/src/assets/images/crop_rice_1794924195882.jpg",
+            "isPestDisease": false,
+            "isSampleDemo": true,
+            "languageCode": "en",
+            "lastReviewedAt": "2026-10-18",
+            "offlineAvailable": true,
+            "reviewStatus": "approved",
+            "reviewedByName": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "rice-swamp-water-management",
+            "sourceAttribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Practical bunding and shallow water depth practices to support rice tillering and reduce weed pressure.",
+            "title": "Inland Valley Swamp Rice Water Control (Sample Guide)",
+            "translationStatus": "en_default",
+            "updatedAt": "<timestamp>",
+            "version": 2
+          },
+          {
+            "category": {
+              "id": "<id>",
+              "name": "Pest Prevention",
+              "slug": "pest-prevention"
+            },
+            "crop": {
+              "id": "<id>",
+              "name": "Rice",
+              "slug": "rice"
+            },
+            "fallbackApplied": false,
+            "id": "<id>",
+            "imageUrl": "/src/assets/images/crop_rice_1794924195882.jpg",
+            "isPestDisease": true,
+            "isSampleDemo": true,
+            "languageCode": "en",
+            "lastReviewedAt": "2026-10-20",
+            "offlineAvailable": true,
+            "reviewStatus": "approved",
+            "reviewedByName": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "rice-blast-and-bird-scouting",
+            "sourceAttribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Early morning field checks for diamond-shaped leaf spots, stem borers, and timely weeding.",
+            "title": "Rice Leaf Spot & Field Scouting Basics (Sample Guide)",
+            "translationStatus": "en_default",
+            "updatedAt": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category": {
+              "id": "<id>",
+              "name": "Pest Prevention",
+              "slug": "pest-prevention"
+            },
+            "crop": {
+              "id": "<id>",
+              "name": "Maize",
+              "slug": "maize"
+            },
+            "fallbackApplied": false,
+            "id": "<id>",
+            "imageUrl": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+            "isPestDisease": true,
+            "isSampleDemo": true,
+            "languageCode": "en",
+            "lastReviewedAt": "2026-10-22",
+            "offlineAvailable": true,
+            "reviewStatus": "approved",
+            "reviewedByName": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "maize-fall-armyworm-scouting",
+            "sourceAttribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "How to spot pinhole damage and sawdust-like frass inside maize whorls during the first 4 weeks.",
+            "title": "Early Scouting for Maize Leaf-Feeding Caterpillars (Sample Guide)",
+            "translationStatus": "en_default",
+            "updatedAt": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category": {
+              "id": "<id>",
+              "name": "Soil Preparation",
+              "slug": "soil-preparation"
+            },
+            "crop": {
+              "id": "<id>",
+              "name": "Pepper",
+              "slug": "pepper"
+            },
+            "fallbackApplied": false,
+            "id": "<id>",
+            "imageUrl": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+            "isPestDisease": true,
+            "isSampleDemo": true,
+            "languageCode": "en",
+            "lastReviewedAt": "2026-10-25",
+            "offlineAvailable": true,
+            "reviewStatus": "approved",
+            "reviewedByName": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "pepper-raised-beds-wilt-prevention",
+            "sourceAttribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Preventing root rot during heavy Liberian rains with composted raised beds and clean mulching.",
+            "title": "Raised Beds & Wilt Prevention for Hot Pepper (Sample Guide)",
+            "translationStatus": "en_default",
+            "updatedAt": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category": {
+              "id": "<id>",
+              "name": "Crop Care",
+              "slug": "crop-care"
+            },
+            "crop": {
+              "id": "<id>",
+              "name": "Okra",
+              "slug": "okra"
+            },
+            "fallbackApplied": false,
+            "id": "<id>",
+            "imageUrl": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+            "isPestDisease": true,
+            "isSampleDemo": true,
+            "languageCode": "en",
+            "lastReviewedAt": "2026-10-27",
+            "offlineAvailable": true,
+            "reviewStatus": "approved",
+            "reviewedByName": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "okra-harvesting-and-aphid-care",
+            "sourceAttribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Picking tender pods every 2–3 days and spotting sap-sucking aphids or leaf curl early.",
+            "title": "Okra Pod Harvesting & Leaf Curl Awareness (Sample Guide)",
+            "translationStatus": "en_default",
+            "updatedAt": "<timestamp>",
+            "version": 1
+          }
+        ],
+        "pagination": {
+          "limit": 24,
+          "page": 1,
+          "total": 7,
+          "totalPages": 1
+        }
+      }
+    },
+    {
+      "name": "guide detail by slug",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/guides/cassava-yellow-leaves-mosaic-check?lang=en"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "guide": {
+          "category": {
+            "id": "<id>",
+            "name": "Disease Awareness",
+            "slug": "disease-awareness"
+          },
+          "contentMarkdown": "<string len=1099 sha=5987729c>",
+          "crop": {
+            "id": "<id>",
+            "name": "Cassava",
+            "slug": "cassava"
+          },
+          "fallbackApplied": false,
+          "id": "<id>",
+          "imageUrl": "/src/assets/images/crop_cassava_1794924193991.jpg",
+          "isPestDisease": true,
+          "isSampleDemo": true,
+          "languageCode": "en",
+          "lastReviewedAt": "2026-10-15",
+          "offlineAvailable": true,
+          "reviewStatus": "approved",
+          "reviewedByName": "Sample Demo Reviewer (Unverified Demonstration)",
+          "slug": "cassava-yellow-leaves-mosaic-check",
+          "sourceAttribution": "Team 8 Sample Demonstration Dataset (Based on West African Smallholder Extension Practices)",
+          "summary": "How to tell nutrient or water stress apart from Cassava Mosaic Disease and take safe, low-risk next steps.",
+          "title": "Cassava Yellow Leaves & Mosaic Awareness (Sample Guide)",
+          "translationReviewedBy": null,
+          "updatedAt": "<timestamp>",
+          "version": 1
+        }
+      }
+    },
+    {
+      "name": "guide language fallback",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/guides/cassava-yellow-leaves-mosaic-check?lang=kpe"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "guide": {
+          "category": {
+            "id": "<id>",
+            "name": "Disease Awareness",
+            "slug": "disease-awareness"
+          },
+          "contentMarkdown": "<string len=1099 sha=5987729c>",
+          "crop": {
+            "id": "<id>",
+            "name": "Cassava",
+            "slug": "cassava"
+          },
+          "fallbackApplied": true,
+          "id": "<id>",
+          "imageUrl": "/src/assets/images/crop_cassava_1794924193991.jpg",
+          "isPestDisease": true,
+          "isSampleDemo": true,
+          "languageCode": "en",
+          "lastReviewedAt": "2026-10-15",
+          "offlineAvailable": true,
+          "reviewStatus": "approved",
+          "reviewedByName": "Sample Demo Reviewer (Unverified Demonstration)",
+          "slug": "cassava-yellow-leaves-mosaic-check",
+          "sourceAttribution": "Team 8 Sample Demonstration Dataset (Based on West African Smallholder Extension Practices)",
+          "summary": "How to tell nutrient or water stress apart from Cassava Mosaic Disease and take safe, low-risk next steps.",
+          "title": "Cassava Yellow Leaves & Mosaic Awareness (Sample Guide)",
+          "translationReviewedBy": null,
+          "updatedAt": "<timestamp>",
+          "version": 1
+        }
+      }
+    },
+    {
+      "name": "guide not found",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/guides/does-not-exist"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "GUIDE_NOT_FOUND",
+          "message": "Published agricultural guide not found."
+        }
+      }
+    },
+    {
+      "name": "public home",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/public/home"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "aiConfigured": false,
+        "categories": [
+          {
+            "description": "Seed selection, stem cuttings, spacing, and planting calendars",
+            "id": "<id>",
+            "name": "Planting",
+            "slug": "planting"
+          },
+          {
+            "description": "Composting, mulching, raised beds, and drainage",
+            "id": "<id>",
+            "name": "Soil Preparation",
+            "slug": "soil-preparation"
+          },
+          {
+            "description": "Moisture conservation, swamp water control, and dry-spell watering",
+            "id": "<id>",
+            "name": "Watering",
+            "slug": "watering"
+          },
+          {
+            "description": "Weeding intervals, thinning, staking, and nutrient care",
+            "id": "<id>",
+            "name": "Crop Care",
+            "slug": "crop-care"
+          },
+          {
+            "description": "Scouting, mechanical barriers, and integrated pest management",
+            "id": "<id>",
+            "name": "Pest Prevention",
+            "slug": "pest-prevention"
+          },
+          {
+            "description": "Early leaf symptom checks, sanitation, and clean planting material",
+            "id": "<id>",
+            "name": "Disease Awareness",
+            "slug": "disease-awareness"
+          },
+          {
+            "description": "Maturity signs, careful digging/picking, and reducing damage",
+            "id": "<id>",
+            "name": "Harvesting",
+            "slug": "harvesting"
+          },
+          {
+            "description": "Drying, moisture checks, and safe post-harvest storage",
+            "id": "<id>",
+            "name": "Storage",
+            "slug": "storage"
+          },
+          {
+            "description": "Handling heavy rains, dry spells, and wind protection",
+            "id": "<id>",
+            "name": "Climate Resilience",
+            "slug": "climate-resilience"
+          }
+        ],
+        "counties": [
+          "Bomi",
+          "Bong",
+          "Gbarpolu",
+          "Grand Bassa",
+          "Grand Cape Mount",
+          "Grand Gedeh",
+          "Grand Kru",
+          "Lofa",
+          "Margibi",
+          "Maryland",
+          "Montserrado",
+          "Nimba",
+          "River Cess",
+          "River Gee",
+          "Sinoe"
+        ],
+        "crops": [
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_cassava_1794924193991.jpg",
+            "local_names": "Kpokpo / Cassava",
+            "name": "Cassava",
+            "season_note": "Plant at onset of rains (April–June) or late rainy season (August–September).",
+            "slug": "cassava",
+            "summary": "Resilient staple root crop grown across all 15 Liberian counties for gari, fufu, and dumboy."
+          },
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+            "local_names": "Upland & Lowland Swamp Rice",
+            "name": "Rice",
+            "season_note": "Upland planting April–May; swamp nursery & transplanting May–July.",
+            "slug": "rice",
+            "summary": "Liberia’s primary staple grain cultivated in upland clearings and inland valley swamps."
+          },
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+            "local_names": "Corn / Maize",
+            "name": "Maize",
+            "season_note": "First planting April–May; second season August–September.",
+            "slug": "maize",
+            "summary": "Fast-maturing cereal intercropped with cassava or grown in pure stands for food and feed."
+          },
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+            "local_names": "Hot Pepper / Liberian Pepper",
+            "name": "Pepper",
+            "season_note": "Nursery starts February–April or late rainy season with mulch protection.",
+            "slug": "pepper",
+            "summary": "High-value garden and smallholder spice crop needing well-drained beds and steady moisture."
+          },
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+            "local_names": "Okro / Gumbo",
+            "name": "Okra",
+            "season_note": "Sow directly after soil warms and early rains begin; harvest begins 50–60 days.",
+            "slug": "okra",
+            "summary": "Nutritious, fast-harvest vegetable thriving in warm Liberian soils with regular picking."
+          },
+          {
+            "id": "<id>",
+            "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+            "local_names": "Plantain / Musa",
+            "name": "Plantain",
+            "season_note": "Plant clean suckers at the start of rains; stake heavy bunches against wind.",
+            "slug": "plantain",
+            "summary": "Perennial cooking fruit crop suited to humid forest zones and backyard agroforestry."
+          }
+        ],
+        "dailyTip": {
+          "body": "Inspect the underside of cassava and pepper leaves early in the morning once a week. Spotting whiteflies or aphids early prevents heavy spread across your plot.",
+          "title": "Today's Farming Tip (Sample)"
+        },
+        "featuredGuides": [
+          {
+            "category_name": "Disease Awareness",
+            "crop_name": "Cassava",
+            "crop_slug": "cassava",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_cassava_1794924193991.jpg",
+            "is_pest_disease": 1,
+            "is_sample_demo": 1,
+            "last_reviewed_at": "2026-10-15",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "cassava-yellow-leaves-mosaic-check",
+            "summary": "How to tell nutrient or water stress apart from Cassava Mosaic Disease and take safe, low-risk next steps.",
+            "title": "Cassava Yellow Leaves & Mosaic Awareness (Sample Guide)",
+            "version": 1
+          },
+          {
+            "category_name": "Planting",
+            "crop_name": "Cassava",
+            "crop_slug": "cassava",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_cassava_1794924193991.jpg",
+            "is_pest_disease": 0,
+            "is_sample_demo": 1,
+            "last_reviewed_at": "2026-10-15",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "cassava-healthy-stem-planting",
+            "summary": "Choosing mature 20–25 cm stem cuttings, proper spacing on mounds or ridges, and early weeding.",
+            "title": "Selecting & Planting Healthy Cassava Cuttings (Sample Guide)",
+            "version": 1
+          },
+          {
+            "category_name": "Watering",
+            "crop_name": "Rice",
+            "crop_slug": "rice",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+            "is_pest_disease": 0,
+            "is_sample_demo": 1,
+            "last_reviewed_at": "2026-10-18",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "rice-swamp-water-management",
+            "summary": "Practical bunding and shallow water depth practices to support rice tillering and reduce weed pressure.",
+            "title": "Inland Valley Swamp Rice Water Control (Sample Guide)",
+            "version": 2
+          },
+          {
+            "category_name": "Pest Prevention",
+            "crop_name": "Rice",
+            "crop_slug": "rice",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+            "is_pest_disease": 1,
+            "is_sample_demo": 1,
+            "last_reviewed_at": "2026-10-20",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "rice-blast-and-bird-scouting",
+            "summary": "Early morning field checks for diamond-shaped leaf spots, stem borers, and timely weeding.",
+            "title": "Rice Leaf Spot & Field Scouting Basics (Sample Guide)",
+            "version": 1
+          },
+          {
+            "category_name": "Pest Prevention",
+            "crop_name": "Maize",
+            "crop_slug": "maize",
+            "id": "<id>",
+            "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+            "is_pest_disease": 1,
+            "is_sample_demo": 1,
+            "last_reviewed_at": "2026-10-22",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "maize-fall-armyworm-scouting",
+            "summary": "How to spot pinhole damage and sawdust-like frass inside maize whorls during the first 4 weeks.",
+            "title": "Early Scouting for Maize Leaf-Feeding Caterpillars (Sample Guide)",
+            "version": 1
+          },
+          {
+            "category_name": "Soil Preparation",
+            "crop_name": "Pepper",
+            "crop_slug": "pepper",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+            "is_pest_disease": 1,
+            "is_sample_demo": 1,
+            "last_reviewed_at": "2026-10-25",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "slug": "pepper-raised-beds-wilt-prevention",
+            "summary": "Preventing root rot during heavy Liberian rains with composted raised beds and clean mulching.",
+            "title": "Raised Beds & Wilt Prevention for Hot Pepper (Sample Guide)",
+            "version": 1
+          }
+        ],
+        "languages": [
+          {
+            "code": "en",
+            "label": "English",
+            "nativeLabel": "Standard English",
+            "reviewNote": "Primary reviewed interface and guide language",
+            "status": "active"
+          },
+          {
+            "code": "bas",
+            "label": "Bassa",
+            "nativeLabel": "Bassa (Audio Lab Prototype)",
+            "reviewNote": "Prioritized in Local Language AI Lab with native-speaker audio recordings; unrecorded UI falls back to English",
+            "status": "preview"
+          },
+          {
+            "code": "man",
+            "label": "Mano",
+            "nativeLabel": "Mano (Audio Lab Prototype)",
+            "reviewNote": "Prioritized in Local Language AI Lab with native-speaker audio recordings; unrecorded UI falls back to English",
+            "status": "preview"
+          },
+          {
+            "code": "lre",
+            "label": "Liberian English",
+            "nativeLabel": "Liberian English (Preview)",
+            "reviewNote": "Only reviewed strings appear in Liberian English; unreviewed content falls back safely to English",
+            "status": "preview"
+          },
+          {
+            "code": "kpe",
+            "label": "Kpelle",
+            "nativeLabel": "Kpelle (Coming Soon)",
+            "reviewNote": "Scheduled for future expansion and community translator review",
+            "status": "coming_soon"
+          }
+        ]
+      }
+    },
+    {
+      "name": "me (anonymous)",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/auth/me"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "user": null
+      }
+    },
+    {
+      "name": "register farmer",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/auth/register"
+      },
+      "status": 201,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [
+        {
+          "name": "agri_session",
+          "httpOnly": true,
+          "secure": false,
+          "sameSite": "Lax",
+          "path": "/",
+          "hasMaxAge": true
+        }
+      ],
+      "body": {
+        "user": {
+          "county": "Lofa",
+          "cropsOfInterest": [
+            "Cassava"
+          ],
+          "displayName": "Contract Farmer",
+          "email": null,
+          "expertSpecialty": null,
+          "expertStatus": null,
+          "id": "<id>",
+          "phone": "+231771234001",
+          "preferredLanguage": "en",
+          "roles": [
+            "farmer"
+          ],
+          "status": "active"
+        }
+      }
+    },
+    {
+      "name": "register duplicate phone",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/auth/register"
+      },
+      "status": 409,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "PHONE_EXISTS",
+          "message": "An account with this phone number already exists."
+        }
+      }
+    },
+    {
+      "name": "me (farmer)",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/auth/me"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "user": {
+          "county": "Lofa",
+          "cropsOfInterest": [
+            "Cassava"
+          ],
+          "displayName": "Contract Farmer",
+          "email": null,
+          "expertSpecialty": null,
+          "expertStatus": null,
+          "id": "<id>",
+          "phone": "+231771234001",
+          "preferredLanguage": "en",
+          "roles": [
+            "farmer"
+          ],
+          "status": "active"
+        }
+      }
+    },
+    {
+      "name": "login wrong password",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/auth/login"
+      },
+      "status": 401,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "INVALID_CREDENTIALS",
+          "message": "Invalid phone/email or password."
+        }
+      }
+    },
+    {
+      "name": "login ok",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/auth/login"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [
+        {
+          "name": "agri_session",
+          "httpOnly": true,
+          "secure": false,
+          "sameSite": "Lax",
+          "path": "/",
+          "hasMaxAge": true
+        }
+      ],
+      "body": {
+        "user": {
+          "county": "Lofa",
+          "cropsOfInterest": [
+            "Cassava"
+          ],
+          "displayName": "Contract Farmer",
+          "email": null,
+          "expertSpecialty": null,
+          "expertStatus": null,
+          "id": "<id>",
+          "phone": "+231771234001",
+          "preferredLanguage": "en",
+          "roles": [
+            "farmer"
+          ],
+          "status": "active"
+        }
+      }
+    },
+    {
+      "name": "request without CSRF token",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/feedback"
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "CSRF_INVALID",
+          "message": "Invalid or missing CSRF token."
+        }
+      }
+    },
+    {
+      "name": "profile get",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/profile"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "profile": {
+          "county": "Lofa",
+          "cropsOfInterest": [
+            "Cassava"
+          ],
+          "displayName": "Contract Farmer",
+          "email": null,
+          "expertSpecialty": null,
+          "expertStatus": null,
+          "id": "<id>",
+          "phone": "+231771234001",
+          "preferredLanguage": "en",
+          "roles": [
+            "farmer"
+          ],
+          "status": "active"
+        }
+      }
+    },
+    {
+      "name": "profile patch",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/profile"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "user": {
+          "county": "Nimba",
+          "cropsOfInterest": [
+            "Rice"
+          ],
+          "displayName": "Contract Farmer",
+          "email": null,
+          "expertSpecialty": null,
+          "expertStatus": null,
+          "id": "<id>",
+          "phone": "+231771234001",
+          "preferredLanguage": "en",
+          "roles": [
+            "farmer"
+          ],
+          "status": "active"
+        }
+      }
+    },
+    {
+      "name": "farmer question create",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/farmer/questions"
+      },
+      "status": 201,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "questionId": "<id>"
+      }
+    },
+    {
+      "name": "farmer questions list",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/farmer/questions"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "questions": [
+          {
+            "county": "Lofa",
+            "created_at": "<timestamp>",
+            "crop_name": null,
+            "crop_slug": null,
+            "description": "Whiteflies appear under my cassava leaves every morning.",
+            "expert_name": null,
+            "id": "<id>",
+            "status": "Submitted",
+            "title": "Contract farm question",
+            "topic": "Pest Prevention",
+            "updated_at": "<timestamp>"
+          }
+        ]
+      }
+    },
+    {
+      "name": "farmer question detail",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/farmer/questions/<id>"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "messages": [
+          {
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "is_official_expert_advice": 0,
+            "message_text": "Whiteflies appear under my cassava leaves every morning.",
+            "sender_name": "Contract Farmer",
+            "sender_role": "farmer"
+          }
+        ],
+        "question": {
+          "assigned_expert_id": null,
+          "county": "Lofa",
+          "created_at": "<timestamp>",
+          "crop_id": null,
+          "crop_name": null,
+          "description": "Whiteflies appear under my cassava leaves every morning.",
+          "expert_name": null,
+          "farmer_id": "<id>",
+          "id": "<id>",
+          "status": "Submitted",
+          "title": "Contract farm question",
+          "topic": "Pest Prevention",
+          "updated_at": "<timestamp>"
+        }
+      }
+    },
+    {
+      "name": "farmer question: other user denied",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/farmer/questions/<id>"
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "Access denied to this question."
+        }
+      }
+    },
+    {
+      "name": "saved advice list",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/farmer/saved"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "saved": []
+      }
+    },
+    {
+      "name": "advisor ask (AI not configured)",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/advisor/ask"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "advisor": {
+          "clarifyingQuestions": [
+            "How long have the symptoms been visible on your farm?",
+            "Are nearby plants or animals showing the same signs or only a few?",
+            "Have you noticed heavy rain pooling, dry spells, or insects under leaves?"
+          ],
+          "disclaimer": "DEMONSTRATION MODE — Live AI provider key (GEMINI_API_KEY) is not configured on this server. Showing clearly labeled educational demo guidance instead of pretending a live model is connected.",
+          "modelUsed": null,
+          "possibleCauses": [
+            "Live AI analysis requires an active server-side Gemini API key.",
+            "For leaf discoloration or plant stress in Liberia, common causes include soil drainage issues, nutrient imbalance, insect feeding, or viral/fungal spread."
+          ],
+          "practicalLowRiskSteps": [
+            "Inspect the underside of affected leaves early in the morning before applying any treatment.",
+            "Check drainage trenches so rainwater does not stagnate around roots.",
+            "Read the matching guides below or submit a photo and description on the Ask an Expert page."
+          ],
+          "providerMode": "unavailable_demo",
+          "recommendedGuides": [
+            {
+              "categoryName": "Watering",
+              "cropName": "Rice",
+              "id": "<id>",
+              "isSampleDemo": true,
+              "slug": "rice-swamp-water-management",
+              "title": "Inland Valley Swamp Rice Water Control (Sample Guide)"
+            },
+            {
+              "categoryName": "Pest Prevention",
+              "cropName": "Maize",
+              "id": "<id>",
+              "isSampleDemo": true,
+              "slug": "maize-fall-armyworm-scouting",
+              "title": "Early Scouting for Maize Leaf-Feeding Caterpillars (Sample Guide)"
+            },
+            {
+              "categoryName": "Disease Awareness",
+              "cropName": "Cassava",
+              "id": "<id>",
+              "isSampleDemo": true,
+              "slug": "cassava-yellow-leaves-mosaic-check",
+              "title": "Cassava Yellow Leaves & Mosaic Awareness (Sample Guide)"
+            }
+          ],
+          "summary": "Live AI generation is currently unavailable. Showing transparent Team 8 demonstration guidance and matching approved guides below.",
+          "uncertaintyNote": "This demonstration notice does not diagnose your crop or animal. Always verify field symptoms with an extension officer before applying pesticides or medicines.",
+          "whenToSeekExpertHelp": [
+            "If symptoms spread rapidly across more than 10% of your plot or flock, send a request on the Expert Support page."
+          ]
+        },
+        "quota": {
+          "authenticated": false,
+          "limit": 3,
+          "remaining": 2
+        }
+      }
+    },
+    {
+      "name": "advisor history (signed in)",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/advisor/history"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "history": []
+      }
+    },
+    {
+      "name": "feedback submit",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/feedback"
+      },
+      "status": 201,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "feedbackId": "<id>"
+      }
+    },
+    {
+      "name": "marketplace list",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/marketplace/listings"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "availabilityOptions": [
+          "Available",
+          "Limited Stock",
+          "Sold Out"
+        ],
+        "categories": [
+          "Rice and grains",
+          "Cassava and root crops",
+          "Vegetables",
+          "Fruits and plantains",
+          "Poultry and eggs",
+          "Livestock",
+          "Fish and seafood",
+          "Seeds and seedlings",
+          "Agricultural supplies"
+        ],
+        "counties": [
+          "Bomi",
+          "Bong",
+          "Gbarpolu",
+          "Grand Bassa",
+          "Grand Cape Mount",
+          "Grand Gedeh",
+          "Grand Kru",
+          "Lofa",
+          "Margibi",
+          "Maryland",
+          "Montserrado",
+          "Nimba",
+          "River Cess",
+          "River Gee",
+          "Sinoe"
+        ],
+        "listings": [
+          {
+            "availability_status": "Available",
+            "can_manage": false,
+            "category": "Agricultural supplies",
+            "county": "Montserrado",
+            "created_at": "<timestamp>",
+            "description": "Agricultural Supplier Demo: Heavy-duty drying tarpaulin, farm cutlass, and hand sprayer tools for clean harvest and weeding.",
+            "farm_name": "Red Light Farm Hardware",
+            "id": "<id>",
+            "image_url": "/src/assets/images/liberia_agri_market_1794996422856.jpg",
+            "inquiry_count": 0,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 1,
+            "phone_verified": 0,
+            "price_lrd": 6800,
+            "product_name": "Knapsack Sprayer, Cutlass & Drying Tarpaulin Kit",
+            "quantity": "15",
+            "seller_name": "Monrovia Agro-Tools Supply (Supplier · Demo)",
+            "seller_phone": "",
+            "town": "Paynesville",
+            "unit": "bundle",
+            "updated_at": "<timestamp>",
+            "view_count": 22
+          },
+          {
+            "availability_status": "Available",
+            "can_manage": false,
+            "category": "Agricultural supplies",
+            "county": "Bong",
+            "created_at": "<timestamp>",
+            "description": "Agricultural Supplier Demo: Aged poultry-litter compost bags and lime starter info for vegetable beds. Always pair with soil check.",
+            "farm_name": "Bong Organic Soil Depot",
+            "id": "<id>",
+            "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+            "inquiry_count": 0,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 1,
+            "phone_verified": 0,
+            "price_lrd": 1650,
+            "product_name": "Cured Organic Compost & Soil Starter Bags",
+            "quantity": "35",
+            "seller_name": "Gbarnga Soil & Inputs Depot (Supplier · Demo)",
+            "seller_phone": "",
+            "town": "Gbarnga",
+            "unit": "25kg bag",
+            "updated_at": "<timestamp>",
+            "view_count": 16
+          },
+          {
+            "availability_status": "Available",
+            "can_manage": false,
+            "category": "Seeds and seedlings",
+            "county": "Bong",
+            "created_at": "<timestamp>",
+            "description": "Agricultural Supplier Demo: Disease-free cassava cuttings and tested upland rice seed packs for planting season.",
+            "farm_name": "Suakoko Agro-Input Hub",
+            "id": "<id>",
+            "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+            "inquiry_count": 0,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 1,
+            "phone_verified": 0,
+            "price_lrd": 1200,
+            "product_name": "Clean Cassava Cuttings & Rice Seed Pack",
+            "quantity": "40",
+            "seller_name": "Suakoko Seed Supplier (Supplier · Demo)",
+            "seller_phone": "",
+            "town": "Suakoko",
+            "unit": "bundle",
+            "updated_at": "<timestamp>",
+            "view_count": 23
+          },
+          {
+            "availability_status": "Available",
+            "can_manage": false,
+            "category": "Fruits and plantains",
+            "county": "Grand Bassa",
+            "created_at": "<timestamp>",
+            "description": "Large, well-filled plantain bunches staked to prevent storm breakage. Farmer has not yet added a public contact number.",
+            "farm_name": "Buchanan Growers Association",
+            "id": "<id>",
+            "image_url": "/src/assets/images/liberia_agri_market_1794996422856.jpg",
+            "inquiry_count": 0,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 0,
+            "phone_verified": 0,
+            "price_lrd": 1400,
+            "product_name": "Green & Turning Cooking Plantains",
+            "quantity": "30",
+            "seller_name": "Grand Bassa Plantain Growers (Demo)",
+            "seller_phone": "",
+            "town": "Buchanan",
+            "unit": "bunch",
+            "updated_at": "<timestamp>",
+            "view_count": 8
+          },
+          {
+            "availability_status": "Limited Stock",
+            "can_manage": false,
+            "category": "Livestock",
+            "county": "Lofa",
+            "created_at": "<timestamp>",
+            "description": "Pasture-fed goats raised with sheltered housing and clean drinking water. Demo listing.",
+            "farm_name": "Kolahun Livestock Group",
+            "id": "<id>",
+            "image_url": "/src/assets/images/liberia_livestock_goats_1794996422377.jpg",
+            "inquiry_count": 0,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 1,
+            "phone_verified": 0,
+            "price_lrd": 24000,
+            "product_name": "Healthy West African Dwarf Goats",
+            "quantity": "6",
+            "seller_name": "Lofa Goat Herders (Demo)",
+            "seller_phone": "",
+            "town": "Voinjama",
+            "unit": "animal",
+            "updated_at": "<timestamp>",
+            "view_count": 11
+          },
+          {
+            "availability_status": "Available",
+            "can_manage": false,
+            "category": "Fish and seafood",
+            "county": "Bomi",
+            "created_at": "<timestamp>",
+            "description": "Healthy pond-raised tilapia harvested from clean earthen ponds. Packed in ice boxes on harvest day.",
+            "farm_name": "Tubmanburg Fish Ponds",
+            "id": "<id>",
+            "image_url": "/src/assets/images/liberia_aquaculture_pond_1794996421723.jpg",
+            "inquiry_count": 1,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 1,
+            "phone_verified": 0,
+            "price_lrd": 950,
+            "product_name": "Fresh Pond-Raised Tilapia",
+            "quantity": "45",
+            "seller_name": "Bomi Aquaculture Pond (Demo)",
+            "seller_phone": "",
+            "town": "Tubmanburg",
+            "unit": "kg",
+            "updated_at": "<timestamp>",
+            "view_count": 31
+          },
+          {
+            "availability_status": "Limited Stock",
+            "can_manage": false,
+            "category": "Poultry and eggs",
+            "county": "Montserrado",
+            "created_at": "<timestamp>",
+            "description": "Clean, graded eggs collected daily from backyard layers. Demo listing for hackathon showcase.",
+            "farm_name": "Montserrado Layers Co-op",
+            "id": "<id>",
+            "image_url": "/src/assets/images/liberia_poultry_farm_1794996421585.jpg",
+            "inquiry_count": 0,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 1,
+            "phone_verified": 0,
+            "price_lrd": 1850,
+            "product_name": "Farm-Fresh Table Eggs",
+            "quantity": "25",
+            "seller_name": "Bensonville Poultry Shed (Demo)",
+            "seller_phone": "",
+            "town": "Bensonville",
+            "unit": "crate (30 eggs)",
+            "updated_at": "<timestamp>",
+            "view_count": 42
+          },
+          {
+            "availability_status": "Available",
+            "can_manage": false,
+            "category": "Vegetables",
+            "county": "Nimba",
+            "created_at": "<timestamp>",
+            "description": "Early morning picked hot pepper and tender okra sorted cleanly in woven market baskets.",
+            "farm_name": "Nimba Women Gardeners",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+            "inquiry_count": 0,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 1,
+            "phone_verified": 0,
+            "price_lrd": 2600,
+            "product_name": "Fresh Red Hot Pepper & Okra Baskets",
+            "quantity": "15",
+            "seller_name": "Ganta Gardeners Group (Demo)",
+            "seller_phone": "",
+            "town": "Ganta",
+            "unit": "basket",
+            "updated_at": "<timestamp>",
+            "view_count": 14
+          },
+          {
+            "availability_status": "Available",
+            "can_manage": false,
+            "category": "Cassava and root crops",
+            "county": "Margibi",
+            "created_at": "<timestamp>",
+            "description": "Firm, freshly uprooted cassava suitable for gari processing, fufu, or local market resale.",
+            "farm_name": "Margibi Root Harvest",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_cassava_1794924193991.jpg",
+            "inquiry_count": 0,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 1,
+            "phone_verified": 0,
+            "price_lrd": 3800,
+            "product_name": "Fresh Harvested Cassava Roots",
+            "quantity": "20",
+            "seller_name": "Martha Smallholder Farm (Demo)",
+            "seller_phone": "",
+            "town": "Kakata",
+            "unit": "50kg bag",
+            "updated_at": "<timestamp>",
+            "view_count": 19
+          },
+          {
+            "availability_status": "Available",
+            "can_manage": false,
+            "category": "Rice and grains",
+            "county": "Bong",
+            "created_at": "<timestamp>",
+            "description": "Sun-dried, stone-free upland rice harvested from Bong County plots. Available for local pickup or bulk buyer arrangement.",
+            "farm_name": "Bong Farmers Co-op",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+            "inquiry_count": 0,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 1,
+            "phone_verified": 0,
+            "price_lrd": 11500,
+            "product_name": "Clean Parboiled Upland Rice",
+            "quantity": "12",
+            "seller_name": "Kollie Rice Cooperative (Demo)",
+            "seller_phone": "",
+            "town": "Gbarnga",
+            "unit": "50kg bag",
+            "updated_at": "<timestamp>",
+            "view_count": 27
+          },
+          {
+            "availability_status": "Available",
+            "can_manage": false,
+            "category": "Rice and grains",
+            "county": "Lofa",
+            "created_at": "<timestamp>",
+            "description": "Clean, fragrant Lofa country rice harvested, parboiled, and sun-dried on clean tarpaulins. Ready for direct farmgate or market pickup.",
+            "farm_name": "Flomo Family Rice Farm (Demo)",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+            "inquiry_count": 0,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 1,
+            "phone_verified": 0,
+            "price_lrd": 7500,
+            "product_name": "Premium Lofa Country Rice",
+            "quantity": "15",
+            "seller_name": "Kebbeh Flomo",
+            "seller_phone": "",
+            "town": "Voinjama",
+            "unit": "50kg bag",
+            "updated_at": "<timestamp>",
+            "view_count": 34
+          }
+        ],
+        "units": [
+          "kg",
+          "50kg bag",
+          "25kg bag",
+          "bunch",
+          "crate (30 eggs)",
+          "bird",
+          "animal",
+          "basket",
+          "bundle",
+          "liter"
+        ]
+      }
+    },
+    {
+      "name": "marketplace filtered",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/marketplace/listings?county=Lofa&maxPrice=8000&availability=Available"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "availabilityOptions": [
+          "Available",
+          "Limited Stock",
+          "Sold Out"
+        ],
+        "categories": [
+          "Rice and grains",
+          "Cassava and root crops",
+          "Vegetables",
+          "Fruits and plantains",
+          "Poultry and eggs",
+          "Livestock",
+          "Fish and seafood",
+          "Seeds and seedlings",
+          "Agricultural supplies"
+        ],
+        "counties": [
+          "Bomi",
+          "Bong",
+          "Gbarpolu",
+          "Grand Bassa",
+          "Grand Cape Mount",
+          "Grand Gedeh",
+          "Grand Kru",
+          "Lofa",
+          "Margibi",
+          "Maryland",
+          "Montserrado",
+          "Nimba",
+          "River Cess",
+          "River Gee",
+          "Sinoe"
+        ],
+        "listings": [
+          {
+            "availability_status": "Available",
+            "can_manage": false,
+            "category": "Rice and grains",
+            "county": "Lofa",
+            "created_at": "<timestamp>",
+            "description": "Clean, fragrant Lofa country rice harvested, parboiled, and sun-dried on clean tarpaulins. Ready for direct farmgate or market pickup.",
+            "farm_name": "Flomo Family Rice Farm (Demo)",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+            "inquiry_count": 0,
+            "is_demo_listing": 1,
+            "is_fictional_seller": 1,
+            "moderation_status": "approved",
+            "phone_consent": 1,
+            "phone_verified": 0,
+            "price_lrd": 7500,
+            "product_name": "Premium Lofa Country Rice",
+            "quantity": "15",
+            "seller_name": "Kebbeh Flomo",
+            "seller_phone": "",
+            "town": "Voinjama",
+            "unit": "50kg bag",
+            "updated_at": "<timestamp>",
+            "view_count": 34
+          }
+        ],
+        "units": [
+          "kg",
+          "50kg bag",
+          "25kg bag",
+          "bunch",
+          "crate (30 eggs)",
+          "bird",
+          "animal",
+          "basket",
+          "bundle",
+          "liter"
+        ]
+      }
+    },
+    {
+      "name": "listing create (anonymous with key)",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/marketplace/listings"
+      },
+      "status": 201,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "listing": {
+          "availability_status": "Available",
+          "can_manage": false,
+          "category": "Rice and grains",
+          "county": "Bong",
+          "created_at": "<timestamp>",
+          "description": "Contract listing description.",
+          "farm_name": "Contract Farm",
+          "id": "<id>",
+          "image_url": "/src/assets/images/liberia_agri_market_1794996422856.jpg",
+          "inquiry_count": 0,
+          "is_demo_listing": 1,
+          "is_fictional_seller": 0,
+          "moderation_status": "approved",
+          "phone_consent": 1,
+          "phone_verified": 0,
+          "price_lrd": 7000,
+          "product_name": "Contract Rice",
+          "quantity": "10",
+          "seller_name": "Contract Farmer",
+          "seller_phone": "+231771234567",
+          "town": "Gbarnga",
+          "unit": "50kg bag",
+          "updated_at": "<timestamp>",
+          "view_count": 0
+        }
+      }
+    },
+    {
+      "name": "listing create without key",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/marketplace/listings"
+      },
+      "status": 400,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "VALIDATION_ERROR",
+          "message": "A listing owner key (32 to 128 letters, digits, - or _) is required to publish without signing in."
+        }
+      }
+    },
+    {
+      "name": "listing create invalid price",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/marketplace/listings"
+      },
+      "status": 400,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "VALIDATION_ERROR",
+          "message": "Enter a valid price in Liberian dollars (LRD)."
+        }
+      }
+    },
+    {
+      "name": "listing patch by owner key",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/marketplace/listings/<id>"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "listing": {
+          "availability_status": "Limited Stock",
+          "can_manage": false,
+          "category": "Rice and grains",
+          "county": "Bong",
+          "created_at": "<timestamp>",
+          "description": "Contract listing description.",
+          "farm_name": "Contract Farm",
+          "id": "<id>",
+          "image_url": "/src/assets/images/liberia_agri_market_1794996422856.jpg",
+          "inquiry_count": 0,
+          "is_demo_listing": 1,
+          "is_fictional_seller": 0,
+          "moderation_status": "approved",
+          "phone_consent": 1,
+          "phone_verified": 0,
+          "price_lrd": 7500,
+          "product_name": "Contract Rice",
+          "quantity": "10",
+          "seller_name": "Contract Farmer",
+          "seller_phone": "+231771234567",
+          "town": "Gbarnga",
+          "unit": "50kg bag",
+          "updated_at": "<timestamp>",
+          "view_count": 0
+        }
+      }
+    },
+    {
+      "name": "listing patch without credential",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/marketplace/listings/<id>"
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "You can only edit your own listings."
+        }
+      }
+    },
+    {
+      "name": "listing delete with wrong key",
+      "request": {
+        "method": "DELETE",
+        "path": "/api/v1/marketplace/listings/<id>"
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "Not allowed to delete this listing."
+        }
+      }
+    },
+    {
+      "name": "listing view counter",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/marketplace/listings/<id>/view"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "view_count": 1
+      }
+    },
+    {
+      "name": "idempotent create",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/marketplace/listings"
+      },
+      "status": 201,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "listing": {
+          "availability_status": "Available",
+          "can_manage": false,
+          "category": "Rice and grains",
+          "county": "Bong",
+          "created_at": "<timestamp>",
+          "description": "Contract listing description.",
+          "farm_name": "Contract Farm",
+          "id": "<id>",
+          "image_url": "/src/assets/images/liberia_agri_market_1794996422856.jpg",
+          "inquiry_count": 0,
+          "is_demo_listing": 1,
+          "is_fictional_seller": 0,
+          "moderation_status": "approved",
+          "phone_consent": 1,
+          "phone_verified": 0,
+          "price_lrd": 7000,
+          "product_name": "Contract Idempotent Okra",
+          "quantity": "10",
+          "seller_name": "Contract Farmer",
+          "seller_phone": "+231771234567",
+          "town": "Gbarnga",
+          "unit": "50kg bag",
+          "updated_at": "<timestamp>",
+          "view_count": 0
+        }
+      }
+    },
+    {
+      "name": "idempotent replay",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/marketplace/listings"
+      },
+      "status": 201,
+      "headers": {
+        "content-type": "application/json",
+        "idempotent-replay": "true",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "listing": {
+          "availability_status": "Available",
+          "can_manage": false,
+          "category": "Rice and grains",
+          "county": "Bong",
+          "created_at": "<timestamp>",
+          "description": "Contract listing description.",
+          "farm_name": "Contract Farm",
+          "id": "<id>",
+          "image_url": "/src/assets/images/liberia_agri_market_1794996422856.jpg",
+          "inquiry_count": 0,
+          "is_demo_listing": 1,
+          "is_fictional_seller": 0,
+          "moderation_status": "approved",
+          "phone_consent": 1,
+          "phone_verified": 0,
+          "price_lrd": 7000,
+          "product_name": "Contract Idempotent Okra",
+          "quantity": "10",
+          "seller_name": "Contract Farmer",
+          "seller_phone": "+231771234567",
+          "town": "Gbarnga",
+          "unit": "50kg bag",
+          "updated_at": "<timestamp>",
+          "view_count": 0
+        },
+        "replayed": true
+      }
+    },
+    {
+      "name": "idempotency key reuse (other kind)",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/expert-requests/demo"
+      },
+      "status": 422,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "IDEMPOTENCY_KEY_REUSED",
+          "message": "This key was used for a different request."
+        }
+      }
+    },
+    {
+      "name": "inquiries (anonymous: empty)",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/marketplace/inquiries"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "inquiries": []
+      }
+    },
+    {
+      "name": "expert requests (visitor: samples only)",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/expert-requests/demo"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "requests": [
+          {
+            "assigned_expert_name": "Aquaculture Desk (Simulated Extension Queue)",
+            "can_reply": false,
+            "category": "Fish farming and aquaculture",
+            "county": "Grand Bassa",
+            "created_at": "<timestamp>",
+            "description": "Heavy runoff from nearby hillside entered my tilapia pond and turned the water cloudy brown.",
+            "expert_reply": "",
+            "farmer_name": "Moses Toe (Demo Farmer)",
+            "id": "<id>",
+            "is_mine": false,
+            "is_simulated_demo": 1,
+            "photo_data_url": "",
+            "status": "Assigned",
+            "title": "Green pond water turning dark brown after runoff",
+            "updated_at": "<timestamp>",
+            "voice_note_data_url": "",
+            "voice_note_summary": ""
+          },
+          {
+            "assigned_expert_name": "Dr. Tarnue (Simulated Extension Queue)",
+            "can_reply": false,
+            "category": "Poultry farming",
+            "county": "Bong",
+            "created_at": "<timestamp>",
+            "description": "Twelve 3-week-old chicks in my backyard coop started huddling together and breathing noisily after heavy rain last night.",
+            "expert_reply": "Check immediately for wet bedding or drafts entering the coop. Replace damp litter with dry wood shavings, keep clean warm water available, separate any weak chicks, and request an in-person veterinary officer check if breathing noise worsens.",
+            "farmer_name": "Kortu Flomo (Demo Farmer)",
+            "id": "<id>",
+            "is_mine": false,
+            "is_simulated_demo": 1,
+            "photo_data_url": "",
+            "status": "Answered",
+            "title": "Chicks huddling and sneezing after cool night rain",
+            "updated_at": "<timestamp>",
+            "voice_note_data_url": "",
+            "voice_note_summary": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "expert request create",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/expert-requests/demo"
+      },
+      "status": 201,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "request": {
+          "assigned_expert_name": "Demo Extension Queue (Simulated)",
+          "can_reply": false,
+          "category": "Poultry farming",
+          "county": "Margibi",
+          "created_at": "<timestamp>",
+          "description": "Heavy rain splashed onto the wood shavings in one corner.",
+          "expert_reply": "",
+          "farmer_name": "Contract Farmer",
+          "id": "<id>",
+          "is_mine": true,
+          "is_simulated_demo": 1,
+          "photo_data_url": "",
+          "status": "Submitted",
+          "title": "Wet bedding in broiler coop",
+          "updated_at": "<timestamp>",
+          "voice_note_data_url": "",
+          "voice_note_summary": ""
+        }
+      }
+    },
+    {
+      "name": "expert request create without key",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/expert-requests/demo"
+      },
+      "status": 400,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "VALIDATION_ERROR",
+          "message": "A device requester key (32 to 128 letters, digits, - or _) is required to ask without signing in."
+        }
+      }
+    },
+    {
+      "name": "expert requests (own device)",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/expert-requests/demo"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "requests": [
+          {
+            "assigned_expert_name": "Demo Extension Queue (Simulated)",
+            "can_reply": false,
+            "category": "Poultry farming",
+            "county": "Margibi",
+            "created_at": "<timestamp>",
+            "description": "Heavy rain splashed onto the wood shavings in one corner.",
+            "expert_reply": "",
+            "farmer_name": "Contract Farmer",
+            "id": "<id>",
+            "is_mine": true,
+            "is_simulated_demo": 1,
+            "photo_data_url": "",
+            "status": "Submitted",
+            "title": "Wet bedding in broiler coop",
+            "updated_at": "<timestamp>",
+            "voice_note_data_url": "",
+            "voice_note_summary": ""
+          },
+          {
+            "assigned_expert_name": "Aquaculture Desk (Simulated Extension Queue)",
+            "can_reply": false,
+            "category": "Fish farming and aquaculture",
+            "county": "Grand Bassa",
+            "created_at": "<timestamp>",
+            "description": "Heavy runoff from nearby hillside entered my tilapia pond and turned the water cloudy brown.",
+            "expert_reply": "",
+            "farmer_name": "Moses Toe (Demo Farmer)",
+            "id": "<id>",
+            "is_mine": false,
+            "is_simulated_demo": 1,
+            "photo_data_url": "",
+            "status": "Assigned",
+            "title": "Green pond water turning dark brown after runoff",
+            "updated_at": "<timestamp>",
+            "voice_note_data_url": "",
+            "voice_note_summary": ""
+          },
+          {
+            "assigned_expert_name": "Dr. Tarnue (Simulated Extension Queue)",
+            "can_reply": false,
+            "category": "Poultry farming",
+            "county": "Bong",
+            "created_at": "<timestamp>",
+            "description": "Twelve 3-week-old chicks in my backyard coop started huddling together and breathing noisily after heavy rain last night.",
+            "expert_reply": "Check immediately for wet bedding or drafts entering the coop. Replace damp litter with dry wood shavings, keep clean warm water available, separate any weak chicks, and request an in-person veterinary officer check if breathing noise worsens.",
+            "farmer_name": "Kortu Flomo (Demo Farmer)",
+            "id": "<id>",
+            "is_mine": false,
+            "is_simulated_demo": 1,
+            "photo_data_url": "",
+            "status": "Answered",
+            "title": "Chicks huddling and sneezing after cool night rain",
+            "updated_at": "<timestamp>",
+            "voice_note_data_url": "",
+            "voice_note_summary": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "expert reply without login",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/expert-requests/demo/<id>/reply"
+      },
+      "status": 401,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        }
+      }
+    },
+    {
+      "name": "expert reply as farmer",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/expert-requests/demo/<id>/reply"
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "Insufficient permissions for this action."
+        }
+      }
+    },
+    {
+      "name": "expert reply as expert",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/expert-requests/demo/<id>/reply"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "request": {
+          "assigned_expert_name": "Samuel Tarnue (Demo Agronomist)",
+          "can_reply": true,
+          "category": "Poultry farming",
+          "county": "Margibi",
+          "created_at": "<timestamp>",
+          "description": "Heavy rain splashed onto the wood shavings in one corner.",
+          "expert_reply": "Move birds to a dry pen and keep water clean.",
+          "farmer_name": "Contract Farmer",
+          "id": "<id>",
+          "is_mine": false,
+          "is_simulated_demo": 1,
+          "photo_data_url": "",
+          "status": "Answered",
+          "title": "Wet bedding in broiler coop",
+          "updated_at": "<timestamp>",
+          "voice_note_data_url": "",
+          "voice_note_summary": ""
+        }
+      }
+    },
+    {
+      "name": "language lab list",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/language-lab/recordings"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "recordings": [
+          {
+            "answer_text": "Inspect the central funnel of young maize plants early morning. Hand-pick small egg clusters on small plots and consult an agricultural officer before any spray.",
+            "audio_data_url": "",
+            "consent_confirmed": 1,
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "is_sample_demo": 1,
+            "language_code": "kpe",
+            "local_phrase_gloss": "Kpelle Future Expansion Placeholder — Displays English guidance until community speaker recording is added",
+            "question_text": "What should I do when caterpillars eat inside my young corn?",
+            "review_status": "pending_review",
+            "speaker_name": "Future Kpelle Contributor Slot",
+            "topic_label": "Pest & Disease Prevention",
+            "topic_slug": "pest-disease"
+          },
+          {
+            "answer_text": "Early-morning gasping often signals low oxygen in pond water. Avoid overfeeding, remove uneaten feed, and let fresh clean water trickle gently into the pond.",
+            "audio_data_url": "",
+            "consent_confirmed": 1,
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "is_sample_demo": 1,
+            "language_code": "en",
+            "local_phrase_gloss": "Standard English Spoken Reference Recording",
+            "question_text": "Why do pond fish come to the surface gasping early in the morning?",
+            "review_status": "reviewed",
+            "speaker_name": "Team 8 Extension Audio Reference",
+            "topic_label": "Fish Farming & Aquaculture",
+            "topic_slug": "fish-farming"
+          },
+          {
+            "answer_text": "Dry grains on raised mats or clean tarpaulins—never bare wet soil. Store only when kernels snap cleanly under your tooth, in sealed bags off the floor.",
+            "audio_data_url": "",
+            "consent_confirmed": 1,
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "is_sample_demo": 1,
+            "language_code": "man",
+            "local_phrase_gloss": "Mano Prototype Script (Consented Team Audio Demo)",
+            "question_text": "How do I stop my harvested rice and corn from molding in storage?",
+            "review_status": "reviewed",
+            "speaker_name": "Team 8 Mano Contributor (Consented Demo)",
+            "topic_label": "Harvesting & Storage",
+            "topic_slug": "harvesting-storage"
+          },
+          {
+            "answer_text": "Keep the poultry coop dry, block cold wind with woven mats or tarpaulin, use dry wood shavings on the floor, and wash water drinkers every morning.",
+            "audio_data_url": "",
+            "consent_confirmed": 1,
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "is_sample_demo": 1,
+            "language_code": "man",
+            "local_phrase_gloss": "Mano Prototype Script (Consented Team Audio Demo — Fallback speech preview enabled until studio WAV upload)",
+            "question_text": "How do I keep young chicks warm and healthy during rainy nights?",
+            "review_status": "reviewed",
+            "speaker_name": "Team 8 Mano Contributor (Consented Demo)",
+            "topic_label": "Poultry Farming",
+            "topic_slug": "poultry-farming"
+          },
+          {
+            "answer_text": "Mix dry grass, kitchen peelings, and animal droppings into a shaded compost pile, turn it every two weeks, and add dark compost to planting beds before rain.",
+            "audio_data_url": "",
+            "consent_confirmed": 1,
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "is_sample_demo": 1,
+            "language_code": "bas",
+            "local_phrase_gloss": "Bassa Prototype Script (Pending native speaker re-recording check)",
+            "question_text": "How can I make poor sandy soil better without buying costly fertilizer?",
+            "review_status": "pending_review",
+            "speaker_name": "Team 8 Bassa Contributor (Consented Demo)",
+            "topic_label": "Soil Fertility & Compost",
+            "topic_slug": "soil-fertility"
+          },
+          {
+            "answer_text": "Check if rainwater is standing around the cassava mound. Open a small drainage trench so roots do not rot, and inspect under young leaves for small whiteflies.",
+            "audio_data_url": "",
+            "consent_confirmed": 1,
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "is_sample_demo": 1,
+            "language_code": "bas",
+            "local_phrase_gloss": "Bassa Prototype Script (Consented Team Audio Demo — Fallback speech preview enabled until studio WAV upload)",
+            "question_text": "Why are my cassava leaves turning yellow after heavy rain?",
+            "review_status": "reviewed",
+            "speaker_name": "Team 8 Bassa Contributor (Consented Demo)",
+            "topic_label": "Rice & Cassava Farming",
+            "topic_slug": "rice-cassava-farming"
+          }
+        ]
+      }
+    },
+    {
+      "name": "language lab submit",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/language-lab/recordings"
+      },
+      "status": 201,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "recording": {
+          "answer_text": "Plant at the start of the rains in rows.",
+          "audio_data_url": "",
+          "consent_confirmed": 1,
+          "created_at": "<timestamp>",
+          "id": "<id>",
+          "is_sample_demo": 0,
+          "language_code": "bas",
+          "local_phrase_gloss": "",
+          "question_text": "How do I plant rice?",
+          "review_status": "pending_review",
+          "speaker_name": "Contract Speaker",
+          "topic_label": "Rice",
+          "topic_slug": "rice"
+        }
+      }
+    },
+    {
+      "name": "language lab submit without consent",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/language-lab/recordings"
+      },
+      "status": 400,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "CONSENT_REQUIRED",
+          "message": "Speaker consent must be confirmed before uploading or saving any voice recording."
+        }
+      }
+    },
+    {
+      "name": "language review without login",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/language-lab/recordings/<id>/review"
+      },
+      "status": 401,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        }
+      }
+    },
+    {
+      "name": "language review as expert",
+      "request": {
+        "method": "PATCH",
+        "path": "/api/v1/language-lab/recordings/<id>/review"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "recording": {
+          "answer_text": "Plant at the start of the rains in rows.",
+          "audio_data_url": "",
+          "consent_confirmed": 1,
+          "created_at": "<timestamp>",
+          "id": "<id>",
+          "is_sample_demo": 0,
+          "language_code": "bas",
+          "local_phrase_gloss": "",
+          "question_text": "How do I plant rice?",
+          "review_status": "reviewed",
+          "speaker_name": "Contract Speaker",
+          "topic_label": "Rice",
+          "topic_slug": "rice"
+        }
+      }
+    },
+    {
+      "name": "management summary",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/prototype/management-summary"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "actualData": {
+          "formalAdvisoryQuestions": 3,
+          "publishedCropGuides": 7,
+          "registeredFarmers": 3
+        },
+        "demoAndExperimentalData": {
+          "localLanguageRecordings": 7,
+          "marketplaceInquiries": 1,
+          "marketplaceListings": 13,
+          "simulatedExpertRequests": 3
+        }
+      }
+    },
+    {
+      "name": "admin overview (anonymous)",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/admin/overview"
+      },
+      "status": 401,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        }
+      }
+    },
+    {
+      "name": "admin overview (farmer)",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/admin/overview"
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "Insufficient permissions for this action."
+        }
+      }
+    },
+    {
+      "name": "admin overview (admin)",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/admin/overview"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "metrics": {
+          "experts": 1,
+          "farmers": 3,
+          "feedbackNew": 1,
+          "guidesPending": 2,
+          "guidesPublished": 7,
+          "questionsOpen": 2
+        },
+        "recentAudits": [
+          {
+            "action": "language_recording_reviewed",
+            "actor_name": "Samuel Tarnue (Demo Agronomist)",
+            "actor_role": "expert",
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "target_id": "7",
+            "target_type": "local_language_recording"
+          },
+          {
+            "action": "expert_request_replied",
+            "actor_name": "Samuel Tarnue (Demo Agronomist)",
+            "actor_role": "expert",
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "target_id": "3",
+            "target_type": "demo_expert_request"
+          },
+          {
+            "action": "listing_delete_denied",
+            "actor_name": null,
+            "actor_role": "anonymous",
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "target_id": "12",
+            "target_type": "marketplace_listing"
+          },
+          {
+            "action": "listing_edit_denied",
+            "actor_name": null,
+            "actor_role": "anonymous",
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "target_id": "12",
+            "target_type": "marketplace_listing"
+          },
+          {
+            "action": "question_submitted",
+            "actor_name": "Contract Farmer",
+            "actor_role": "farmer",
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "target_id": "3",
+            "target_type": "advisory_question"
+          },
+          {
+            "action": "login_success",
+            "actor_name": "Contract Farmer",
+            "actor_role": "farmer",
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "target_id": "5",
+            "target_type": "user"
+          },
+          {
+            "action": "login_failed",
+            "actor_name": null,
+            "actor_role": "anonymous",
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "target_id": "",
+            "target_type": "auth"
+          },
+          {
+            "action": "farmer_registered",
+            "actor_name": "Contract Farmer",
+            "actor_role": "farmer",
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "target_id": "5",
+            "target_type": "user"
+          },
+          {
+            "action": "login_success",
+            "actor_name": "Samuel Tarnue (Demo Agronomist)",
+            "actor_role": "expert",
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "target_id": "2",
+            "target_type": "user"
+          },
+          {
+            "action": "login_success",
+            "actor_name": "Contract Other Farmer",
+            "actor_role": "farmer",
+            "created_at": "<timestamp>",
+            "id": "<id>",
+            "target_id": "4",
+            "target_type": "user"
+          }
+        ]
+      }
+    },
+    {
+      "name": "admin users",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/admin/users"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "users": [
+          {
+            "county": "Nimba",
+            "created_at": "<timestamp>",
+            "display_name": "Contract Farmer",
+            "email": null,
+            "id": "<id>",
+            "phone": "+231771234001",
+            "preferred_language": "en",
+            "roles": "farmer",
+            "status": "active"
+          },
+          {
+            "county": "Bong",
+            "created_at": "<timestamp>",
+            "display_name": "Contract Other Farmer",
+            "email": null,
+            "id": "<id>",
+            "phone": "+231771234002",
+            "preferred_language": "en",
+            "roles": "farmer",
+            "status": "active"
+          },
+          {
+            "county": null,
+            "created_at": "<timestamp>",
+            "display_name": "Contract Admin",
+            "email": null,
+            "id": "<id>",
+            "phone": "+231775550001",
+            "preferred_language": null,
+            "roles": "admin",
+            "status": "active"
+          },
+          {
+            "county": null,
+            "created_at": "<timestamp>",
+            "display_name": "Samuel Tarnue (Demo Agronomist)",
+            "email": "expert.demo@agri-advisory.lr",
+            "id": "<id>",
+            "phone": "+231770000201",
+            "preferred_language": null,
+            "roles": "expert",
+            "status": "active"
+          },
+          {
+            "county": "Bong",
+            "created_at": "<timestamp>",
+            "display_name": "Martha Kollie (Demo Farmer)",
+            "email": "farmer.demo@agri-advisory.lr",
+            "id": "<id>",
+            "phone": "+231770000101",
+            "preferred_language": "en",
+            "roles": "farmer",
+            "status": "active"
+          }
+        ]
+      }
+    },
+    {
+      "name": "admin guides",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/admin/guides"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "guides": [
+          {
+            "category_id": "<id>",
+            "category_name": "Storage",
+            "content_markdown": "<string len=309 sha=eace4ab8>",
+            "created_at": "<timestamp>",
+            "created_by": null,
+            "crop_id": "<id>",
+            "crop_name": "Maize",
+            "id": "<id>",
+            "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+            "is_pest_disease": 0,
+            "is_published": 0,
+            "is_sample_demo": 1,
+            "language_code": "en",
+            "last_reviewed_at": null,
+            "offline_available": 1,
+            "review_status": "pending_review",
+            "reviewed_by_name": null,
+            "reviewed_by_user_id": null,
+            "slug": "maize-post-harvest-drying-storage",
+            "source_attribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Drying maize cobs off the ground and checking grain dryness before sealing in airtight sacks.",
+            "title": "Safe Maize Drying & Weevil-Resistant Storage (Sample Guide)",
+            "updated_at": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category_id": "<id>",
+            "category_name": "Climate Resilience",
+            "content_markdown": "<string len=381 sha=060e81c9>",
+            "created_at": "<timestamp>",
+            "created_by": null,
+            "crop_id": "<id>",
+            "crop_name": "Plantain",
+            "id": "<id>",
+            "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+            "is_pest_disease": 0,
+            "is_published": 0,
+            "is_sample_demo": 1,
+            "language_code": "en",
+            "last_reviewed_at": null,
+            "offline_available": 1,
+            "review_status": "pending_review",
+            "reviewed_by_name": null,
+            "reviewed_by_user_id": null,
+            "slug": "plantain-wind-staking-and-suckers",
+            "source_attribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Supporting heavy bunches during storm winds and selecting one healthy follower sucker per mat.",
+            "title": "Staking Plantain Bunches & Sucker Management (Sample Guide)",
+            "updated_at": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category_id": "<id>",
+            "category_name": "Crop Care",
+            "content_markdown": "<string len=539 sha=e17a190d>",
+            "created_at": "<timestamp>",
+            "created_by": null,
+            "crop_id": "<id>",
+            "crop_name": "Okra",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+            "is_pest_disease": 1,
+            "is_published": 1,
+            "is_sample_demo": 1,
+            "language_code": "en",
+            "last_reviewed_at": "2026-10-27",
+            "offline_available": 1,
+            "review_status": "approved",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "reviewed_by_user_id": null,
+            "slug": "okra-harvesting-and-aphid-care",
+            "source_attribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Picking tender pods every 2–3 days and spotting sap-sucking aphids or leaf curl early.",
+            "title": "Okra Pod Harvesting & Leaf Curl Awareness (Sample Guide)",
+            "updated_at": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category_id": "<id>",
+            "category_name": "Soil Preparation",
+            "content_markdown": "<string len=538 sha=4ed50b46>",
+            "created_at": "<timestamp>",
+            "created_by": null,
+            "crop_id": "<id>",
+            "crop_name": "Pepper",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_pepper_okra_1794924192995.jpg",
+            "is_pest_disease": 1,
+            "is_published": 1,
+            "is_sample_demo": 1,
+            "language_code": "en",
+            "last_reviewed_at": "2026-10-25",
+            "offline_available": 1,
+            "review_status": "approved",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "reviewed_by_user_id": null,
+            "slug": "pepper-raised-beds-wilt-prevention",
+            "source_attribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Preventing root rot during heavy Liberian rains with composted raised beds and clean mulching.",
+            "title": "Raised Beds & Wilt Prevention for Hot Pepper (Sample Guide)",
+            "updated_at": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category_id": "<id>",
+            "category_name": "Pest Prevention",
+            "content_markdown": "<string len=560 sha=0db23e61>",
+            "created_at": "<timestamp>",
+            "created_by": null,
+            "crop_id": "<id>",
+            "crop_name": "Maize",
+            "id": "<id>",
+            "image_url": "/src/assets/images/hero_liberia_farm_1794924193363.jpg",
+            "is_pest_disease": 1,
+            "is_published": 1,
+            "is_sample_demo": 1,
+            "language_code": "en",
+            "last_reviewed_at": "2026-10-22",
+            "offline_available": 1,
+            "review_status": "approved",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "reviewed_by_user_id": null,
+            "slug": "maize-fall-armyworm-scouting",
+            "source_attribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "How to spot pinhole damage and sawdust-like frass inside maize whorls during the first 4 weeks.",
+            "title": "Early Scouting for Maize Leaf-Feeding Caterpillars (Sample Guide)",
+            "updated_at": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category_id": "<id>",
+            "category_name": "Pest Prevention",
+            "content_markdown": "<string len=575 sha=116ae11b>",
+            "created_at": "<timestamp>",
+            "created_by": null,
+            "crop_id": "<id>",
+            "crop_name": "Rice",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+            "is_pest_disease": 1,
+            "is_published": 1,
+            "is_sample_demo": 1,
+            "language_code": "en",
+            "last_reviewed_at": "2026-10-20",
+            "offline_available": 1,
+            "review_status": "approved",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "reviewed_by_user_id": null,
+            "slug": "rice-blast-and-bird-scouting",
+            "source_attribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Early morning field checks for diamond-shaped leaf spots, stem borers, and timely weeding.",
+            "title": "Rice Leaf Spot & Field Scouting Basics (Sample Guide)",
+            "updated_at": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category_id": "<id>",
+            "category_name": "Watering",
+            "content_markdown": "<string len=642 sha=0c34824c>",
+            "created_at": "<timestamp>",
+            "created_by": null,
+            "crop_id": "<id>",
+            "crop_name": "Rice",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_rice_1794924195882.jpg",
+            "is_pest_disease": 0,
+            "is_published": 1,
+            "is_sample_demo": 1,
+            "language_code": "en",
+            "last_reviewed_at": "2026-10-18",
+            "offline_available": 1,
+            "review_status": "approved",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "reviewed_by_user_id": null,
+            "slug": "rice-swamp-water-management",
+            "source_attribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Practical bunding and shallow water depth practices to support rice tillering and reduce weed pressure.",
+            "title": "Inland Valley Swamp Rice Water Control (Sample Guide)",
+            "updated_at": "<timestamp>",
+            "version": 2
+          },
+          {
+            "category_id": "<id>",
+            "category_name": "Planting",
+            "content_markdown": "<string len=549 sha=1eeef74f>",
+            "created_at": "<timestamp>",
+            "created_by": null,
+            "crop_id": "<id>",
+            "crop_name": "Cassava",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_cassava_1794924193991.jpg",
+            "is_pest_disease": 0,
+            "is_published": 1,
+            "is_sample_demo": 1,
+            "language_code": "en",
+            "last_reviewed_at": "2026-10-15",
+            "offline_available": 1,
+            "review_status": "approved",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "reviewed_by_user_id": null,
+            "slug": "cassava-healthy-stem-planting",
+            "source_attribution": "Team 8 Sample Demonstration Dataset",
+            "summary": "Choosing mature 20–25 cm stem cuttings, proper spacing on mounds or ridges, and early weeding.",
+            "title": "Selecting & Planting Healthy Cassava Cuttings (Sample Guide)",
+            "updated_at": "<timestamp>",
+            "version": 1
+          },
+          {
+            "category_id": "<id>",
+            "category_name": "Disease Awareness",
+            "content_markdown": "<string len=1099 sha=5987729c>",
+            "created_at": "<timestamp>",
+            "created_by": null,
+            "crop_id": "<id>",
+            "crop_name": "Cassava",
+            "id": "<id>",
+            "image_url": "/src/assets/images/crop_cassava_1794924193991.jpg",
+            "is_pest_disease": 1,
+            "is_published": 1,
+            "is_sample_demo": 1,
+            "language_code": "en",
+            "last_reviewed_at": "2026-10-15",
+            "offline_available": 1,
+            "review_status": "approved",
+            "reviewed_by_name": "Sample Demo Reviewer (Unverified Demonstration)",
+            "reviewed_by_user_id": null,
+            "slug": "cassava-yellow-leaves-mosaic-check",
+            "source_attribution": "Team 8 Sample Demonstration Dataset (Based on West African Smallholder Extension Practices)",
+            "summary": "How to tell nutrient or water stress apart from Cassava Mosaic Disease and take safe, low-risk next steps.",
+            "title": "Cassava Yellow Leaves & Mosaic Awareness (Sample Guide)",
+            "updated_at": "<timestamp>",
+            "version": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "admin settings",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/admin/settings"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "settings": [
+          {
+            "key": "allow_public_registration",
+            "updated_at": "<timestamp>",
+            "value": "true"
+          },
+          {
+            "key": "anon_ai_daily_limit",
+            "updated_at": "<timestamp>",
+            "value": "5"
+          },
+          {
+            "key": "auth_ai_hourly_limit",
+            "updated_at": "<timestamp>",
+            "value": "30"
+          },
+          {
+            "key": "daily_tip_body",
+            "updated_at": "<timestamp>",
+            "value": "Inspect the underside of cassava and pepper leaves early in the morning once a week. Spotting whiteflies or aphids early prevents heavy spread across your plot."
+          },
+          {
+            "key": "daily_tip_title",
+            "updated_at": "<timestamp>",
+            "value": "Today's Farming Tip (Sample)"
+          },
+          {
+            "key": "default_language",
+            "updated_at": "<timestamp>",
+            "value": "en"
+          },
+          {
+            "key": "liberian_english_mode",
+            "updated_at": "<timestamp>",
+            "value": "preview_reviewed_only"
+          },
+          {
+            "key": "platform_name",
+            "updated_at": "<timestamp>",
+            "value": "Agri-Advisory Liberia"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expert question queue (expert)",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/expert/questions"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "questions": [
+          {
+            "county": "Bong",
+            "created_at": "<timestamp>",
+            "crop_name": "Rice",
+            "description": "Heavy rain flooded our lowland rice plot to knee depth overnight. Will draining down to 4 cm today hurt newly transplanted rice?",
+            "farmer_name": "Martha Kollie (Demo Farmer)",
+            "id": "<id>",
+            "status": "Answered",
+            "title": "Swamp rice bund overflow after heavy night rain",
+            "topic": "Watering",
+            "updated_at": "<timestamp>"
+          },
+          {
+            "county": "Bong",
+            "created_at": "<timestamp>",
+            "crop_name": "Cassava",
+            "description": "About 15 cassava plants on the lower edge of my Bong County plot started showing yellow-green patches on new top leaves after heavy rains. What steps should I take?",
+            "farmer_name": "Martha Kollie (Demo Farmer)",
+            "id": "<id>",
+            "status": "Assigned",
+            "title": "Yellow patches on 3-month cassava leaves",
+            "topic": "Disease Awareness",
+            "updated_at": "<timestamp>"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expert question queue (farmer)",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/expert/questions"
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "FORBIDDEN",
+          "message": "Insufficient permissions for this action."
+        }
+      }
+    },
+    {
+      "name": "demo reset (anonymous)",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/demo/reset"
+      },
+      "status": 401,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "error": {
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        }
+      }
+    },
+    {
+      "name": "logout",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/auth/logout"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [
+        {
+          "name": "agri_session",
+          "httpOnly": true,
+          "secure": false,
+          "sameSite": "Lax",
+          "path": "/",
+          "hasMaxAge": false
+        }
+      ],
+      "body": {
+        "ok": true
+      }
+    },
+    {
+      "name": "me after logout",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/auth/me"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin"
+      },
+      "cookies": [],
+      "body": {
+        "user": null
+      }
+    }
+  ]
+}

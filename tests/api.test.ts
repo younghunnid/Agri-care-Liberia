@@ -1,78 +1,17 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import http from 'node:http';
-import os from 'node:os';
-import path from 'node:path';
 import test, {after, before} from 'node:test';
-
-const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agri-advisory-test-'));
-process.env.DB_PATH = path.join(tmpDir, 'test.db');
-process.env.AI_ANON_DAILY_LIMIT = '3';
-process.env.GEMINI_API_KEY = '';
-process.env.NODE_ENV = 'production';
-
-import {createApp} from '../server.ts';
-import {closeDb, getDb} from '../server/db.ts';
-import {hashPassword, hashRequesterKey} from '../server/security.ts';
+import {startBackend, type Backend} from './harness/backend.ts';
+import {CookieJar, getBaseUrl, req} from './harness/http.ts';
+import type {Fixtures} from './harness/fixtures.ts';
 import {normalizeLiberianPhone} from '../src/lib/phone.ts';
 
-let server: http.Server;
-let baseUrl = '';
-
-class CookieJar {
-  cookies = new Map<string, string>();
-
-  updateFromHeaders(headers: Headers) {
-    const setCookies = headers.getSetCookie ? headers.getSetCookie() : [];
-    for (const raw of setCookies) {
-      const [pair] = raw.split(';');
-      const eq = pair.indexOf('=');
-      if (eq > 0) {
-        this.cookies.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());
-      }
-    }
-  }
-
-  headerValue(): string {
-    return Array.from(this.cookies.entries())
-      .map(([k, v]) => `${k}=${v}`)
-      .join('; ');
-  }
-
-  getCsrf(): string {
-    return decodeURIComponent(this.cookies.get('agri_csrf') || '');
-  }
-}
-
-async function req(
-  jar: CookieJar,
-  urlPath: string,
-  opts: {method?: string; body?: unknown; skipCsrf?: boolean; headers?: Record<string, string>} = {}
-) {
-  const method = opts.method || 'GET';
-  const headers: Record<string, string> = {...(opts.headers || {})};
-  const cookieHeader = jar.headerValue();
-  if (cookieHeader) headers['Cookie'] = cookieHeader;
-  if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && !opts.skipCsrf) {
-    if (!jar.getCsrf()) {
-      const csrfRes = await fetch(`${baseUrl}/api/v1/csrf-token`, {headers});
-      jar.updateFromHeaders(csrfRes.headers);
-      const updatedCookie = jar.headerValue();
-      if (updatedCookie) headers['Cookie'] = updatedCookie;
-    }
-    headers['X-CSRF-Token'] = jar.getCsrf();
-  }
-
-  const res = await fetch(`${baseUrl}${urlPath}`, {
-    method,
-    headers,
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-  });
-  jar.updateFromHeaders(res.headers);
-  const data = await res.json().catch(() => ({}));
-  return {status: res.status, data};
-}
+/**
+ * Black-box API suite. It talks to the backend ONLY over HTTP plus the test-only fixture contract (tests/harness, docs/TEST_HARNESS.md).
+ * Default: boots the Node reference backend in-process on a disposable DB. With API_BASE_URL set it runs against any server implementing the
+ * same contract (the PHP backend in later milestones).
+ */
+let backend: Backend;
+let fx: Fixtures;
 
 async function loginJar(identifier: string, password: string): Promise<CookieJar> {
   const jar = new CookieJar();
@@ -84,30 +23,19 @@ const expertJar = () => loginJar('+231770000201', 'ExpertDemo!2026');
 let cachedAdmin: Promise<CookieJar> | null = null;
 function adminJar(): Promise<CookieJar> {
   cachedAdmin ??= (async () => {
-    const db = getDb();
-    const role = db.prepare("SELECT id FROM roles WHERE name = 'admin'").get() as {id: number};
-    const id = Number(
-      db.prepare("INSERT INTO users (display_name, phone, password_hash, status) VALUES ('Sec Admin', '+231775555555', ?, 'active')").run(hashPassword('AdminTestPass!123')).lastInsertRowid
-    );
-    db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(id, role.id);
+    await fx.createUser({displayName: 'Sec Admin', phone: '+231775555555', password: 'AdminTestPass!123', roles: ['admin']});
     return loginJar('+231775555555', 'AdminTestPass!123');
   })();
   return cachedAdmin;
 }
 const farmerJars = new Map<string, Promise<CookieJar>>();
-/** Creates a farmer directly in the disposable test DB (the registration endpoint is rate limited to 10/hour) and logs in. */
+/** Creates a farmer through the fixture contract (the registration endpoint is rate limited to 10/hour) and logs in. */
 function farmerJar(phone: string, name: string): Promise<CookieJar> {
   if (!farmerJars.has(phone)) {
     farmerJars.set(
       phone,
       (async () => {
-        const db = getDb();
-        const role = db.prepare("SELECT id FROM roles WHERE name = 'farmer'").get() as {id: number};
-        const id = Number(
-          db.prepare("INSERT INTO users (display_name, phone, password_hash, status) VALUES (?, ?, ?, 'active')").run(name, phone, hashPassword('SafePassword123')).lastInsertRowid
-        );
-        db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(id, role.id);
-        db.prepare("INSERT INTO farmer_profiles (user_id, county, preferred_language, crops_of_interest) VALUES (?, 'Bong', 'en', '[]')").run(id);
+        await fx.createUser({displayName: name, phone, password: 'SafePassword123', roles: ['farmer'], county: 'Bong'});
         return loginJar(phone, 'SafePassword123');
       })()
     );
@@ -130,19 +58,12 @@ const K = (name: string): string => `${name}-owner-key-`.padEnd(48, 'k');
 const keyHdr = (name: string) => ({'X-Listing-Key': K(name)});
 
 before(async () => {
-  const app = await createApp();
-  server = app.listen(0, '127.0.0.1');
-  await new Promise<void>((resolve) => server.once('listening', resolve));
-  const addr = server.address();
-  if (typeof addr === 'object' && addr) {
-    baseUrl = `http://127.0.0.1:${addr.port}`;
-  }
+  backend = await startBackend();
+  fx = backend.fixtures;
 });
 
 after(async () => {
-  await new Promise<void>((resolve) => server.close(() => resolve()));
-  closeDb();
-  fs.rmSync(tmpDir, {recursive: true, force: true});
+  await backend.stop();
 });
 
 test('1. Health check and public guides return only published approved guides', async () => {
@@ -268,14 +189,8 @@ test('5. AI Advisor handles missing API key honestly and enforces guest rate lim
 });
 
 test('6. Admin question assignment, expert response, and guide approval workflow', async () => {
-  // Bootstrap an admin user directly in isolated test DB
-  const db = getDb();
-  const adminRole = db.prepare("SELECT id FROM roles WHERE name = 'admin'").get() as {id: number};
-  const ins = db
-    .prepare("INSERT INTO users (display_name, phone, password_hash, status) VALUES ('Test Admin', '+231779999999', ?, 'active')")
-    .run(hashPassword('AdminTestPass!123'));
-  const adminId = Number(ins.lastInsertRowid);
-  db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(adminId, adminRole.id);
+  // Bootstrap an admin user through the fixture contract
+  await fx.createUser({displayName: 'Test Admin', phone: '+231779999999', password: 'AdminTestPass!123', roles: ['admin']});
 
   const adminJar = new CookieJar();
   const loginAdmin = await req(adminJar, '/api/v1/auth/login', {
@@ -630,7 +545,7 @@ test('13. Farmer registration validates Liberian phone, rejects duplicates and i
   // 2. Invalid/mismatched CSRF token returns 403 CSRF_INVALID
   const badCsrfJar = new CookieJar();
   await req(badCsrfJar, '/api/v1/csrf-token');
-  const badCsrfRes = await fetch(`${baseUrl}/api/v1/auth/register`, {
+  const badCsrfRes = await fetch(`${getBaseUrl()}/api/v1/auth/register`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -719,7 +634,7 @@ test('13. Farmer registration validates Liberian phone, rejects duplicates and i
 });
 
 test('14. HTTPS preview proxy headers issue single SameSite=None Secure Partitioned CSRF & session cookies', async () => {
-  const csrfRes = await fetch(`${baseUrl}/api/v1/csrf-token`, {
+  const csrfRes = await fetch(`${getBaseUrl()}/api/v1/csrf-token`, {
     headers: {
       'X-Forwarded-Proto': 'https',
       Origin: 'https://ais-dev-ucahc4pwaqg7jovu43w7s4-1010835103112.europe-west2.run.app',
@@ -738,7 +653,7 @@ test('14. HTTPS preview proxy headers issue single SameSite=None Secure Partitio
   const cookiePair = csrfCookies[0].split(';')[0];
   assert.equal(cookiePair, `agri_csrf=${csrfData.csrfToken}`);
 
-  const regRes = await fetch(`${baseUrl}/api/v1/auth/register`, {
+  const regRes = await fetch(`${getBaseUrl()}/api/v1/auth/register`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -839,11 +754,7 @@ test('17. Synced listings never store or expose a phone number without consent',
   });
   assert.equal(noConsent.status, 201);
   assert.equal(noConsent.data.listing.seller_phone, '');
-  const db = getDb();
-  const row = db.prepare('SELECT seller_phone, phone_consent FROM marketplace_listings WHERE id = ?').get(noConsent.data.listing.id) as {
-    seller_phone: string;
-    phone_consent: number;
-  };
+  const row = await fx.listing(noConsent.data.listing.id);
   assert.equal(row.seller_phone, '');
   assert.equal(row.phone_consent, 0);
 
@@ -883,8 +794,7 @@ test('18. Offline edit sync enforces ownership and detects conflicts', async () 
   assert.equal(ok.status, 200);
   assert.equal(ok.data.listing.price_lrd, 8000);
 
-  const getDbRow = getDb();
-  getDbRow.prepare("UPDATE marketplace_listings SET updated_at = '2000-01-01 00:00:00' WHERE id = ?").run(id);
+  await fx.setListingUpdatedAt(id, '2000-01-01 00:00:00');
   const conflict = await req(jar, `/api/v1/marketplace/listings/${id}`, {
     method: 'PATCH',
     headers: keyHdr('owner-A'),
@@ -892,8 +802,7 @@ test('18. Offline edit sync enforces ownership and detects conflicts', async () 
   });
   assert.equal(conflict.status, 409);
   assert.equal(conflict.data.error.code, 'CONFLICT');
-  const row = getDbRow.prepare('SELECT price_lrd FROM marketplace_listings WHERE id = ?').get(id) as {price_lrd: number};
-  assert.equal(row.price_lrd, 8000);
+  assert.equal((await fx.listing(id)).price_lrd, 8000);
 });
 
 test('19. Idempotent expert question sync creates one request and keeps the photo/voice fields', async () => {
@@ -913,8 +822,7 @@ test('19. Idempotent expert question sync creates one request and keeps the phot
   assert.equal(a.status, 201);
   assert.equal(b.data.replayed, true);
   assert.equal(b.data.request.id, a.data.request.id);
-  const count = getDb().prepare('SELECT COUNT(*) AS c FROM demo_expert_requests WHERE requester_key_hash = ?').get(hashRequesterKey(K('tok-q-1'))) as {c: number};
-  assert.equal(count.c, 1);
+  assert.equal(await fx.expertRequestsForKey(K('tok-q-1')), 1);
   assert.ok(a.data.request.voice_note_data_url.startsWith('data:audio/'));
 });
 
@@ -957,20 +865,19 @@ test('21. Only the key holder, the signed-in seller or an admin can edit or dele
   assert.equal((await req(anon, base, {method: 'DELETE', headers: keyHdr('attacker')})).status, 403);
 
   // The victim's listing is untouched.
-  const row = getDb().prepare('SELECT price_lrd FROM marketplace_listings WHERE id = ?').get(id) as {price_lrd: number};
-  assert.equal(row.price_lrd, 7000);
+  assert.equal((await fx.listing(id)).price_lrd, 7000);
 
   // The server stores a hash, never the key itself.
-  const stored = getDb().prepare('SELECT owner_key_hash, owner_token FROM marketplace_listings WHERE id = ?').get(id) as {
-    owner_key_hash: string;
-    owner_token: string;
-  };
+  const stored = await fx.listing(id);
   assert.equal(stored.owner_key_hash.length, 64);
   assert.notEqual(stored.owner_key_hash, K('victim'));
+  assert.equal(stored.owner_key_hash.includes(K('victim')), false);
+  assert.equal(await fx.listingKeyMatches(id, K('victim')), true);
+  assert.equal(await fx.listingKeyMatches(id, K('attacker')), false);
   assert.equal(stored.owner_token, '');
 
   // Legacy rows: demo seed tokens (publicly known) and rows with no key hash cannot be managed with any token.
-  const seeded = (getDb().prepare("SELECT id FROM marketplace_listings WHERE owner_token = 'demo-seed-0'").get() as {id: number}).id;
+  const seeded = await fx.listingIdByLegacyToken('demo-seed-0');
   assert.equal((await req(anon, `/api/v1/marketplace/listings/${seeded}`, {method: 'PATCH', body: {ownerToken: 'demo-seed-0', priceLrd: 1}})).status, 403);
   assert.equal((await req(anon, `/api/v1/marketplace/listings/${seeded}`, {method: 'PATCH', headers: {'X-Listing-Key': 'demo-seed-0'.padEnd(40, '0')}, body: {priceLrd: 1}})).status, 403);
 
@@ -1003,18 +910,13 @@ test('22. A signed-in seller and an administrator can manage a listing without t
   const id = created.data.listing.id;
   assert.equal((await req(seller, `/api/v1/marketplace/listings/${id}`, {method: 'PATCH', body: {priceLrd: 6100}})).status, 200);
 
-  const db = getDb();
-  const adminRole = db.prepare("SELECT id FROM roles WHERE name = 'admin'").get() as {id: number};
-  const adminId = Number(
-    db.prepare("INSERT INTO users (display_name, phone, password_hash, status) VALUES ('Own Admin', '+231778888888', ?, 'active')").run(hashPassword('AdminTestPass!123')).lastInsertRowid
-  );
-  db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(adminId, adminRole.id);
+  await fx.createUser({displayName: 'Own Admin', phone: '+231778888888', password: 'AdminTestPass!123', roles: ['admin']});
   const admin = new CookieJar();
   assert.equal((await req(admin, '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231778888888', password: 'AdminTestPass!123'}})).status, 200);
   assert.equal((await req(admin, `/api/v1/marketplace/listings/${id}`, {method: 'PATCH', body: {priceLrd: 6200}})).status, 200);
 
   // Hidden listings are visible only to administrators, even if someone passes admin=1.
-  db.prepare("UPDATE marketplace_listings SET moderation_status = 'hidden' WHERE id = ?").run(id);
+  await fx.setListingModeration(id, 'hidden');
   const publicAll = await req(new CookieJar(), '/api/v1/marketplace/listings?admin=1');
   assert.equal(publicAll.data.listings.some((l: {id: number}) => l.id === id), false);
   const adminAll = await req(admin, '/api/v1/marketplace/listings?admin=1');
@@ -1063,10 +965,7 @@ test('25. Retries stay safe: the owner key is never stored in the idempotency ta
   assert.equal(replay.data.replayed, true);
   assert.equal(replay.data.listing.id, first.data.listing.id);
 
-  const rows = getDb().prepare('SELECT actor, response_json FROM sync_operations WHERE op_key = ?').all('op-test-ownerkey-0001') as {
-    actor: string;
-    response_json: string;
-  }[];
+  const rows = await fx.syncOperations('op-test-ownerkey-0001');
   assert.equal(rows.length, 1);
   assert.equal(rows[0].response_json.includes(K('retry-owner')), false);
   assert.equal(rows[0].actor.includes(K('retry-owner')), false);
@@ -1116,11 +1015,10 @@ test('27. A device sees only its own requests; legacy tokens and keys in URLs gr
   const shortKey = await req(new CookieJar(), '/api/v1/expert-requests/demo', {method: 'POST', body: expertBody('x', {requesterKey: 'short'})});
   assert.equal(shortKey.status, 400);
   // The server keeps only a hash.
-  const row = getDb().prepare('SELECT requester_key_hash, requester_token FROM demo_expert_requests WHERE id = ?').get(a.data.request.id) as {
-    requester_key_hash: string;
-    requester_token: string;
-  };
-  assert.equal(row.requester_key_hash, hashRequesterKey(K('dev-a')));
+  const row = await fx.expertRequest(a.data.request.id);
+  assert.equal(row.requester_key_hash.length, 64);
+  assert.equal(row.requester_key_hash.includes(K('dev-a')), false);
+  assert.equal(await fx.expertRequestsForKey(K('dev-a')), 1);
   assert.equal(row.requester_token, '');
 });
 
@@ -1137,7 +1035,7 @@ test('28. Only approved experts and administrators can reply; there is no spoofa
   assert.equal((await req(farmer, url, {method: 'PATCH', body})).status, 403);
   assert.equal((await req(farmer, url, {method: 'PATCH', body: {...body, role: 'admin', roles: ['expert']}, headers: {'X-Role': 'admin', Authorization: 'Bearer expert', 'X-Expert': '1'}})).status, 403);
   assert.equal((await req(new CookieJar(), url, {method: 'PATCH', body: {...body, role: 'expert'}, headers: {'X-Role': 'expert', Cookie: 'role=expert; agri_role=admin'}})).status, 401);
-  const stillOpen = getDb().prepare('SELECT status, expert_reply FROM demo_expert_requests WHERE id = ?').get(id) as {status: string; expert_reply: string};
+  const stillOpen = await fx.expertRequest(id);
   assert.equal(stillOpen.status, 'Submitted');
   assert.equal(stillOpen.expert_reply, '');
 
@@ -1205,8 +1103,7 @@ test('30. Language lab review is limited to experts/admins; public submissions c
   const farmer = await farmerJar('+231776666664', 'Lab Farmer');
   assert.equal((await req(farmer, url, {method: 'PATCH', body: {reviewStatus: 'reviewed'}})).status, 403);
   assert.equal((await req(farmer, url, {method: 'PATCH', body: {reviewStatus: 'reviewed', role: 'admin'}, headers: {'X-Role': 'admin'}})).status, 403);
-  const row = getDb().prepare('SELECT review_status FROM local_language_recordings WHERE id = ?').get(id) as {review_status: string};
-  assert.equal(row.review_status, 'pending_review');
+  assert.equal((await fx.recording(id)).review_status, 'pending_review');
 
   const expert = await expertJar();
   assert.equal((await req(expert, url, {method: 'PATCH', body: {reviewStatus: 'bogus'}})).status, 400);
@@ -1216,8 +1113,7 @@ test('30. Language lab review is limited to experts/admins; public submissions c
   assert.equal(approved.data.recording.review_status, 'reviewed');
   const rejected = await req(await adminJar(), url, {method: 'PATCH', body: {reviewStatus: 'needs_rerecording'}});
   assert.equal(rejected.data.recording.review_status, 'needs_rerecording');
-  const audit = getDb().prepare("SELECT COUNT(*) AS c FROM audit_logs WHERE action = 'language_recording_reviewed' AND target_id = ?").get(String(id)) as {c: number};
-  assert.equal(audit.c, 2);
+  assert.equal(await fx.auditCount('language_recording_reviewed', String(id)), 2);
 });
 
 test('31. Resetting demo data is administrator-only (kept last: it reseeds the prototype tables)', async () => {
@@ -1225,8 +1121,8 @@ test('31. Resetting demo data is administrator-only (kept last: it reseeds the p
   const farmer = await farmerJar('+231776666665', 'Reset Farmer');
   assert.equal((await req(farmer, '/api/v1/demo/reset', {method: 'POST', body: {}})).status, 403);
   assert.equal((await req(await expertJar(), '/api/v1/demo/reset', {method: 'POST', body: {}})).status, 403);
-  const before = (getDb().prepare('SELECT COUNT(*) AS c FROM marketplace_listings').get() as {c: number}).c;
+  const before = await fx.count('marketplace_listings');
   assert.ok(before > 11, 'earlier tests left extra listings that an unauthorised reset must not wipe');
   assert.equal((await req(await adminJar(), '/api/v1/demo/reset', {method: 'POST', body: {}})).status, 200);
-  assert.equal((getDb().prepare('SELECT COUNT(*) AS c FROM marketplace_listings').get() as {c: number}).c, 11);
+  assert.equal(await fx.count('marketplace_listings'), 11);
 });
