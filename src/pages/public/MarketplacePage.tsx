@@ -128,6 +128,9 @@ export const MarketplacePage: React.FC = () => {
   const [availFilter, setAvailFilter] = useState('');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Why the list may be empty: never fetched (offline), a failed request, or a real answer from the server.
+  const [loadStatus, setLoadStatus] = useState<'never' | 'ok' | 'error'>('never');
+  const [loadedAt, setLoadedAt] = useState<string | null>(null);
 
   // Modals: Product Details & Call Farmer Action
   const [detailsListing, setDetailsListing] = useState<MarketplaceListing | null>(null);
@@ -184,6 +187,8 @@ export const MarketplacePage: React.FC = () => {
         availabilityOptions?: string[];
       }>(`/marketplace/listings?${qs.toString()}`);
       setListings(listRes.listings);
+      setLoadStatus('ok');
+      setLoadedAt(new Date().toISOString());
       setCategories(listRes.categories);
       setUnits(listRes.units);
       setCounties(listRes.counties);
@@ -191,7 +196,8 @@ export const MarketplacePage: React.FC = () => {
         setAvailabilityOptions(listRes.availabilityOptions);
       }
     } catch {
-      // ignore offline
+      // A failed request is NOT the same as "no products": keep what was loaded and say so.
+      setLoadStatus('error');
     } finally {
       setLoading(false);
     }
@@ -786,21 +792,57 @@ export const MarketplacePage: React.FC = () => {
 
             {/* RIGHT CONTENT AREA: PRODUCT GRID */}
             <div className="flex-1 w-full min-w-0">
+              {!isOnline && listings.length > 0 && (
+                <p role="status" className="mb-3 rounded-2xl bg-amber-50 border border-amber-300 px-4 py-3 text-base font-semibold text-amber-900">
+                  Saved Information — Not Live: these listings were loaded earlier{loadedAt ? ` (${new Date(loadedAt).toLocaleTimeString()})` : ''} and may have changed.
+                </p>
+              )}
+              {loadStatus === 'error' && isOnline && listings.length > 0 && (
+                <p role="alert" className="mb-3 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-base font-semibold text-red-800">
+                  Could not refresh listings. Showing the last ones loaded.{' '}
+                  <button type="button" onClick={() => void loadMarketplace()} className="underline font-bold min-h-[44px]">Try again</button>
+                </p>
+              )}
               {loading ? (
                 <div className="py-14 text-center text-sm text-[#183B2B]/70">Loading marketplace products...</div>
               ) : displayedListings.length === 0 ? (
-                <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-10 text-center space-y-3 shadow-xs">
-                  <p className="font-display font-bold text-lg text-[#183B2B]">No matching products found</p>
-                  <p className="text-sm text-[#183B2B]/70">
-                    Try adjusting your county, category, maximum price, or availability filters.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={clearAllFilters}
-                    className="min-h-[44px] px-5 py-2 rounded-xl bg-[#16803C] text-white text-sm font-bold hover:bg-[#116630]"
-                  >
-                    Clear Filters
-                  </button>
+                <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-8 sm:p-10 text-center space-y-3 shadow-xs" role="status" data-testid="marketplace-empty">
+                  {!isOnline ? (
+                    <>
+                      <p className="font-display font-bold text-lg text-[#183B2B]">Live listings need internet</p>
+                      <p className="text-base text-[#183B2B]/80">
+                        You are offline, and listings from other farmers are not saved on this phone. Filters are not the problem.
+                      </p>
+                      <p className="text-base text-[#183B2B]/80">You can still prepare a listing to sell. It is sent when you are back online.</p>
+                      <button type="button" onClick={() => setViewMode('sell')} className="min-h-[48px] px-5 py-2 rounded-xl bg-[#16803C] text-white text-base font-bold">
+                        Prepare a Listing
+                      </button>
+                    </>
+                  ) : loadStatus === 'error' ? (
+                    <>
+                      <p className="font-display font-bold text-lg text-[#183B2B]">Could not load listings</p>
+                      <p className="text-base text-[#183B2B]/80">The server did not answer. This does not mean there are no products. Check your connection and try again.</p>
+                      <button type="button" onClick={() => void loadMarketplace()} className="min-h-[48px] px-5 py-2 rounded-xl bg-[#16803C] text-white text-base font-bold">
+                        Try Again
+                      </button>
+                    </>
+                  ) : activeFilterCount > 0 || search.trim() !== '' || roleFilter !== 'all' ? (
+                    <>
+                      <p className="font-display font-bold text-lg text-[#183B2B]">No products match your filters</p>
+                      <p className="text-base text-[#183B2B]/80">Try changing your search, county, category, price, availability or seller type.</p>
+                      <button type="button" onClick={clearAllFilters} className="min-h-[48px] px-5 py-2 rounded-xl bg-[#16803C] text-white text-base font-bold">
+                        Clear Filters
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-display font-bold text-lg text-[#183B2B]">No products are published yet</p>
+                      <p className="text-base text-[#183B2B]/80">The marketplace answered, and it has no listings right now. Be the first to post one.</p>
+                      <button type="button" onClick={() => setViewMode('sell')} className="min-h-[48px] px-5 py-2 rounded-xl bg-[#16803C] text-white text-base font-bold">
+                        Post a Listing
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">

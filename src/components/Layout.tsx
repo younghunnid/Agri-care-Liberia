@@ -94,7 +94,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
   const narrow = useNarrowScreen();
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F3F8F0] text-[#183B2B]">
+    <div className="min-h-screen min-h-dvh flex flex-col bg-[#F3F8F0] text-[#183B2B]">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-xl focus:bg-[#16803C] focus:px-4 focus:py-3 focus:text-white focus:font-semibold"
@@ -103,7 +103,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
       </a>
 
       {/* Clean 3-Zone Top Navigation Bar */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#183B2B]/10">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#183B2B]/10 pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 md:h-16 flex items-center justify-between gap-4 md:gap-8">
           {/* Zone 1: Single-line Brand Wordmark */}
           <Link
@@ -159,7 +159,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
 
       {/* Compact utility strip: one row on phones (icon buttons, 44 px targets); labels appear from sm up. */}
       <div className="bg-white/80 border-b border-[#183B2B]/10">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-1.5 flex items-center gap-1.5 sm:gap-2">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 py-1.5 flex items-center gap-1 sm:gap-2">
           {!isHome && (
             <>
               <button
@@ -183,7 +183,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
           )}
 
           {/* Connectivity: a dot when online (quiet), a clear label when offline (important). */}
-          <span role="status" className="inline-flex items-center gap-1.5 text-sm font-medium px-1 shrink-0">
+          <span role="status" className="inline-flex items-center gap-1 text-sm font-medium px-0.5 sm:px-1 min-w-0">
             {isOnline ? (
               <>
                 <span className="w-2.5 h-2.5 rounded-full bg-[#16803C]" aria-hidden="true" />
@@ -197,7 +197,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
             )}
           </span>
 
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <div className="ml-auto flex items-center gap-1 sm:gap-2 min-w-0">
             {/* Smart Listen Mode Toggle */}
             <button
               type="button"
@@ -245,7 +245,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
               value={language}
               onChange={(e) => void setLanguage(e.target.value as LanguageCode)}
               aria-label="Language selector"
-              className="min-h-[44px] max-w-[5.5rem] sm:max-w-none rounded-xl border border-[#183B2B]/15 bg-[#F3F8F0] px-2 sm:px-2.5 text-sm font-semibold text-[#183B2B] cursor-pointer"
+              className="min-h-[44px] max-w-[4.5rem] sm:max-w-none rounded-xl border border-[#183B2B]/15 bg-[#F3F8F0] px-2 sm:px-2.5 text-sm font-semibold text-[#183B2B] cursor-pointer"
             >
               {LANGUAGE_OPTIONS.map((opt) => (
                 <option key={opt.code} value={opt.code}>

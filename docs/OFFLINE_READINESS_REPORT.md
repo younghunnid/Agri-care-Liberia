@@ -11,6 +11,15 @@ Tested at `http://192.168.100.96:3000`: Starter Pack saved 43/43 guides + 7 serv
 - **Desktop-verified:** 9/9 pictures at the insecure address, retry, persistence after tab reopen, 360/390 px layouts (no overflow; min font 15 px on guides/experts/downloads/offline, 14 px badges on marketplace), PWA manifest/icons/SW/install prompt on localhost, proxy blocking by curl.
 - **Still needs the physical phone:** CA trust, install, airplane-mode launch, touch use, camera/microphone, real readability.
 
+## 0b. Second Android observation pass (header, Marketplace empty state, Farmer Dashboard)
+Reported from the phone: header/logo partly hidden near Chrome's toolbar; Marketplace showed zero products with a generic "No matching products found"; dashboard states unclear. I did not have the screenshots, so I reasoned from the code.
+- **Header:** the header was `sticky top-0` with no safe-area handling and the page had no `viewport-fit=cover`. Hardened: `viewport-fit=cover`, header `padding-top: env(safe-area-inset-top)`, `min-h-dvh`, `scroll-padding-top` for anchors. Desktop emulation confirms the header stays at top 0 after scrolling and the bottom nav is flush; **`env(safe-area-inset-*)` cannot be emulated on desktop, and Chrome's own toolbar is not part of the app, so whether the phone symptom is gone must be confirmed on the phone.** If it persists, send the screenshot and the installed-vs-browser mode.
+- **Marketplace states (desktop-verified):** offline -> "Live listings need internet" (no Clear Filters button; filters are not the problem) + Prepare a Listing; failed request -> "Could not load listings" + Try Again (not reported as "no products"); filters/search/seller-type active -> "No products match your filters" + Clear Filters; real empty answer -> "No products are published yet"; stale list while offline -> "Saved Information — Not Live" banner.
+- **Farmer Dashboard (desktop-verified):** new "Saved on This Phone vs Published Online" panel (Draft / Pending Sync / Sync Failed / Published; questions Sent). Server-backed cards are labelled "(server)" and show "—" offline or on error, never a false zero. **Bug fixed:** "My listings" counted every listing on the server (the query parameter was ignored); it now counts only listings with this phone's owner token.
+- **Found, not fixed (security):** the listings API returns each listing's `owner_token` to every visitor, and that token is the only proof of ownership for edit/delete. Anyone could copy it and edit someone's listing. Must be replaced by real account ownership (see migration plan).
+- **Layout regression found and fixed:** at 360 px the toolbar overflowed by ~16 px when the "Offline" label appeared; tightened. Measured at 360/390 px, offline: no horizontal overflow, 0 controls under 44 px on Marketplace, Knowledge Center, Expert Support, Dashboard; minimum font 15 px (14 px on a few Marketplace badges).
+- **HTTPS limitation:** install and offline opening still require the https URL with the dev CA trusted on the phone (`docs/ANDROID_HTTPS_TESTING.md`); not yet confirmed on a device.
+
 ## 1. Completed features
 
 | Stage | Feature | Commit |

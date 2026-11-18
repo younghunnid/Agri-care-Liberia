@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useSyncExternalStore} from 'react';
 import {Link} from 'react-router-dom';
 import {
   Bookmark,
@@ -14,6 +14,8 @@ import {
 import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
 import {getOfflineGuides} from '../../lib/offlineStorage';
+import {countByStatus} from '../../lib/offlineInventory';
+import {getListingRecords, getQuestionRecords, getSyncVersion, subscribeSync} from '../../lib/offlineDrafts';
 import {
   type DemoSavedAdvice,
   type RecentGuideItem,
@@ -26,6 +28,7 @@ import {LANGUAGE_OPTIONS, type LanguageCode} from '../../lib/i18n';
 
 interface ListingSummary {
   id: number;
+  owner_token?: string;
   product_name: string;
   price_lrd: number;
   unit: string;
@@ -57,6 +60,12 @@ export const DemoFarmerDashboardPage: React.FC = () => {
   const [myListings, setMyListings] = useState<ListingSummary[]>([]);
   const [myInquiries, setMyInquiries] = useState<InquirySummary[]>([]);
   const [myRequests, setMyRequests] = useState<ExpertReqSummary[]>([]);
+  // 'ok' = the numbers below came from the server just now; otherwise they must not be shown as zeros.
+  const [serverStatus, setServerStatus] = useState<'never' | 'ok' | 'error'>('never');
+  useSyncExternalStore(subscribeSync, getSyncVersion, getSyncVersion);
+  const localListings = countByStatus(getListingRecords());
+  const localQuestions = countByStatus(getQuestionRecords());
+  const unsentLocal = localListings.draft + localListings.pending + localListings.failed + localQuestions.draft + localQuestions.pending + localQuestions.failed;
 
   const ownerToken = getDemoOwnerToken();
 
@@ -68,12 +77,16 @@ export const DemoFarmerDashboardPage: React.FC = () => {
       apiFetch<{requests: ExpertReqSummary[]}>(`/expert-requests/demo?token=${encodeURIComponent(ownerToken)}`),
     ])
       .then(([lRes, iRes, eRes]) => {
-        setMyListings(lRes.listings);
+        // The server returns every listing; only the ones created with this phone's owner token are "mine".
+        setMyListings(lRes.listings.filter((l) => l.owner_token === ownerToken));
+        setServerStatus('ok');
         setMyInquiries(iRes.inquiries.slice(0, 6));
         setMyRequests(eRes.requests.slice(0, 6));
       })
-      .catch(() => undefined);
+      .catch(() => setServerStatus('error'));
   }, [isOnline, ownerToken]);
+
+  const serverVal = (n: number): string | number => (serverStatus === 'ok' ? n : '—');
 
   const handleRemoveSaved = (id: string) => {
     setSavedAdvice(removeDemoAdvice(id));
@@ -114,12 +127,13 @@ export const DemoFarmerDashboardPage: React.FC = () => {
       </div>
 
       {/* Quick Metric Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         {[
           {label: 'Saved Advice', val: savedAdvice.length, icon: Bookmark, to: '/guides'},
-          {label: 'Expert Questions', val: myRequests.length, icon: Users, to: '/experts'},
-          {label: 'My Demo Listings', val: myListings.length, icon: Store, to: '/marketplace'},
-          {label: 'Buyer Inquiries', val: myInquiries.length, icon: MessageSquare, to: '/marketplace'},
+          {label: 'Expert Questions (server)', val: serverVal(myRequests.length), icon: Users, to: '/experts'},
+          {label: 'Published Listings (server)', val: serverVal(myListings.length), icon: Store, to: '/marketplace'},
+          {label: 'Buyer Inquiries (server)', val: serverVal(myInquiries.length), icon: MessageSquare, to: '/marketplace'},
+          {label: 'Unsent on this phone', val: unsentLocal, icon: Bookmark, to: '/downloads'},
           {label: 'Offline Guides', val: offlineCount, icon: WifiOff, to: '/offline'},
         ].map((card) => {
           const Icon = card.icon;
@@ -136,6 +150,40 @@ export const DemoFarmerDashboardPage: React.FC = () => {
           );
         })}
       </div>
+
+      {/* Local vs server: what exists only on this phone, and what the server confirmed */}
+      <section aria-labelledby="dash-local" className="rounded-3xl bg-white border-2 border-[#16803C]/30 p-6 space-y-3">
+        <h2 id="dash-local" className="font-display text-lg font-bold text-[#183B2B]">Saved on This Phone vs Published Online</h2>
+        {!isOnline && (
+          <p role="status" className="rounded-xl bg-amber-50 border border-amber-300 px-3 py-2 text-base font-semibold text-amber-900">
+            You are offline. Numbers marked "(server)" cannot be loaded now, so they show "—", not zero.
+          </p>
+        )}
+        {isOnline && serverStatus === 'error' && (
+          <p role="alert" className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-base font-semibold text-red-800">
+            Could not load your online data. The "(server)" numbers show "—" until it loads.
+          </p>
+        )}
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-base">
+          <div className="rounded-2xl bg-[#F3F8F0] p-4 space-y-1">
+            <dt className="font-bold">Marketplace listings from this phone</dt>
+            <dd>
+              Draft {localListings.draft} · Pending Sync {localListings.pending} · Sync Failed {localListings.failed} · Published {localListings.published}
+            </dd>
+            <dd className="text-sm text-[#183B2B]/75">Draft, Pending and Failed exist only on this phone. Published means the server confirmed it.</dd>
+          </div>
+          <div className="rounded-2xl bg-[#F3F8F0] p-4 space-y-1">
+            <dt className="font-bold">Expert questions from this phone</dt>
+            <dd>
+              Draft {localQuestions.draft} · Pending Sync {localQuestions.pending} · Sync Failed {localQuestions.failed} · Sent {localQuestions.published}
+            </dd>
+            <dd className="text-sm text-[#183B2B]/75">Only "Sent" questions can be seen by an expert.</dd>
+          </div>
+        </dl>
+        <Link to="/downloads" className="inline-flex items-center min-h-[48px] px-5 rounded-2xl border-2 border-[#16803C] text-[#16803C] text-base font-bold">
+          Manage items saved on this phone
+        </Link>
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Saved Advice */}
@@ -211,7 +259,7 @@ export const DemoFarmerDashboardPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-bold text-[#183B2B] flex items-center gap-2">
               <Store className="w-5 h-5 text-[#16803C]" aria-hidden="true" />
-              <span>My Marketplace Listings (Direct Calling)</span>
+              <span>Published Online: My Listings (Direct Calling)</span>
             </h2>
             <Link to="/marketplace" className="text-xs font-semibold text-[#16803C] hover:underline">
               Open Marketplace
@@ -219,7 +267,7 @@ export const DemoFarmerDashboardPage: React.FC = () => {
           </div>
           {myListings.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-xs font-bold text-[#183B2B]/70">Posted from this device:</p>
+              <p className="text-xs font-bold text-[#183B2B]/70">Published by this phone (server-confirmed):</p>
               {myListings.map((l) => (
                 <div key={l.id} className="rounded-xl bg-[#DDEFE0]/70 p-3 flex items-center justify-between text-sm">
                   <span className="font-semibold">{l.product_name} ({l.quantity} {l.unit})</span>
@@ -227,6 +275,14 @@ export const DemoFarmerDashboardPage: React.FC = () => {
                 </div>
               ))}
             </div>
+          ) : serverStatus !== 'ok' ? (
+            <p className="text-sm text-[#183B2B]/80">
+              {!isOnline
+                ? 'Your published listings cannot be loaded while offline. This is not the same as having none. Listings saved on this phone are summarised above.'
+                : serverStatus === 'error'
+                ? 'Could not load your published listings from the server. Try again later.'
+                : 'Loading your published listings…'}
+            </p>
           ) : (
             <p className="text-sm text-[#183B2B]/70">
               No listings posted from this device yet. Farmers post listings with an optional consented phone number so buyers call directly without written messages.
