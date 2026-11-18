@@ -91,7 +91,8 @@ export default defineConfig(() => {
             {
               // Matched on pathname: Workbox tests RegExp routes against the FULL URL (http://host/...),
               // so a `^/path` regex would never match same-origin requests.
-              urlPattern: ({url}: {url: URL}) => url.pathname.startsWith('/src/assets/images/'),
+              urlPattern: ({url}: {url: URL}) =>
+                url.pathname.startsWith('/src/assets/images/') || url.pathname.startsWith('/offline-img/'),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'agri-local-images',

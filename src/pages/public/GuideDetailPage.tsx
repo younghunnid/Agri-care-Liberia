@@ -15,8 +15,10 @@ import {SpeakButton} from '../../components/SpeakButton';
 import {
   getOfflineGuideByIdOrSlug,
   removeOfflineGuide,
+  optimizedImageUrl,
   saveGuideOffline,
 } from '../../lib/offlineStorage';
+import {friendlyDownloadError} from '../../lib/offlinePacks';
 import {recordRecentlyViewedGuide, saveDemoAdvice} from '../../lib/demoStorage';
 
 interface GuideDetail {
@@ -47,6 +49,7 @@ export const GuideDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [offlineSaved, setOfflineSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [readingOfflineCopy, setReadingOfflineCopy] = useState(false);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
@@ -110,30 +113,35 @@ export const GuideDetailPage: React.FC = () => {
 
   const handleToggleOffline = async () => {
     if (!guide) return;
-    if (offlineSaved) {
-      await removeOfflineGuide(guide.id);
-      setOfflineSaved(false);
-    } else {
-      await saveGuideOffline({
-        id: guide.id,
-        slug: guide.slug,
-        title: guide.title,
-        summary: guide.summary,
-        contentMarkdown: guide.contentMarkdown,
-        imageUrl: guide.imageUrl,
-        languageCode: guide.languageCode,
-        sourceAttribution: guide.sourceAttribution,
-        isSampleDemo: guide.isSampleDemo,
-        isPestDisease: guide.isPestDisease,
-        reviewStatus: guide.reviewStatus,
-        reviewedByName: guide.reviewedByName,
-        lastReviewedAt: guide.lastReviewedAt,
-        version: guide.version,
-        cropName: guide.crop.name,
-        cropSlug: guide.crop.slug,
-        categoryName: guide.category.name,
-      });
-      setOfflineSaved(true);
+    setSaveError(null);
+    try {
+      if (offlineSaved) {
+        await removeOfflineGuide(guide.id);
+        setOfflineSaved(false);
+      } else {
+        await saveGuideOffline({
+          id: guide.id,
+          slug: guide.slug,
+          title: guide.title,
+          summary: guide.summary,
+          contentMarkdown: guide.contentMarkdown,
+          imageUrl: guide.imageUrl,
+          languageCode: guide.languageCode,
+          sourceAttribution: guide.sourceAttribution,
+          isSampleDemo: guide.isSampleDemo,
+          isPestDisease: guide.isPestDisease,
+          reviewStatus: guide.reviewStatus,
+          reviewedByName: guide.reviewedByName,
+          lastReviewedAt: guide.lastReviewedAt,
+          version: guide.version,
+          cropName: guide.crop.name,
+          cropSlug: guide.crop.slug,
+          categoryName: guide.category.name,
+        });
+        setOfflineSaved(true);
+      }
+    } catch (err) {
+      setSaveError(friendlyDownloadError(err));
     }
   };
 
@@ -207,7 +215,7 @@ export const GuideDetailPage: React.FC = () => {
         {!lowBandwidth && (
           <div className="h-56 sm:h-72 bg-[#DDEFE0]">
             <SafeImage
-              src={guide.imageUrl}
+              src={(readingOfflineCopy && optimizedImageUrl(guide.imageUrl)) || guide.imageUrl}
               alt={guide.title}
               className="w-full h-full object-cover"
               fallbackTitle={guide.crop.name}
@@ -264,6 +272,11 @@ export const GuideDetailPage: React.FC = () => {
               <span>Save Advice</span>
             </button>
           </div>
+          {saveError && (
+            <p role="alert" className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-800">
+              {saveError}
+            </p>
+          )}
 
           {saveNotice && (
             <div className="rounded-xl bg-[#DDEFE0] px-4 py-2.5 text-sm font-medium text-[#183B2B]">

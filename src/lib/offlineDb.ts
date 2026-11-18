@@ -2,7 +2,8 @@
  * Minimal promise wrapper around IndexedDB for the offline-first features.
  *
  * Stores (all created in v1 so later stages do not need schema upgrades):
- *  - guides      downloaded agricultural guides            (key: id)
+ *  - guides      downloaded server guides (API)            (key: id)
+ *  - library     downloaded bundled guides (v2, string id) (key: id)
  *  - kv          small key/value metadata (sync times...)  (key: key)
  *  - syncQueue   pending write operations                  (key: opId)
  *  - drafts      offline marketplace listing drafts        (key: localId)
@@ -14,10 +15,11 @@
  */
 
 export const DB_NAME = 'agri-advisory-offline';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export const STORES = {
   guides: {keyPath: 'id'},
+  library: {keyPath: 'id'},
   kv: {keyPath: 'key'},
   syncQueue: {keyPath: 'opId'},
   drafts: {keyPath: 'localId'},

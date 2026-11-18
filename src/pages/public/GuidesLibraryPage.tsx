@@ -5,7 +5,8 @@ import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
 import {SafeImage} from '../../components/SafeImage';
 import {SpeakButton} from '../../components/SpeakButton';
-import {getOfflineGuides, isGuideDownloaded, saveGuideOffline} from '../../lib/offlineStorage';
+import {getOfflineGuides, isGuideDownloaded} from '../../lib/offlineStorage';
+import {downloadServerGuide, friendlyDownloadError} from '../../lib/offlinePacks';
 import {saveDemoAdvice} from '../../lib/demoStorage';
 import {
   COMMON_AGRICULTURAL_PROBLEMS,
@@ -62,6 +63,7 @@ export const GuidesLibraryPage: React.FC = () => {
   );
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [savedToast, setSavedToast] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<{guideId: number; message: string} | null>(null);
 
   useEffect(() => {
     if (searchParams.get('listen') === '1') {
@@ -124,48 +126,15 @@ export const GuidesLibraryPage: React.FC = () => {
 
   const handleDownloadGuide = async (guideId: number) => {
     setDownloadingId(guideId);
+    setDownloadError(null);
     try {
-      const res = await apiFetch<{
-        guide: {
-          id: number;
-          slug: string;
-          title: string;
-          summary: string;
-          contentMarkdown: string;
-          imageUrl: string;
-          languageCode: string;
-          sourceAttribution: string;
-          isSampleDemo: boolean;
-          isPestDisease: boolean;
-          reviewStatus: string;
-          reviewedByName: string | null;
-          lastReviewedAt: string | null;
-          version: number;
-          crop: {slug: string; name: string};
-          category: {name: string};
-        };
-      }>(`/guides/${guideId}?lang=${language}`);
-
-      await saveGuideOffline({
-        id: res.guide.id,
-        slug: res.guide.slug,
-        title: res.guide.title,
-        summary: res.guide.summary,
-        contentMarkdown: res.guide.contentMarkdown,
-        imageUrl: res.guide.imageUrl,
-        languageCode: res.guide.languageCode,
-        sourceAttribution: res.guide.sourceAttribution,
-        isSampleDemo: res.guide.isSampleDemo,
-        isPestDisease: res.guide.isPestDisease,
-        reviewStatus: res.guide.reviewStatus,
-        reviewedByName: res.guide.reviewedByName,
-        lastReviewedAt: res.guide.lastReviewedAt,
-        version: res.guide.version,
-        cropName: res.guide.crop.name,
-        cropSlug: res.guide.crop.slug,
-        categoryName: res.guide.category.name,
-      });
+      await downloadServerGuide(guideId, language);
       setDownloadedIds(getOfflineGuides().map((g) => g.id));
+      setSavedToast('Guide saved. You can read it without internet.');
+      setTimeout(() => setSavedToast(null), 3500);
+    } catch (err) {
+      // Nothing is half-saved: the guide is stored only after the download fully succeeds.
+      setDownloadError({guideId, message: friendlyDownloadError(err)});
     } finally {
       setDownloadingId(null);
     }
@@ -212,6 +181,7 @@ export const GuidesLibraryPage: React.FC = () => {
             Read or listen to practical farming advice across crops, livestock, poultry, aquaculture, storage, and land care.
           </p>
         </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
         <Link
           to="/offline"
           className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-white border border-[#183B2B]/15 text-sm font-semibold text-[#183B2B] hover:bg-[#DDEFE0] shrink-0"
@@ -219,11 +189,41 @@ export const GuidesLibraryPage: React.FC = () => {
           <Download className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
           <span>Offline Library ({downloadedIds.length})</span>
         </Link>
+        <Link
+          to="/offline#starter-pack"
+          className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-[#16803C] text-white text-sm font-semibold hover:bg-[#116630] shrink-0"
+        >
+          <Download className="w-4 h-4" aria-hidden="true" />
+          <span>Download Starter Pack</span>
+        </Link>
+        </div>
       </div>
 
       {savedToast && (
         <div role="status" className="rounded-2xl bg-[#DDEFE0] border border-[#16803C]/30 px-4 py-3 text-sm font-semibold text-[#183B2B]">
           {savedToast}
+        </div>
+      )}
+
+      {downloadError && (
+        <div role="alert" className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-800 flex flex-wrap items-center justify-between gap-3">
+          <span>{downloadError.message}</span>
+          <span className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => void handleDownloadGuide(downloadError.guideId)}
+              className="min-h-[40px] px-4 rounded-xl bg-red-700 text-white text-xs font-bold"
+            >
+              Try again
+            </button>
+            <button
+              type="button"
+              onClick={() => setDownloadError(null)}
+              className="min-h-[40px] px-3 rounded-xl border border-red-300 text-xs font-semibold"
+            >
+              Dismiss
+            </button>
+          </span>
         </div>
       )}
 
