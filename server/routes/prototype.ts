@@ -6,6 +6,7 @@ import {
 } from '../constants.ts';
 import {getDb} from '../db.ts';
 import {type AuthedRequest, requireRole, writeAuditLog} from '../security.ts';
+import {idempotent} from '../idempotency.ts';
 import {seedPrototypeData} from '../seedPrototype.ts';
 import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
 
@@ -130,7 +131,7 @@ prototypeRouter.post('/marketplace/listings/:id/view', (req, res) => {
   res.json({view_count: updated.view_count});
 });
 
-prototypeRouter.post('/marketplace/listings', (req: AuthedRequest, res) => {
+prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.create'), (req: AuthedRequest, res) => {
   const db = getDb();
   const {
     ownerToken,
@@ -176,6 +177,8 @@ prototypeRouter.post('/marketplace/listings', (req: AuthedRequest, res) => {
     normalizedPhone = check.normalized;
   }
   const consentFlag = phoneConsent === true || phoneConsent === 1 ? 1 : 0;
+  // Offline-synced writes (Idempotency-Key present) never store a phone number without consent.
+  if (req.get('Idempotency-Key') && consentFlag !== 1) normalizedPhone = '';
 
   if (cleanProduct.length < 2 || cleanProduct.length > 100) {
     res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'Product name must be 2 to 100 characters.'}});
@@ -271,6 +274,16 @@ prototypeRouter.patch('/marketplace/listings/:id', (req: AuthedRequest, res) => 
     return;
   }
 
+  // Optimistic concurrency for offline edits: if the client says which version it started from
+  // and the listing has changed since, refuse instead of silently overwriting.
+  const baseUpdatedAt = typeof req.body?.baseUpdatedAt === 'string' ? req.body.baseUpdatedAt : '';
+  if (baseUpdatedAt && baseUpdatedAt !== existing.updated_at) {
+    res.status(409).json({
+      error: {code: 'CONFLICT', message: 'This listing was changed online after you edited it on your phone.'},
+    });
+    return;
+  }
+
   const {
     sellerName,
     farmName,
@@ -305,6 +318,7 @@ prototypeRouter.patch('/marketplace/listings/:id', (req: AuthedRequest, res) => 
 
   const nextConsent =
     phoneConsent !== undefined ? (phoneConsent === true || phoneConsent === 1 ? 1 : 0) : null;
+  if (req.get('Idempotency-Key') && nextConsent !== 1 && nextPhone) nextPhone = '';
 
   const nextMod =
     isAdmin && ['approved', 'flagged', 'hidden'].includes(moderationStatus) ? moderationStatus : undefined;
@@ -602,7 +616,7 @@ prototypeRouter.get('/expert-requests/demo', (req, res) => {
   res.json({requests: rows});
 });
 
-prototypeRouter.post('/expert-requests/demo', (req: AuthedRequest, res) => {
+prototypeRouter.post('/expert-requests/demo', idempotent('expert.request.create'), (req: AuthedRequest, res) => {
   const db = getDb();
   const {
     requesterToken,

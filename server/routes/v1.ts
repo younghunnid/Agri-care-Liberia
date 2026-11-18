@@ -8,6 +8,7 @@ import {
 import {getDb} from '../db.ts';
 import {askAgriculturalAdvisor, isAiConfigured} from '../ai.ts';
 import {prototypeRouter} from './prototype.ts';
+import {idempotent} from '../idempotency.ts';
 import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
 import {
   type AuthedRequest,
@@ -777,7 +778,7 @@ v1Router.get('/farmer/questions', requireAuth, (req: AuthedRequest, res) => {
   res.json({questions});
 });
 
-v1Router.post('/farmer/questions', requireAuth, (req: AuthedRequest, res) => {
+v1Router.post('/farmer/questions', requireAuth, idempotent('farmer.question.create'), (req: AuthedRequest, res) => {
   const db = getDb();
   const {cropId, topic, county, title, description} = req.body ?? {};
   const cleanTopic = typeof topic === 'string' && topic.trim() ? topic.trim().slice(0, 80) : 'General Farming';

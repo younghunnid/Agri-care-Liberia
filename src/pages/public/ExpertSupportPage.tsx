@@ -15,9 +15,16 @@ import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
 import {SafeImage} from '../../components/SafeImage';
 import {SpeakButton} from '../../components/SpeakButton';
-import {compressImageFileToBase64, getDemoOwnerToken} from '../../lib/demoStorage';
+import {getDemoOwnerToken} from '../../lib/demoStorage';
+import {compressPhoto} from '../../lib/imageCompress';
+import {DraftError, queueRecord, saveQuestionDraft, validateQuestion} from '../../lib/offlineDrafts';
+import {syncSoon} from '../../lib/syncEngine';
+import {LocalQuestionsPanel} from '../../components/LocalRecordsPanels';
 import {KNOWLEDGE_CATEGORIES} from '../../data/knowledgeCenter';
 import {detectVoiceCapabilities} from '../../lib/voice';
+
+const MAX_VOICE_SECONDS = 60;
+const MAX_VOICE_DATA_URL = 2_000_000;
 
 const COUNTIES = [
   'Bomi', 'Bong', 'Gbarpolu', 'Grand Bassa', 'Grand Cape Mount',
@@ -98,7 +105,7 @@ export const ExpertSupportPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImageFileToBase64(file, 800);
+      const compressed = await compressPhoto(file);
       setPhotoDataUrl(compressed.dataUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load selected photo.');
@@ -113,17 +120,27 @@ export const ExpertSupportPage: React.FC = () => {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-      const recorder = new MediaRecorder(stream);
+      // Low bitrate keeps a one-minute note near 200 KB, small enough to store and send on mobile data.
+      const recorder = new MediaRecorder(stream, {audioBitsPerSecond: 24000});
       voiceChunksRef.current = [];
+      const autoStop = setTimeout(() => {
+        if (recorder.state === 'recording') recorder.stop();
+      }, MAX_VOICE_SECONDS * 1000);
       recorder.ondataavailable = (ev) => {
         if (ev.data.size > 0) voiceChunksRef.current.push(ev.data);
       };
       recorder.onstop = () => {
+        clearTimeout(autoStop);
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(voiceChunksRef.current, {type: 'audio/webm'});
+        setRecordingVoice(false);
+        const blob = new Blob(voiceChunksRef.current, {type: recorder.mimeType || 'audio/webm'});
         const reader = new FileReader();
         reader.onloadend = () => {
           if (typeof reader.result === 'string') {
+            if (reader.result.length > MAX_VOICE_DATA_URL) {
+              setError('That recording is too long to send. Please keep it under one minute.');
+              return;
+            }
             setVoiceNoteDataUrl(reader.result);
           }
         };
@@ -146,6 +163,31 @@ export const ExpertSupportPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
+
+    if (!isOnline) {
+      // Offline: keep the question on this phone and queue it. Nothing is sent yet.
+      const data = {farmerName, category, county, title, description, photoDataUrl, voiceNoteDataUrl, voiceNoteSummary};
+      const problem = validateQuestion(data);
+      if (problem) {
+        setError(problem);
+        return;
+      }
+      try {
+        const rec = await saveQuestionDraft(data);
+        await queueRecord('question', rec.localId);
+        syncSoon();
+        setTitle('');
+        setDescription('');
+        setPhotoDataUrl('');
+        setVoiceNoteDataUrl('');
+        setVoiceNoteSummary('');
+        setSuccessMsg('Saved on this phone. It will be sent to the expert when you are online. Expert answers need internet.');
+      } catch (err) {
+        setError(err instanceof DraftError ? err.message : 'Could not save on this phone. Free some storage and try again.');
+      }
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -268,6 +310,7 @@ export const ExpertSupportPage: React.FC = () => {
 
       {activeTab === 'submit' ? (
         <div className="space-y-6">
+          <LocalQuestionsPanel />
           <form
             onSubmit={(e) => void handleSubmitDemoRequest(e)}
             className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 sm:p-8 space-y-5"
@@ -438,13 +481,21 @@ export const ExpertSupportPage: React.FC = () => {
               </div>
             )}
 
+            {!isOnline && (
+              <p className="rounded-xl bg-[#F5B942]/25 border border-[#F5B942] px-3 py-2 text-xs sm:text-sm font-medium text-[#183B2B]">
+                You are offline. Your question will be saved <strong>on this phone</strong> and sent when the internet returns. AI answers and expert
+                replies need an internet connection; this app cannot answer questions offline. For quick help now, search your saved guides in the
+                Offline Library.
+              </p>
+            )}
+
             <button
               type="submit"
-              disabled={submitting || !isOnline}
+              disabled={submitting}
               className="inline-flex items-center gap-2 min-h-[48px] px-6 py-3 rounded-2xl bg-[#16803C] text-white text-sm font-semibold hover:bg-[#116630] disabled:opacity-50"
             >
               <Send className="w-4 h-4" aria-hidden="true" />
-              <span>{submitting ? 'Sending Request...' : 'Send to Agricultural Expert'}</span>
+              <span>{submitting ? 'Sending Request...' : isOnline ? 'Send to Agricultural Expert' : 'Save & Send When Online'}</span>
             </button>
           </form>
 

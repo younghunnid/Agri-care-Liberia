@@ -23,6 +23,7 @@ import {
 } from '../../lib/offlineStorage';
 import {PWAInstallButton} from '../../components/PWAInstallButton';
 import {StarterPackCard} from '../../components/StarterPackCard';
+import {SyncBar} from '../../components/SyncStatus';
 import {
   formatDate,
   getCachedImageBytes,
@@ -265,6 +266,18 @@ export const OfflineLibraryPage: React.FC = () => {
           {errorMessage}
         </div>
       )}
+
+      <section aria-labelledby="sync-title" className="space-y-2">
+        <h2 id="sync-title" className="font-display text-xl font-bold text-[#183B2B]">
+          Synchronization
+        </h2>
+        <p className="text-xs text-[#183B2B]/75">
+          Listings and questions you save while offline are kept on this phone and sent when you reconnect. See them under{' '}
+          <Link to="/marketplace" className="font-semibold text-[#16803C] underline">Marketplace</Link> and{' '}
+          <Link to="/experts" className="font-semibold text-[#16803C] underline">Expert Support</Link>.
+        </p>
+        <SyncBar />
+      </section>
 
       <StarterPackCard />
 

@@ -1,4 +1,5 @@
 import {PwaUpdatePrompt} from './PwaUpdatePrompt';
+import {SyncBanner} from './SyncStatus';
 import React, {useState} from 'react';
 import {Link, NavLink, useLocation, useNavigate} from 'react-router-dom';
 import {
@@ -252,6 +253,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
         </div>
       )}
 
+      <SyncBanner />
       <PwaUpdatePrompt />
 
       {/* Main Content */}

@@ -3,12 +3,14 @@ import App from './App.tsx';
 import './index.css';
 import {initOfflineStorage} from './lib/offlineStorage';
 import {initOfflineLibrary} from './lib/offlineLibrary';
+import {initDrafts} from './lib/offlineDrafts';
+import {startAutoSync} from './lib/syncEngine';
 import {initPwa} from './lib/pwaUpdate';
 
 // Hydrate offline storage (IndexedDB) before the first render so synchronous
 // readers see downloaded guides immediately, even when the device is offline.
 // A failure here must never block the app from starting.
-Promise.all([initOfflineStorage(), initOfflineLibrary()])
+Promise.all([initOfflineStorage(), initOfflineLibrary(), initDrafts()])
   .catch(() => undefined)
   .finally(() => {
     createRoot(document.getElementById('root')!).render(<App />);
@@ -16,3 +18,4 @@ Promise.all([initOfflineStorage(), initOfflineLibrary()])
 
 // Service worker registration (no-op in the dev server; active in production builds).
 initPwa();
+startAutoSync();

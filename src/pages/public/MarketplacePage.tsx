@@ -27,7 +27,19 @@ import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
 import {SafeImage} from '../../components/SafeImage';
 import {SpeakButton} from '../../components/SpeakButton';
-import {compressImageFileToBase64, getDemoOwnerToken} from '../../lib/demoStorage';
+import {getDemoOwnerToken} from '../../lib/demoStorage';
+import {compressPhoto} from '../../lib/imageCompress';
+import {LIBERIA_COUNTIES, MARKETPLACE_CATEGORIES, MARKETPLACE_UNITS} from '../../../server/constants';
+import {
+  DraftError,
+  queueRecord,
+  saveListingDraft,
+  validateListing,
+  type ListingData,
+  type ListingRecord,
+} from '../../lib/offlineDrafts';
+import {syncSoon} from '../../lib/syncEngine';
+import {LocalListingsPanel} from '../../components/LocalRecordsPanels';
 import {normalizeLiberianPhone} from '../../lib/phone';
 
 export interface MarketplaceListing {
@@ -99,9 +111,9 @@ export const MarketplacePage: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<'all' | 'farmer' | 'supplier' | 'mine'>('all');
 
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [units, setUnits] = useState<string[]>([]);
-  const [counties, setCounties] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([...MARKETPLACE_CATEGORIES]);
+  const [units, setUnits] = useState<string[]>([...MARKETPLACE_UNITS]);
+  const [counties, setCounties] = useState<string[]>([...LIBERIA_COUNTIES]);
   const [availabilityOptions, setAvailabilityOptions] = useState<string[]>([
     'Available',
     'Limited Stock',
@@ -128,6 +140,7 @@ export const MarketplacePage: React.FC = () => {
   // Farmer / Supplier listing creation & editing form
   const [sellerType, setSellerType] = useState<'farmer' | 'supplier'>('farmer');
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingLocalId, setEditingLocalId] = useState<string | null>(null);
   const [sellerName, setSellerName] = useState(user?.displayName || '');
   const [farmName, setFarmName] = useState('');
   const [category, setCategory] = useState('Rice and grains');
@@ -278,15 +291,17 @@ export const MarketplacePage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImageFileToBase64(file, 800);
+      // Shrunk to roughly 100 KB so it saves quickly and uses little mobile data.
+      const compressed = await compressPhoto(file);
       setImageUrl(compressed.dataUrl);
-    } catch {
-      setPostError('Could not load selected image.');
+    } catch (err) {
+      setPostError(err instanceof Error ? err.message : 'Could not load selected image.');
     }
   };
 
   const resetForm = () => {
     setEditingId(null);
+    setEditingLocalId(null);
     setFarmName('');
     setProductName('');
     setTown('');
@@ -338,8 +353,93 @@ export const MarketplacePage: React.FC = () => {
     }
   };
 
+  const currentListingData = (): ListingData => ({
+    sellerType,
+    sellerName: sellerName || 'Liberia Farmer',
+    farmName,
+    category,
+    productName,
+    quantity,
+    unit,
+    priceLrd,
+    county,
+    town,
+    availabilityStatus,
+    description,
+    photoDataUrl: imageUrl,
+    sellerPhone,
+    phoneConsent,
+  });
+
+  /** Saves the form on this phone (IndexedDB). `queue` also marks it Pending Sync. */
+  const handleSaveOnPhone = async (queue: boolean) => {
+    setPostError(null);
+    setPostSuccess(null);
+    const data = currentListingData();
+    const problem = validateListing(data);
+    if (problem) {
+      setPostError(problem);
+      return;
+    }
+    setPosting(true);
+    try {
+      const rec = await saveListingDraft(data, editingLocalId ?? undefined);
+      if (queue) {
+        await queueRecord('listing', rec.localId);
+        syncSoon();
+      }
+      setPostSuccess(
+        queue
+          ? 'Saved on this phone. It will be sent when you are online and will show as Published only after the server confirms it.'
+          : 'Draft saved on this phone. It is not on the marketplace.'
+      );
+      resetForm();
+      setViewMode('browse');
+    } catch (err) {
+      setPostError(
+        err instanceof DraftError
+          ? err.message
+          : 'Could not save on this phone. Free some storage and try again.'
+      );
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const handleEditLocal = (rec: ListingRecord) => {
+    const d = rec.data;
+    setEditingId(null);
+    setEditingLocalId(rec.localId);
+    setSellerType(d.sellerType);
+    setSellerName(d.sellerName);
+    setFarmName(d.farmName);
+    setCategory(d.category);
+    setProductName(d.productName);
+    setQuantity(d.quantity);
+    setUnit(d.unit);
+    setPriceLrd(d.priceLrd);
+    setAvailabilityStatus(d.availabilityStatus);
+    setCounty(d.county);
+    setTown(d.town);
+    setDescription(d.description);
+    setSellerPhone(d.sellerPhone);
+    setPhoneConsent(d.phoneConsent);
+    setImageUrl(d.photoDataUrl || PRESET_IMAGES[0].url);
+    setPostError(null);
+    setViewMode('sell');
+  };
+
   const handleSaveListing = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editingId && !isOnline) {
+      setPostError('Changing a listing that is already online needs internet. Reconnect, or make a new draft on this phone.');
+      return;
+    }
+    if (!isOnline || editingLocalId) {
+      // Offline (or editing something already kept on the phone): never publish directly.
+      await handleSaveOnPhone(true);
+      return;
+    }
     setPostError(null);
     setPostSuccess(null);
 
@@ -598,6 +698,15 @@ export const MarketplacePage: React.FC = () => {
         <div role="status" className="rounded-2xl bg-[#DDEFE0] border border-[#16803C]/30 p-3.5 text-sm font-semibold text-[#183B2B] flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
           <span>{postSuccess}</span>
+        </div>
+      )}
+
+      <LocalListingsPanel onEdit={handleEditLocal} />
+
+      {!isOnline && viewMode === 'browse' && (
+        <div className="rounded-2xl bg-[#F5B942]/25 border border-[#F5B942] p-4 text-sm font-medium text-[#183B2B]">
+          Live listings need internet. You can still prepare a listing to sell: tap <strong>Sell</strong>, fill the form, and it will be sent when you are
+          back online.
         </div>
       )}
 
@@ -865,7 +974,7 @@ export const MarketplacePage: React.FC = () => {
           <div className="border-b border-[#183B2B]/10 pb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-xl font-bold text-[#183B2B]">
-                {editingId ? 'Edit Your Marketplace Listing' : 'Post a Produce or Supplier Listing'}
+                {editingId ? 'Edit Your Marketplace Listing' : editingLocalId ? 'Edit Your Saved Listing' : 'Post a Produce or Supplier Listing'}
               </h2>
               <p className="text-xs text-[#183B2B]/75 mt-1">
                 Buyers call farmers directly by phone—no reading or replying to written inquiries required.
@@ -1159,13 +1268,42 @@ export const MarketplacePage: React.FC = () => {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={posting || !isOnline}
-            className="min-h-[48px] px-6 py-3 rounded-2xl bg-[#16803C] text-white text-sm font-bold hover:bg-[#116630] disabled:opacity-50"
-          >
-            {posting ? 'Saving Listing...' : editingId ? 'Save Changes' : 'Publish Listing'}
-          </button>
+          {!isOnline && (
+            <p className="rounded-xl bg-[#F5B942]/25 border border-[#F5B942] px-3 py-2 text-xs sm:text-sm font-medium text-[#183B2B]">
+              You are offline. Your listing will be saved <strong>on this phone</strong> and sent when the internet returns. It is not
+              public until the server confirms it. A phone number is only saved and sent if you tick the consent box.
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              disabled={posting}
+              className="min-h-[48px] px-6 py-3 rounded-2xl bg-[#16803C] text-white text-sm font-bold hover:bg-[#116630] disabled:opacity-50"
+            >
+              {posting
+                ? 'Saving Listing...'
+                : editingLocalId
+                ? isOnline
+                  ? 'Save & Send'
+                  : 'Save & Sync When Online'
+                : !isOnline
+                ? 'Save & Sync When Online'
+                : editingId
+                ? 'Save Changes'
+                : 'Publish Listing'}
+            </button>
+            {!editingId && (
+              <button
+                type="button"
+                disabled={posting}
+                onClick={() => void handleSaveOnPhone(false)}
+                className="min-h-[48px] px-5 py-3 rounded-2xl border border-[#183B2B]/25 text-[#183B2B] text-sm font-bold bg-white disabled:opacity-50"
+              >
+                Save Draft on Phone
+              </button>
+            )}
+          </div>
         </form>
       )}
 

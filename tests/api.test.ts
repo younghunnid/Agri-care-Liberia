@@ -47,10 +47,10 @@ class CookieJar {
 async function req(
   jar: CookieJar,
   urlPath: string,
-  opts: {method?: string; body?: unknown; skipCsrf?: boolean} = {}
+  opts: {method?: string; body?: unknown; skipCsrf?: boolean; headers?: Record<string, string>} = {}
 ) {
   const method = opts.method || 'GET';
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {...(opts.headers || {})};
   const cookieHeader = jar.headerValue();
   if (cookieHeader) headers['Cookie'] = cookieHeader;
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
@@ -703,3 +703,152 @@ test('14. HTTPS preview proxy headers issue single SameSite=None Secure Partitio
 });
 
 
+
+const listingBody = (token: string, extra: Record<string, unknown> = {}) => ({
+  ownerToken: token,
+  sellerName: 'Offline Farmer',
+  category: 'Rice and grains',
+  productName: 'Offline Rice',
+  quantity: '10',
+  unit: '50kg bag',
+  priceLrd: 7000,
+  county: 'Bong',
+  town: 'Gbarnga',
+  availabilityStatus: 'Available',
+  ...extra,
+});
+
+test('15. Idempotent listing sync: repeated key creates one listing and replays the response', async () => {
+  const jar = new CookieJar();
+  const key = 'op-test-listing-0001';
+  const body = listingBody('tok-sync-1');
+  const first = await req(jar, '/api/v1/marketplace/listings', {method: 'POST', body, headers: {'Idempotency-Key': key}});
+  assert.equal(first.status, 201);
+  assert.equal(first.data.replayed, undefined);
+  const second = await req(jar, '/api/v1/marketplace/listings', {method: 'POST', body, headers: {'Idempotency-Key': key}});
+  assert.equal(second.status, 201);
+  assert.equal(second.data.replayed, true);
+  assert.equal(second.data.listing.id, first.data.listing.id);
+
+  const list = await req(jar, '/api/v1/marketplace/listings?q=Offline%20Rice');
+  const mine = list.data.listings.filter((l: {owner_token: string}) => l.owner_token === 'tok-sync-1');
+  assert.equal(mine.length, 1);
+
+  // A different key is a different operation; keys are scoped per actor.
+  const other = await req(jar, '/api/v1/marketplace/listings', {method: 'POST', body, headers: {'Idempotency-Key': 'op-test-listing-0002'}});
+  assert.notEqual(other.data.listing.id, first.data.listing.id);
+  const otherActor = await req(jar, '/api/v1/marketplace/listings', {
+    method: 'POST',
+    body: listingBody('tok-sync-2'),
+    headers: {'Idempotency-Key': key},
+  });
+  assert.notEqual(otherActor.data.listing.id, first.data.listing.id);
+});
+
+test('16. Idempotency: invalid keys are rejected, failures are not cached, key cannot change request type', async () => {
+  const jar = new CookieJar();
+  const bad = await req(jar, '/api/v1/marketplace/listings', {method: 'POST', body: listingBody('t3'), headers: {'Idempotency-Key': 'x'}});
+  assert.equal(bad.status, 400);
+
+  const key = 'op-test-fail-then-fix-1';
+  const invalid = await req(jar, '/api/v1/marketplace/listings', {
+    method: 'POST',
+    body: listingBody('t3', {priceLrd: -5}),
+    headers: {'Idempotency-Key': key},
+  });
+  assert.equal(invalid.status, 400);
+  const fixed = await req(jar, '/api/v1/marketplace/listings', {method: 'POST', body: listingBody('t3'), headers: {'Idempotency-Key': key}});
+  assert.equal(fixed.status, 201);
+
+  const reuse = await req(jar, '/api/v1/expert-requests/demo', {
+    method: 'POST',
+    body: {requesterToken: 't3', title: 'Leaf spots', description: 'Brown spots on cassava leaves'},
+    headers: {'Idempotency-Key': key},
+  });
+  assert.equal(reuse.status, 422);
+});
+
+test('17. Synced listings never store or expose a phone number without consent', async () => {
+  const jar = new CookieJar();
+  const noConsent = await req(jar, '/api/v1/marketplace/listings', {
+    method: 'POST',
+    body: listingBody('t4', {sellerPhone: '0771234567', phoneConsent: false}),
+    headers: {'Idempotency-Key': 'op-test-phone-0001'},
+  });
+  assert.equal(noConsent.status, 201);
+  assert.equal(noConsent.data.listing.seller_phone, '');
+  const db = getDb();
+  const row = db.prepare('SELECT seller_phone, phone_consent FROM marketplace_listings WHERE id = ?').get(noConsent.data.listing.id) as {
+    seller_phone: string;
+    phone_consent: number;
+  };
+  assert.equal(row.seller_phone, '');
+  assert.equal(row.phone_consent, 0);
+
+  const withConsent = await req(jar, '/api/v1/marketplace/listings', {
+    method: 'POST',
+    body: listingBody('t4', {sellerPhone: '0771234567', phoneConsent: true}),
+    headers: {'Idempotency-Key': 'op-test-phone-0002'},
+  });
+  assert.equal(withConsent.status, 201);
+  const anon = new CookieJar();
+  const pub = await req(anon, '/api/v1/marketplace/listings?q=Offline%20Rice');
+  const found = pub.data.listings.find((l: {id: number}) => l.id === withConsent.data.listing.id);
+  assert.ok(found.seller_phone.length > 0);
+});
+
+test('18. Offline edit sync enforces ownership and detects conflicts', async () => {
+  const jar = new CookieJar();
+  const created = await req(jar, '/api/v1/marketplace/listings', {
+    method: 'POST',
+    body: listingBody('owner-A'),
+    headers: {'Idempotency-Key': 'op-test-edit-0001'},
+  });
+  const {id, updated_at: updatedAt} = created.data.listing;
+
+  const stranger = await req(jar, `/api/v1/marketplace/listings/${id}`, {
+    method: 'PATCH',
+    body: {ownerToken: 'someone-else', priceLrd: 1},
+  });
+  assert.equal(stranger.status, 403);
+
+  const ok = await req(jar, `/api/v1/marketplace/listings/${id}`, {
+    method: 'PATCH',
+    body: {ownerToken: 'owner-A', priceLrd: 8000, baseUpdatedAt: updatedAt},
+  });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.data.listing.price_lrd, 8000);
+
+  const getDbRow = getDb();
+  getDbRow.prepare("UPDATE marketplace_listings SET updated_at = '2000-01-01 00:00:00' WHERE id = ?").run(id);
+  const conflict = await req(jar, `/api/v1/marketplace/listings/${id}`, {
+    method: 'PATCH',
+    body: {ownerToken: 'owner-A', priceLrd: 9000, baseUpdatedAt: updatedAt},
+  });
+  assert.equal(conflict.status, 409);
+  assert.equal(conflict.data.error.code, 'CONFLICT');
+  const row = getDbRow.prepare('SELECT price_lrd FROM marketplace_listings WHERE id = ?').get(id) as {price_lrd: number};
+  assert.equal(row.price_lrd, 8000);
+});
+
+test('19. Idempotent expert question sync creates one request and keeps the photo/voice fields', async () => {
+  const jar = new CookieJar();
+  const key = 'op-test-question-001';
+  const body = {
+    requesterToken: 'tok-q-1',
+    farmerName: 'Offline Farmer',
+    category: 'Soil fertility and land preparation',
+    county: 'Lofa',
+    title: 'Yellow cassava leaves',
+    description: 'Leaves turn yellow from the bottom, written while offline.',
+    voiceNoteDataUrl: 'data:audio/webm;base64,AAAA',
+  };
+  const a = await req(jar, '/api/v1/expert-requests/demo', {method: 'POST', body, headers: {'Idempotency-Key': key}});
+  const b = await req(jar, '/api/v1/expert-requests/demo', {method: 'POST', body, headers: {'Idempotency-Key': key}});
+  assert.equal(a.status, 201);
+  assert.equal(b.data.replayed, true);
+  assert.equal(b.data.request.id, a.data.request.id);
+  const count = getDb().prepare('SELECT COUNT(*) AS c FROM demo_expert_requests WHERE requester_token = ?').get('tok-q-1') as {c: number};
+  assert.equal(count.c, 1);
+  assert.ok(a.data.request.voice_note_data_url.startsWith('data:audio/'));
+});
