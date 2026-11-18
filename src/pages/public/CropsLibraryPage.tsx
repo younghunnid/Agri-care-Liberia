@@ -16,6 +16,7 @@ import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
 import {SafeImage} from '../../components/SafeImage';
 import {SpeakButton} from '../../components/SpeakButton';
+import {ListenOfflineSection} from '../../components/AudioLessonCard';
 import {CROPS_LIBRARY, type CropGuideEntry} from '../../data/cropsLibrary';
 import {recordRecentlyViewedGuide, saveDemoAdvice} from '../../lib/demoStorage';
 
@@ -131,6 +132,8 @@ export const CropsLibraryPage: React.FC = () => {
             {savedToast}
           </div>
         )}
+
+        <ListenOfflineSection guideId={`crop:${selectedCrop.slug}`} />
 
         <article className="rounded-3xl bg-white border border-[#183B2B]/10 overflow-hidden">
           {!lowBandwidth && (

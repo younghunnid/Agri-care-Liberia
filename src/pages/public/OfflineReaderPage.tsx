@@ -14,6 +14,7 @@ import {
   subscribeLibrary,
   type LibraryEntry,
 } from '../../lib/offlineLibrary';
+import {ListenOfflineSection} from '../../components/AudioLessonCard';
 import {downloadBundledEntry, friendlyDownloadError} from '../../lib/offlinePacks';
 
 /** Reads a guide from the offline library. Works with no network and no backend. */
@@ -147,6 +148,8 @@ export const OfflineReaderPage: React.FC = () => {
               )}
             </section>
           ))}
+
+          <ListenOfflineSection guideId={entry.id} />
 
           {entry.safetyNotice && (
             <aside

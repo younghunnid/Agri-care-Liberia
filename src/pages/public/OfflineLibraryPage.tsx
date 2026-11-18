@@ -23,6 +23,8 @@ import {
 } from '../../lib/offlineStorage';
 import {PWAInstallButton} from '../../components/PWAInstallButton';
 import {StarterPackCard} from '../../components/StarterPackCard';
+import {OfflineAudioManager} from '../../components/AudioLessonCard';
+import {useAudioStore, formatAudioSize} from '../../lib/audioStore';
 import {SyncBar} from '../../components/SyncStatus';
 import {
   formatDate,
@@ -65,8 +67,9 @@ export const OfflineLibraryPage: React.FC = () => {
     void getCachedImageBytes().then((m) => setImageBytes(Object.values(m).reduce((a, b) => a + b, 0)));
   }, [libVersion, guides.length]);
 
+  const {totalBytes: audioBytes} = useAudioStore();
   const libraryBytes = libEntries.reduce((n, e) => n + e.sizeBytes, 0);
-  const totalBytes = bytesUsed + libraryBytes + imageBytes;
+  const totalBytes = bytesUsed + libraryBytes + imageBytes + audioBytes;
 
   // Scroll to the Starter Pack when arriving from /offline#starter-pack.
   useEffect(() => {
@@ -280,6 +283,8 @@ export const OfflineLibraryPage: React.FC = () => {
       </section>
 
       <StarterPackCard />
+
+      <OfflineAudioManager />
 
       {/* Search saved guides (works offline) */}
       <section aria-labelledby="offline-search-title" className="space-y-3">
