@@ -18,6 +18,7 @@ import {
 import {apiFetch, ApiRequestError} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
 import {SpeakButton} from '../../components/SpeakButton';
+import {OfflineGuideAssistant} from '../../components/OfflineGuideAssistant';
 import {detectVoiceCapabilities, startSpeechRecognition} from '../../lib/voice';
 import {compressImageFileToBase64, saveDemoAdvice} from '../../lib/demoStorage';
 
@@ -348,7 +349,7 @@ export const AdvisorPage: React.FC = () => {
           <div className="text-sm space-y-1">
             <p className="font-bold text-[#183B2B]">Live AI Advisor is unavailable offline</p>
             <p className="text-[#183B2B]/85">
-              Reconnect to ask the AI Advisor, or open your{' '}
+              Reconnect to ask the AI Advisor. Meanwhile, use the <strong>Offline Guide Assistant</strong> below, or open your{' '}
               <Link to="/offline" className="underline font-semibold">
                 Offline Library
               </Link>{' '}
@@ -357,6 +358,9 @@ export const AdvisorPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Offline: the live AI composer cannot work, so offer the local guide search instead. */}
+      {!isOnline && <OfflineGuideAssistant />}
 
       {/* CONVERSATION THREAD */}
       {turns.length > 0 && (
@@ -508,7 +512,8 @@ export const AdvisorPage: React.FC = () => {
         </div>
       )}
 
-      {/* QUESTION COMPOSER */}
+      {/* QUESTION COMPOSER (live AI; online only) */}
+      {isOnline && (
       <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-5 sm:p-7 space-y-5 shadow-xs">
         {/* Topic Selector */}
         <div className="space-y-2">
@@ -735,6 +740,7 @@ export const AdvisorPage: React.FC = () => {
           </div>
         </form>
       </div>
+      )}
 
       {/* Signed-in Farmer Chat History */}
       {user && history.length > 0 && (
