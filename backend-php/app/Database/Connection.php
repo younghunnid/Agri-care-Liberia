@@ -21,6 +21,7 @@ final class Connection
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
             PDO::ATTR_STRINGIFY_FETCHES => false,
+            PDO::ATTR_TIMEOUT => 5,
         ]);
         $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
         $pdo->exec("SET time_zone = '+00:00'");

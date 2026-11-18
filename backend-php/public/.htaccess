@@ -1,0 +1,39 @@
+# Deployed as public_html/api/.htaccess  (also valid at any other directory depth: substitutions are relative to this directory)
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+AcceptPathInfo Off
+ServerSignature Off
+
+<IfModule mod_headers.c>
+  # httpoxy: never let a client "Proxy:" header reach PHP as HTTP_PROXY
+  RequestHeader unset Proxy early
+  # Apache-level responses (static 404/403/500) still carry the basics
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Cache-Control "no-store"
+</IfModule>
+
+# Never serve dotfiles (.env, .htaccess, .user.ini) or anything but the front controller and the static error body
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+<FilesMatch "\.(?!json$|php$)[A-Za-z0-9]+$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # keep the Authorization header available to PHP under CGI/FastCGI
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+  # the static JSON error body is the only file served directly
+  RewriteRule ^error\.json$ - [L]
+  # everything else is handled by the front controller (a real file other than index.php is NOT served)
+  RewriteRule ^index\.php$ - [L]
+  RewriteRule ^ index.php [L]
+</IfModule>
+
+ErrorDocument 500 /api/error.json
+ErrorDocument 403 /api/error.json
+<Files "error.json">
+  ForceType application/json
+</Files>

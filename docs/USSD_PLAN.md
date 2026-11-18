@@ -1,5 +1,17 @@
 # USSD channel — architecture and implementation plan (Milestone M11)
 
+## Approved decisions (U1–U6) — architecture only; implementation NOT authorized
+| ID | Decision (owner-approved) | Consequences recorded in this plan |
+|---|---|---|
+| **U1** | Use **one aggregator** capable of supporting **both MTN Liberia and Orange Liberia**. Prefer **one shared USSD short code**, subject to telecom approval. | Adapter layer targets the aggregator's single specification first (one adapter profile); the per-operator adapters in §2 become *operator profiles* of that aggregator (differences in prefixes, codes, limits), not separate integrations. No code is assumed or registered; a per-operator code remains a fallback if approval is not granted. |
+| **U2** | Support **short free-text expert questions** in USSD v1, subject to **gateway input limits, abuse protection and session constraints**. | Max length = min(gateway limit, 160); category first; per-phone daily cap; content filters/rate limits (§4); question confirmation by reference; if the gateway cannot carry free text the feature degrades to category-only + callback/SMS invitation. |
+| **U3** | **Consent-based phone-only farmer accounts.** Do not require a smartphone, internet connection or an existing web account. Plan appropriate verification and consent mechanisms. | See §2a below. |
+| **U4** | Implement USSD **administration through React pages**, but **only in a separately approved future milestone**. | §7 admin API remains planned; no React change until that milestone is approved (decision U4 closed). |
+| **U5** | **Launch with English.** Add Liberian languages **only after qualified human review** of the translations. | Only `reviewed` translations are ever served; language menu shows languages that have a recorded reviewer sign-off; English is the fallback. |
+| **U6** | **Data minimisation**, configurable retention periods, scheduled deletion and documented privacy protections. Retention defaults are *proposed* for later approval — none is approved. | See §4a below. |
+
+> M3 (PHP application foundation) is a prerequisite and deliberately contains **no** USSD endpoints, tables, adapters, menus, simulator, SMS sending or admin pages.
+
 Status: **plan for review. Nothing implemented, no telecom service contacted or activated.** No USSD code is registered or assumed: wherever this document shows a code it is the placeholder `*SHORTCODE#`, supplied later through configuration. The React frontend, IndexedDB/PWA and the Node/SQLite reference are not changed by this plan. M2 (database migration) is independent; USSD tables arrive in a later, separate migration (`002_ussd.sql`), never by editing `001_schema.sql`.
 
 ## 1. Confirmed requirements
@@ -22,6 +34,14 @@ MTN Liberia and Orange Liberia; **one shared short code on both networks, subjec
 * **Content is never duplicated.** Menus are navigation only; leaf text is read from `agricultural_guides` / `guide_translations` through the same `ContentService` the REST API uses (M5), via a *USSD summary* projection (first N characters of the summary, not the full markdown). A guide is shown only if `is_published = 1 AND review_status = 'approved'`, exactly like the web.
 * **Expert questions** reuse `advisory_questions`/`advisory_messages`; the USSD channel adds `channel='ussd'`. Because `advisory_questions.farmer_id` is NOT NULL, a farmer who asks a question is linked to a `users` row (existing account matched by phone, or a minimal phone-only farmer account created **after explicit consent in-session**, status `active`, unusable random password, no login until they set one through the web). See decision U3.
 * **Hostinger fit.** Plain PHP request/response; no daemon. Session state in MySQL (no Redis). SMS dispatch and cleanup by cron (`bin/ussd-cron.php`). Latency budget: operators typically cut a USSD session after a few seconds without reply, so each request must finish in well under that: indexed queries only, no outbound HTTP inside the request path, no AI calls in USSD v1.
+
+## 2a. Consent-based phone-only farmer accounts (U3) — proposed mechanics
+* **No prerequisites:** a farmer on a basic phone can register entirely through USSD; no smartphone, data connection or web account is needed. A farmer who *already* has a web account is matched by phone number and the USSD identity is linked to it only after the verification step below.
+* **Consent screen (before anything is stored):** plain-language, ≤ 160 chars per screen, in the farmer's selected language: what is stored (phone number, county, language, questions), why, that SMS replies may be sent, how to withdraw (dial → "My data" → "Delete my data") and whom to contact. Options *1 Agree / 2 No thanks*. Declining still allows anonymous browsing of public advice with nothing stored except a short-lived hashed session.
+* **Verification:** the network supplies the MSISDN, which is strong evidence the caller controls the SIM, but it can be spoofed if the callback channel is compromised. Verification is therefore layered: (1) authenticated aggregator callback (§4); (2) **SMS one-time code before the first SMS is ever sent to a new number** and before linking to an existing web account (blocked until an SMS provider exists — until then the account stays *USSD-only* and cannot be linked); (3) optional 4-digit USSD PIN chosen by the farmer for sensitive actions (view/delete my data), stored hashed with a pepper and rate-limited.
+* **Account shape:** a minimal `users` row (role `farmer`, status `active`, random unusable `password_hash`, no email) plus a `ussd_contacts` consent record (consent text version, timestamp, language, SMS consent flag). Web login is impossible until the farmer sets a password through a verified path.
+* **Rights:** withdraw consent / delete data from the USSD menu at any time; deletion removes the contact record and anonymises the user and question rows according to §4a.
+* **Open item for legal review:** consent wording and lawful basis under Liberian law and the aggregator's terms.
 
 ## 3. Menu design (consistent across operators)
 Rules: ≤ 160 characters per screen (configurable `USSD_MAX_CHARS`, default 160, with a safety margin), GSM-7 characters only in v1 (accented/local-script characters force UCS-2 and halve the limit, so local-language strings are linted for it), numbered options `1–7` per page, **`0` Back, `00` Home, `99` Next page** on paginated lists, one language chosen once and remembered per phone (hashed key), invalid input re-shows the same screen once then ends politely.
@@ -47,6 +67,20 @@ Pagination is computed server-side from the current state (`page`, `cursor`) so 
 * **Content-injection safety:** user free text is stored as plain text, length-capped, control characters stripped; never executed or interpolated into SQL (prepared statements) or into menu templates.
 * **Simulator is not a production surface:** its routes and signing key exist only when `APP_ENV` is `test` or `development` (same guard as the demo seeds).
 * **Short code and callbacks:** nothing in the repository contains a real code, operator credential or callback secret; they are environment configuration.
+
+## 4a. Data minimisation and retention (U6) — PROPOSED defaults, not approved
+Principles: collect only the MSISDN (hashed for lookups; encrypted only where SMS needs it), selected language, county (optional) and the question text; no names or location are requested over USSD; no raw MSISDN in logs, sessions or rate-limit keys; question text is treated as potentially personal; everything below is a **configuration value** (`platform_settings` / environment), enforced by a scheduled purge job (`bin/ussd-cron.php`, Hostinger cron) that writes an audit summary (counts only).
+| Data | Proposed default (needs owner approval) | Mechanism |
+|---|---|---|
+| USSD session state | 24 hours after last activity | purge job |
+| Request/replay log | 7 days | purge job |
+| Rate-limit counters | 2 days | purge job (existing) |
+| Raw callback payload copies | not stored | — |
+| SMS outbox rows (content) | 30 days after delivery/failure, then body blanked, metadata 90 days | purge job |
+| Consent record + encrypted MSISDN | until withdrawal, or 12 months without activity (then deleted after an SMS/USSD reminder where possible) | purge job + user-initiated delete |
+| Expert questions/answers from phone-only accounts | 24 months, then de-identified (user link removed) | purge job |
+| Audit entries about USSD | 12 months (hashes only) | purge job |
+Documented protections: encryption key and pepper outside the repository and the web root, key rotation procedure, least-privilege DB user, masked display in admin screens, access logging for any admin view of a number, breach-response contact, and a data-protection impact note kept with this plan.
 
 ## 5. Database requirements (migration `002_ussd.sql`, planned; same portability rules as M2: `DATETIME(3)` UTC, `utf8mb4_unicode_ci`, no `ON UPDATE`, JSON as `LONGTEXT`+CHECK)
 | Table | Purpose / key columns |
@@ -116,12 +150,12 @@ Depends on: M2 (schema runner), M3 (PHP core), M5 (content read services), M6 (e
 ## 14. Decisions requested
 | ID | Question | Recommendation |
 |---|---|---|
-| U1 | Direct operator integrations or one aggregator serving both networks? | Ask both; adapter design supports either |
-| U2 | Free-text expert questions on USSD (≤160 chars) in v1? | Yes, with daily cap and category first |
-| U3 | Create phone-only farmer accounts after in-session consent, or require an existing web account? | Consent-based phone-only accounts |
-| U4 | Admin UI: new React pages (needs approval to change the frontend) or isolated server-rendered page? | New React admin pages, in a separate approved change |
-| U5 | v1 local-language scope: which of Bassa, Kpelle, Mano, Liberian English, and who reviews each? | Only languages with a named reviewer; English always |
-| U6 | Retention: session 24 h, request log 7 days, consent record until withdrawn or 12 months idle? | Yes |
+| U1 | ~~Direct operator integrations or one aggregator?~~ **Approved: one aggregator for both networks** | closed |
+| U2 | **Approved:** short free-text questions in v1 (subject to gateway limits, abuse protection) | closed |
+| U3 | **Approved:** consent-based phone-only accounts | closed (mechanics in §2a) |
+| U4 | **Approved:** React admin pages in a separately approved future milestone | closed |
+| U5 | **Approved:** launch with English; add languages only after qualified human review | closed |
+| U6 | **Approved:** minimisation + configurable retention + scheduled deletion; **default durations in §4a are proposals awaiting approval** | open (durations only) |
 
 ## 15. Risks
 R1 Hostinger shared hosting may not offer a fixed IP, IP allowlisting or the uptime an operator demands → may need an upgrade or intermediary. R2 Operator timeouts vs shared-hosting latency. R3 Operators may not provision one identical short code on both networks → per-operator codes behind the same app (design already supports). R4 Character-set limits make faithful local-language rendering hard → GSM-7 lint, transliteration guidance, reviewed strings only. R5 Phone numbers are personal data → hashing/encryption/retention design above. R6 Scope creep into AI answers via USSD → excluded from v1 (latency and unverified model). R7 Specs unknown until operators respond → adapters are configuration-driven and proved with the simulator first.

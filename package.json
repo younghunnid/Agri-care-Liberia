@@ -16,7 +16,9 @@
     "test:harness": "tsx tests/contract/normalize.test.ts",
     "test:contract": "tsx tests/contract/run.ts",
     "test:contract:update": "tsx tests/contract/run.ts --update",
-    "test:offline": "tsx tests/offlineAdvisor.test.ts && tsx tests/dataCache.test.ts && tsx tests/offlineInventory.test.ts"
+    "test:offline": "tsx tests/offlineAdvisor.test.ts && tsx tests/dataCache.test.ts && tsx tests/offlineInventory.test.ts",
+    "test:m3": "tsx --test tests/m3/run.ts",
+    "test:m3:unit": "php backend-php/tests/m3_unit.php"
   },
   "dependencies": {
     "@google/genai": "^3.4.0",
