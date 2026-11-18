@@ -5,7 +5,7 @@ import {
   MARKETPLACE_UNITS,
 } from '../constants.ts';
 import {getDb} from '../db.ts';
-import {type AuthedRequest, requireRole, writeAuditLog} from '../security.ts';
+import {type AuthedRequest, hashOwnerKey, isValidOwnerKey, requireRole, verifyOwnerKey, writeAuditLog} from '../security.ts';
 import {idempotent} from '../idempotency.ts';
 import {seedPrototypeData} from '../seedPrototype.ts';
 import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
@@ -17,7 +17,9 @@ const AVAILABILITY_VALUES = ['Available', 'Limited Stock', 'Sold Out'] as const;
 interface RawListingRow {
   id: number;
   seller_user_id: number | null;
+  /** Legacy, client-chosen, previously exposed. Never read for authorisation and never returned. */
   owner_token: string;
+  owner_key_hash: string;
   seller_name: string;
   farm_name: string;
   category: string;
@@ -42,13 +44,57 @@ interface RawListingRow {
   updated_at: string;
 }
 
-function sanitizeListingForPublic(row: RawListingRow, requesterOwnerToken: string, isAdmin: boolean) {
-  const isOwner = Boolean(requesterOwnerToken && row.owner_token === requesterOwnerToken);
-  const canExposePhone = Boolean(isOwner || isAdmin || row.phone_consent === 1);
+type OwnerFields = Pick<RawListingRow, 'seller_user_id' | 'owner_key_hash'>;
+
+/**
+ * Who may change a listing: an administrator, its signed-in seller, or whoever presents the listing's secret key in the
+ * `X-Listing-Key` header (never in the URL or body, so it does not end up in logs). Nothing a visitor can read from the API
+ * is sufficient: the key is only ever hashed on the server and never returned.
+ */
+function canManageListing(req: AuthedRequest, row: OwnerFields): boolean {
+  if (req.user?.roles.includes('admin')) return true;
+  if (req.user && row.seller_user_id !== null && row.seller_user_id === req.user.id) return true;
+  return verifyOwnerKey(req.get('X-Listing-Key'), row.owner_key_hash);
+}
+
+/**
+ * Explicit allow-list of public fields. owner_token, owner_key_hash and seller_user_id are never included, so adding a column
+ * to the table can never leak it by accident.
+ */
+function toPublicListing(row: RawListingRow, canSeePhoneAlways: boolean, canManage: boolean) {
   return {
-    ...row,
-    seller_phone: canExposePhone ? row.seller_phone : '',
+    id: row.id,
+    seller_name: row.seller_name,
+    farm_name: row.farm_name,
+    category: row.category,
+    product_name: row.product_name,
+    quantity: row.quantity,
+    unit: row.unit,
+    price_lrd: row.price_lrd,
+    county: row.county,
+    town: row.town,
+    description: row.description,
+    image_url: row.image_url,
+    availability_status: row.availability_status,
+    seller_phone: canSeePhoneAlways || row.phone_consent === 1 ? row.seller_phone : '',
+    phone_consent: row.phone_consent,
+    phone_verified: row.phone_verified,
+    is_fictional_seller: row.is_fictional_seller,
+    view_count: row.view_count,
+    is_demo_listing: row.is_demo_listing,
+    moderation_status: row.moderation_status,
+    inquiry_count: row.inquiry_count ?? 0,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    /** True only for an administrator or the signed-in seller. Anonymous owners know their own key locally. */
+    can_manage: canManage,
   };
+}
+
+function publicListingFor(req: AuthedRequest, row: RawListingRow) {
+  const isAdmin = Boolean(req.user?.roles.includes('admin'));
+  const isSellerUser = Boolean(req.user && row.seller_user_id !== null && row.seller_user_id === req.user.id);
+  return toPublicListing(row, isAdmin || isSellerUser, isAdmin || isSellerUser);
 }
 
 // 1. AGRICULTURAL MARKETPLACE (Isolated Team 8 Prototype — No payments)
@@ -59,9 +105,8 @@ prototypeRouter.get('/marketplace/listings', (req: AuthedRequest, res) => {
   const availability = typeof req.query.availability === 'string' ? req.query.availability.trim() : '';
   const maxPriceRaw = req.query.maxPrice ? Number(req.query.maxPrice) : 0;
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-  const ownerToken = typeof req.query.ownerToken === 'string' ? req.query.ownerToken.trim() : '';
-  const viewerToken = typeof req.query.viewerToken === 'string' ? req.query.viewerToken.trim() : ownerToken;
-  const includeAllModeration = req.query.admin === '1';
+  // Hidden/flagged listings are for administrators only. Ownership tokens are no longer accepted as a filter or a viewer identity.
+  const includeAllModeration = req.query.admin === '1' && Boolean(req.user?.roles.includes('admin'));
 
   const where: string[] = [];
   const args: (string | number)[] = [];
@@ -90,11 +135,6 @@ prototypeRouter.get('/marketplace/listings', (req: AuthedRequest, res) => {
     const like = `%${q}%`;
     args.push(like, like, like, like, like);
   }
-  if (ownerToken) {
-    where.push('owner_token = ?');
-    args.push(ownerToken);
-  }
-
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
   const rows = db
     .prepare(
@@ -106,11 +146,8 @@ prototypeRouter.get('/marketplace/listings', (req: AuthedRequest, res) => {
     )
     .all(...args) as unknown as RawListingRow[];
 
-  const isAdmin = Boolean(req.user?.roles.includes('admin'));
-  const sanitized = rows.map((row) => sanitizeListingForPublic(row, viewerToken, isAdmin));
-
   res.json({
-    listings: sanitized,
+    listings: rows.map((row) => publicListingFor(req, row)),
     categories: MARKETPLACE_CATEGORIES,
     units: MARKETPLACE_UNITS,
     counties: LIBERIA_COUNTIES,
@@ -134,7 +171,7 @@ prototypeRouter.post('/marketplace/listings/:id/view', (req, res) => {
 prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.create'), (req: AuthedRequest, res) => {
   const db = getDb();
   const {
-    ownerToken,
+    ownerKey,
     sellerName,
     farmName,
     category,
@@ -164,7 +201,14 @@ prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.cr
     typeof sellerName === 'string' && sellerName.trim().length >= 2
       ? sellerName.trim().slice(0, 80)
       : req.user?.displayName || 'Liberia Farmer (Demo)';
-  const cleanOwnerToken = typeof ownerToken === 'string' ? ownerToken.trim().slice(0, 80) : '';
+  // Anonymous sellers must supply a high-entropy secret that only their device knows; signed-in sellers are identified by account.
+  if (!req.user && !isValidOwnerKey(ownerKey)) {
+    res.status(400).json({
+      error: {code: 'VALIDATION_ERROR', message: 'A listing owner key (32 to 128 letters, digits, - or _) is required to publish without signing in.'},
+    });
+    return;
+  }
+  const ownerKeyHash = isValidOwnerKey(ownerKey) ? hashOwnerKey(ownerKey) : '';
 
   const rawPhone = typeof sellerPhone === 'string' ? sellerPhone.trim() : '';
   let normalizedPhone = '';
@@ -221,14 +265,14 @@ prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.cr
   const ins = db
     .prepare(
       `INSERT INTO marketplace_listings (
-        seller_user_id, owner_token, seller_name, farm_name, category, product_name, quantity, unit,
+        seller_user_id, owner_key_hash, seller_name, farm_name, category, product_name, quantity, unit,
         price_lrd, county, town, description, image_url, availability_status, seller_phone,
         phone_consent, phone_verified, is_fictional_seller, view_count, is_demo_listing, moderation_status
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 1, 'approved')`
     )
     .run(
       req.user?.id ?? null,
-      cleanOwnerToken,
+      ownerKeyHash,
       cleanSeller,
       cleanFarm,
       category,
@@ -247,9 +291,7 @@ prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.cr
 
   const listingId = Number(ins.lastInsertRowid);
   const listing = db.prepare('SELECT * FROM marketplace_listings WHERE id = ?').get(listingId) as unknown as RawListingRow;
-  res.status(201).json({
-    listing: sanitizeListingForPublic(listing, cleanOwnerToken, Boolean(req.user?.roles.includes('admin'))),
-  });
+  res.status(201).json({listing: publicListingFor(req, listing)});
 });
 
 prototypeRouter.patch('/marketplace/listings/:id', (req: AuthedRequest, res) => {
@@ -263,13 +305,8 @@ prototypeRouter.patch('/marketplace/listings/:id', (req: AuthedRequest, res) => 
   }
 
   const isAdmin = Boolean(req.user?.roles.includes('admin'));
-  const tokenMatch =
-    typeof req.body?.ownerToken === 'string' &&
-    req.body.ownerToken.trim() !== '' &&
-    req.body.ownerToken.trim() === existing.owner_token;
-  const userMatch = req.user && existing.seller_user_id === req.user.id;
-
-  if (!isAdmin && !tokenMatch && !userMatch) {
+  if (!canManageListing(req, existing)) {
+    writeAuditLog({actorUserId: req.user?.id ?? null, actorRole: req.user?.roles[0] ?? 'anonymous', action: 'listing_edit_denied', targetType: 'marketplace_listing', targetId: id, ip: req.ip});
     res.status(403).json({error: {code: 'FORBIDDEN', message: 'You can only edit your own listings.'}});
     return;
   }
@@ -367,22 +404,21 @@ prototypeRouter.patch('/marketplace/listings/:id', (req: AuthedRequest, res) => 
   );
 
   const updated = db.prepare('SELECT * FROM marketplace_listings WHERE id = ?').get(id) as unknown as RawListingRow;
-  res.json({listing: sanitizeListingForPublic(updated, typeof req.body?.ownerToken === 'string' ? req.body.ownerToken.trim() : '', isAdmin)});
+  res.json({listing: publicListingFor(req, updated)});
 });
 
 prototypeRouter.delete('/marketplace/listings/:id', (req: AuthedRequest, res) => {
   const db = getDb();
   const id = Number(req.params.id);
-  const existing = db.prepare('SELECT id, seller_user_id, owner_token FROM marketplace_listings WHERE id = ?').get(id) as
-    | {id: number; seller_user_id: number | null; owner_token: string}
+  const existing = db.prepare('SELECT id, seller_user_id, owner_key_hash FROM marketplace_listings WHERE id = ?').get(id) as
+    | (OwnerFields & {id: number})
     | undefined;
   if (!existing) {
     res.status(404).json({error: {code: 'NOT_FOUND', message: 'Listing not found.'}});
     return;
   }
-  const ownerToken = typeof req.query.ownerToken === 'string' ? req.query.ownerToken.trim() : '';
-  const isAdmin = Boolean(req.user?.roles.includes('admin'));
-  if (!isAdmin && existing.seller_user_id !== req.user?.id && existing.owner_token !== ownerToken) {
+  if (!canManageListing(req, existing)) {
+    writeAuditLog({actorUserId: req.user?.id ?? null, actorRole: req.user?.roles[0] ?? 'anonymous', action: 'listing_delete_denied', targetType: 'marketplace_listing', targetId: id, ip: req.ip});
     res.status(403).json({error: {code: 'FORBIDDEN', message: 'Not allowed to delete this listing.'}});
     return;
   }
@@ -390,34 +426,42 @@ prototypeRouter.delete('/marketplace/listings/:id', (req: AuthedRequest, res) =>
   res.json({ok: true});
 });
 
+// Inquiries are a retired feature (buyers now call directly). The endpoints remain but expose nothing to the public.
 prototypeRouter.get('/marketplace/inquiries', (req: AuthedRequest, res) => {
   const db = getDb();
+  const isAdmin = Boolean(req.user?.roles.includes('admin'));
   const listingId = req.query.listingId ? Number(req.query.listingId) : null;
-  const buyerToken = typeof req.query.buyerToken === 'string' ? req.query.buyerToken.trim() : '';
-  const ownerToken = typeof req.query.ownerToken === 'string' ? req.query.ownerToken.trim() : '';
-
   const where: string[] = [];
   const args: (string | number)[] = [];
 
+  if (!isAdmin) {
+    // Only inquiries on listings the caller can prove they manage, or ones they wrote while signed in.
+    const manageable: number[] = [];
+    if (listingId) {
+      const row = db.prepare('SELECT id, seller_user_id, owner_key_hash FROM marketplace_listings WHERE id = ?').get(listingId) as
+        | (OwnerFields & {id: number})
+        | undefined;
+      if (row && canManageListing(req, row)) manageable.push(row.id);
+    }
+    if (req.user) {
+      where.push('(l.seller_user_id = ? OR i.buyer_user_id = ?)');
+      args.push(req.user.id, req.user.id);
+    } else if (manageable.length > 0) {
+      where.push('i.listing_id = ?');
+      args.push(manageable[0]);
+    } else {
+      res.json({inquiries: []});
+      return;
+    }
+  }
   if (listingId) {
     where.push('i.listing_id = ?');
     args.push(listingId);
   }
-  if (buyerToken && ownerToken) {
-    where.push('(i.buyer_token = ? OR l.owner_token = ?)');
-    args.push(buyerToken, ownerToken);
-  } else if (buyerToken) {
-    where.push('i.buyer_token = ?');
-    args.push(buyerToken);
-  } else if (ownerToken) {
-    where.push('l.owner_token = ?');
-    args.push(ownerToken);
-  }
-
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
   const rows = db
     .prepare(
-      `SELECT i.*, l.product_name, l.price_lrd, l.unit, l.seller_name, l.owner_token AS listing_owner_token
+      `SELECT i.*, l.product_name, l.price_lrd, l.unit, l.seller_name
        FROM marketplace_inquiries i
        JOIN marketplace_listings l ON l.id = i.listing_id
        ${whereSql}
@@ -425,7 +469,6 @@ prototypeRouter.get('/marketplace/inquiries', (req: AuthedRequest, res) => {
        LIMIT 60`
     )
     .all(...args);
-
   res.json({inquiries: rows});
 });
 
@@ -478,9 +521,20 @@ prototypeRouter.post('/marketplace/listings/:id/inquiries', (req: AuthedRequest,
   res.status(201).json({inquiry});
 });
 
-prototypeRouter.patch('/marketplace/inquiries/:id', (req, res) => {
+prototypeRouter.patch('/marketplace/inquiries/:id', (req: AuthedRequest, res) => {
   const db = getDb();
   const id = Number(req.params.id);
+  const owner = db
+    .prepare('SELECT l.seller_user_id, l.owner_key_hash FROM marketplace_inquiries i JOIN marketplace_listings l ON l.id = i.listing_id WHERE i.id = ?')
+    .get(id) as OwnerFields | undefined;
+  if (!owner) {
+    res.status(404).json({error: {code: 'NOT_FOUND', message: 'Inquiry not found.'}});
+    return;
+  }
+  if (!canManageListing(req, owner)) {
+    res.status(403).json({error: {code: 'FORBIDDEN', message: 'Only the listing owner can answer this inquiry.'}});
+    return;
+  }
   const {status, farmerReply} = req.body ?? {};
   const nextStatus = ['New', 'Farmer Replied', 'Closed'].includes(status) ? status : 'Farmer Replied';
 

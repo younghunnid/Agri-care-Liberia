@@ -74,6 +74,10 @@ async function req(
   return {status: res.status, data};
 }
 
+/** Listing ownership secret for a test name (valid shape: 32-128 of A-Za-z0-9_-). */
+const K = (name: string): string => `${name}-owner-key-`.padEnd(48, 'k');
+const keyHdr = (name: string) => ({'X-Listing-Key': K(name)});
+
 before(async () => {
   const app = await createApp();
   server = app.listen(0, '127.0.0.1');
@@ -283,7 +287,7 @@ test('7. Agricultural Marketplace filters, Liberian phone consent/validation, vi
   const badPhone = await req(jar, '/api/v1/marketplace/listings', {
     method: 'POST',
     body: {
-      ownerToken: 'test-owner-123',
+      ownerKey: K('test-owner-123'),
       sellerName: 'Bad Phone Test',
       category: 'Fish and seafood',
       productName: 'Test Tilapia',
@@ -303,7 +307,7 @@ test('7. Agricultural Marketplace filters, Liberian phone consent/validation, vi
   const created = await req(jar, '/api/v1/marketplace/listings', {
     method: 'POST',
     body: {
-      ownerToken: 'test-owner-123',
+      ownerKey: K('test-owner-123'),
       sellerName: 'Kpelle Pond Collective',
       farmName: 'Kpelle Aquaculture',
       category: 'Fish and seafood',
@@ -329,7 +333,7 @@ test('7. Agricultural Marketplace filters, Liberian phone consent/validation, vi
   const privatePhoneCreated = await req(jar, '/api/v1/marketplace/listings', {
     method: 'POST',
     body: {
-      ownerToken: 'private-owner-456',
+      ownerKey: K('private-owner-456'),
       sellerName: 'Private Seller',
       category: 'Vegetables',
       productName: 'Fresh Okra Without Public Phone',
@@ -356,8 +360,8 @@ test('7. Agricultural Marketplace filters, Liberian phone consent/validation, vi
   // Edit availability & price
   const updated = await req(jar, `/api/v1/marketplace/listings/${listingId}`, {
     method: 'PATCH',
+    headers: keyHdr('test-owner-123'),
     body: {
-      ownerToken: 'test-owner-123',
       priceLrd: 1350,
       quantity: '35',
       availabilityStatus: 'Limited Stock',
@@ -367,8 +371,9 @@ test('7. Agricultural Marketplace filters, Liberian phone consent/validation, vi
   assert.equal(updated.data.listing.price_lrd, 1350);
   assert.equal(updated.data.listing.availability_status, 'Limited Stock');
 
-  const wrongOwnerDelete = await req(jar, `/api/v1/marketplace/listings/${listingId}?ownerToken=wrong-token`, {
+  const wrongOwnerDelete = await req(jar, `/api/v1/marketplace/listings/${listingId}`, {
     method: 'DELETE',
+    headers: keyHdr('wrong-token'),
   });
   assert.equal(wrongOwnerDelete.status, 403);
 });
@@ -491,7 +496,7 @@ test('12. Marketplace listings support empty optional description and clearing d
   const noDesc = await req(jar, '/api/v1/marketplace/listings', {
     method: 'POST',
     body: {
-      ownerToken: 'desc-test-owner',
+      ownerKey: K('desc-test-owner'),
       sellerName: 'Flomo Farm',
       category: 'Rice and grains',
       productName: 'Bong Upland Rice',
@@ -510,7 +515,7 @@ test('12. Marketplace listings support empty optional description and clearing d
   const withDesc = await req(jar, '/api/v1/marketplace/listings', {
     method: 'POST',
     body: {
-      ownerToken: 'desc-test-owner',
+      ownerKey: K('desc-test-owner'),
       sellerName: 'Flomo Farm',
       category: 'Cassava and root crops',
       productName: 'Margibi Cassava',
@@ -529,8 +534,8 @@ test('12. Marketplace listings support empty optional description and clearing d
   // 3. Partial PATCH without description preserves existing description
   const partialPatch = await req(jar, `/api/v1/marketplace/listings/${editId}`, {
     method: 'PATCH',
+    headers: keyHdr('desc-test-owner'),
     body: {
-      ownerToken: 'desc-test-owner',
       priceLrd: 3700,
     },
   });
@@ -540,8 +545,8 @@ test('12. Marketplace listings support empty optional description and clearing d
   // 4. PATCH with empty description removes description
   const clearDesc = await req(jar, `/api/v1/marketplace/listings/${editId}`, {
     method: 'PATCH',
+    headers: keyHdr('desc-test-owner'),
     body: {
-      ownerToken: 'desc-test-owner',
       description: '',
     },
   });
@@ -705,7 +710,7 @@ test('14. HTTPS preview proxy headers issue single SameSite=None Secure Partitio
 
 
 const listingBody = (token: string, extra: Record<string, unknown> = {}) => ({
-  ownerToken: token,
+  ownerKey: K(token),
   sellerName: 'Offline Farmer',
   category: 'Rice and grains',
   productName: 'Offline Rice',
@@ -731,7 +736,7 @@ test('15. Idempotent listing sync: repeated key creates one listing and replays 
   assert.equal(second.data.listing.id, first.data.listing.id);
 
   const list = await req(jar, '/api/v1/marketplace/listings?q=Offline%20Rice');
-  const mine = list.data.listings.filter((l: {owner_token: string}) => l.owner_token === 'tok-sync-1');
+  const mine = list.data.listings.filter((l: {product_name: string}) => l.product_name === 'Offline Rice');
   assert.equal(mine.length, 1);
 
   // A different key is a different operation; keys are scoped per actor.
@@ -762,7 +767,7 @@ test('16. Idempotency: invalid keys are rejected, failures are not cached, key c
 
   const reuse = await req(jar, '/api/v1/expert-requests/demo', {
     method: 'POST',
-    body: {requesterToken: 't3', title: 'Leaf spots', description: 'Brown spots on cassava leaves'},
+    body: {ownerKey: K('t3'), requesterToken: 't3', title: 'Leaf spots', description: 'Brown spots on cassava leaves'},
     headers: {'Idempotency-Key': key},
   });
   assert.equal(reuse.status, 422);
@@ -808,13 +813,15 @@ test('18. Offline edit sync enforces ownership and detects conflicts', async () 
 
   const stranger = await req(jar, `/api/v1/marketplace/listings/${id}`, {
     method: 'PATCH',
-    body: {ownerToken: 'someone-else', priceLrd: 1},
+    headers: keyHdr('someone-else'),
+    body: {priceLrd: 1},
   });
   assert.equal(stranger.status, 403);
 
   const ok = await req(jar, `/api/v1/marketplace/listings/${id}`, {
     method: 'PATCH',
-    body: {ownerToken: 'owner-A', priceLrd: 8000, baseUpdatedAt: updatedAt},
+    headers: keyHdr('owner-A'),
+    body: {priceLrd: 8000, baseUpdatedAt: updatedAt},
   });
   assert.equal(ok.status, 200);
   assert.equal(ok.data.listing.price_lrd, 8000);
@@ -823,7 +830,8 @@ test('18. Offline edit sync enforces ownership and detects conflicts', async () 
   getDbRow.prepare("UPDATE marketplace_listings SET updated_at = '2000-01-01 00:00:00' WHERE id = ?").run(id);
   const conflict = await req(jar, `/api/v1/marketplace/listings/${id}`, {
     method: 'PATCH',
-    body: {ownerToken: 'owner-A', priceLrd: 9000, baseUpdatedAt: updatedAt},
+    headers: keyHdr('owner-A'),
+    body: {priceLrd: 9000, baseUpdatedAt: updatedAt},
   });
   assert.equal(conflict.status, 409);
   assert.equal(conflict.data.error.code, 'CONFLICT');
@@ -851,4 +859,163 @@ test('19. Idempotent expert question sync creates one request and keeps the phot
   const count = getDb().prepare('SELECT COUNT(*) AS c FROM demo_expert_requests WHERE requester_token = ?').get('tok-q-1') as {c: number};
   assert.equal(count.c, 1);
   assert.ok(a.data.request.voice_note_data_url.startsWith('data:audio/'));
+});
+
+// ---------------------------------------------------------------- listing ownership security
+
+const FORBIDDEN_FIELDS = ['owner_token', 'owner_key_hash', 'seller_user_id', 'listing_owner_token'];
+
+test('20. Public listing responses never expose ownership tokens, key hashes or seller user ids', async () => {
+  const jar = new CookieJar();
+  const created = await req(jar, '/api/v1/marketplace/listings', {method: 'POST', body: listingBody('leak-check-1')});
+  assert.equal(created.status, 201);
+  const edited = await req(jar, `/api/v1/marketplace/listings/${created.data.listing.id}`, {
+    method: 'PATCH',
+    headers: keyHdr('leak-check-1'),
+    body: {priceLrd: 7100},
+  });
+  const list = await req(new CookieJar(), '/api/v1/marketplace/listings');
+  for (const [label, payload] of [['create', created.data], ['patch', edited.data], ['list', list.data]] as const) {
+    const text = JSON.stringify(payload);
+    for (const f of FORBIDDEN_FIELDS) assert.equal(text.includes(f), false, `${label} response leaks ${f}`);
+    assert.equal(text.includes(K('leak-check-1')), false, `${label} response leaks the owner key`);
+    assert.equal(text.includes('demo-seed'), false, `${label} response leaks a legacy token`);
+  }
+  assert.ok(list.data.listings.length > 10);
+  assert.equal(list.data.listings.every((l: {can_manage: boolean}) => l.can_manage === false), true);
+});
+
+test('21. Only the key holder, the signed-in seller or an admin can edit or delete a listing', async () => {
+  const anon = new CookieJar();
+  const created = await req(anon, '/api/v1/marketplace/listings', {method: 'POST', body: listingBody('victim')});
+  const id = created.data.listing.id;
+  const base = `/api/v1/marketplace/listings/${id}`;
+
+  // No credential, wrong key, malformed key, key in body, key in URL, the legacy token style: all refused.
+  assert.equal((await req(anon, base, {method: 'PATCH', body: {priceLrd: 1}})).status, 403);
+  assert.equal((await req(anon, base, {method: 'PATCH', headers: keyHdr('attacker'), body: {priceLrd: 1}})).status, 403);
+  assert.equal((await req(anon, base, {method: 'PATCH', headers: {'X-Listing-Key': 'short'}, body: {priceLrd: 1}})).status, 403);
+  assert.equal((await req(anon, base, {method: 'PATCH', body: {ownerKey: K('victim'), ownerToken: K('victim'), priceLrd: 1}})).status, 403);
+  assert.equal((await req(anon, `${base}?ownerKey=${K('victim')}&ownerToken=victim`, {method: 'DELETE'})).status, 403);
+  assert.equal((await req(anon, base, {method: 'DELETE', headers: keyHdr('attacker')})).status, 403);
+
+  // The victim's listing is untouched.
+  const row = getDb().prepare('SELECT price_lrd FROM marketplace_listings WHERE id = ?').get(id) as {price_lrd: number};
+  assert.equal(row.price_lrd, 7000);
+
+  // The server stores a hash, never the key itself.
+  const stored = getDb().prepare('SELECT owner_key_hash, owner_token FROM marketplace_listings WHERE id = ?').get(id) as {
+    owner_key_hash: string;
+    owner_token: string;
+  };
+  assert.equal(stored.owner_key_hash.length, 64);
+  assert.notEqual(stored.owner_key_hash, K('victim'));
+  assert.equal(stored.owner_token, '');
+
+  // Legacy rows: demo seed tokens (publicly known) and rows with no key hash cannot be managed with any token.
+  const seeded = (getDb().prepare("SELECT id FROM marketplace_listings WHERE owner_token = 'demo-seed-0'").get() as {id: number}).id;
+  assert.equal((await req(anon, `/api/v1/marketplace/listings/${seeded}`, {method: 'PATCH', body: {ownerToken: 'demo-seed-0', priceLrd: 1}})).status, 403);
+  assert.equal((await req(anon, `/api/v1/marketplace/listings/${seeded}`, {method: 'PATCH', headers: {'X-Listing-Key': 'demo-seed-0'.padEnd(40, '0')}, body: {priceLrd: 1}})).status, 403);
+
+  // A different signed-in farmer cannot manage it either.
+  const other = new CookieJar();
+  const reg = await req(other, '/api/v1/auth/register', {
+    method: 'POST',
+    body: {displayName: 'Other Farmer', phone: '+231773333333', password: 'SafePassword123', county: 'Bong', preferredLanguage: 'en', cropsOfInterest: []},
+  });
+  assert.equal(reg.status, 201);
+  assert.equal((await req(other, base, {method: 'PATCH', body: {priceLrd: 1}})).status, 403);
+  assert.equal((await req(other, base, {method: 'DELETE'})).status, 403);
+
+  // The legitimate owner can edit, and finally delete.
+  const ok = await req(anon, base, {method: 'PATCH', headers: keyHdr('victim'), body: {priceLrd: 7200}});
+  assert.equal(ok.status, 200);
+  assert.equal(ok.data.listing.price_lrd, 7200);
+  assert.equal((await req(anon, base, {method: 'DELETE', headers: keyHdr('victim')})).status, 200);
+});
+
+test('22. A signed-in seller and an administrator can manage a listing without the key', async () => {
+  const seller = new CookieJar();
+  await req(seller, '/api/v1/auth/register', {
+    method: 'POST',
+    body: {displayName: 'Seller Account', phone: '+231774444444', password: 'SafePassword123', county: 'Nimba', preferredLanguage: 'en', cropsOfInterest: []},
+  });
+  const created = await req(seller, '/api/v1/marketplace/listings', {method: 'POST', body: listingBody('acct', {ownerKey: undefined})});
+  assert.equal(created.status, 201);
+  assert.equal(created.data.listing.can_manage, true);
+  const id = created.data.listing.id;
+  assert.equal((await req(seller, `/api/v1/marketplace/listings/${id}`, {method: 'PATCH', body: {priceLrd: 6100}})).status, 200);
+
+  const db = getDb();
+  const adminRole = db.prepare("SELECT id FROM roles WHERE name = 'admin'").get() as {id: number};
+  const adminId = Number(
+    db.prepare("INSERT INTO users (display_name, phone, password_hash, status) VALUES ('Own Admin', '+231778888888', ?, 'active')").run(hashPassword('AdminTestPass!123')).lastInsertRowid
+  );
+  db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(adminId, adminRole.id);
+  const admin = new CookieJar();
+  assert.equal((await req(admin, '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231778888888', password: 'AdminTestPass!123'}})).status, 200);
+  assert.equal((await req(admin, `/api/v1/marketplace/listings/${id}`, {method: 'PATCH', body: {priceLrd: 6200}})).status, 200);
+
+  // Hidden listings are visible only to administrators, even if someone passes admin=1.
+  db.prepare("UPDATE marketplace_listings SET moderation_status = 'hidden' WHERE id = ?").run(id);
+  const publicAll = await req(new CookieJar(), '/api/v1/marketplace/listings?admin=1');
+  assert.equal(publicAll.data.listings.some((l: {id: number}) => l.id === id), false);
+  const adminAll = await req(admin, '/api/v1/marketplace/listings?admin=1');
+  assert.equal(adminAll.data.listings.some((l: {id: number}) => l.id === id), true);
+});
+
+test('23. Publishing anonymously requires a well-formed owner key; old token filters are ignored', async () => {
+  const jar = new CookieJar();
+  const noKey = await req(jar, '/api/v1/marketplace/listings', {method: 'POST', body: listingBody('x', {ownerKey: undefined})});
+  assert.equal(noKey.status, 400);
+  const shortKey = await req(jar, '/api/v1/marketplace/listings', {method: 'POST', body: listingBody('x', {ownerKey: 'too-short'})});
+  assert.equal(shortKey.status, 400);
+  const all = await req(jar, '/api/v1/marketplace/listings');
+  const filtered = await req(jar, '/api/v1/marketplace/listings?ownerToken=demo-seed-0&viewerToken=demo-seed-0');
+  assert.equal(filtered.data.listings.length, all.data.listings.length);
+});
+
+test('24. Inquiry endpoints expose no owner tokens and cannot be changed by strangers', async () => {
+  const jar = new CookieJar();
+  const created = await req(jar, '/api/v1/marketplace/listings', {method: 'POST', body: listingBody('inq-owner')});
+  const listingId = created.data.listing.id;
+  const inq = await req(jar, `/api/v1/marketplace/listings/${listingId}/inquiries`, {
+    method: 'POST',
+    body: {buyerName: 'Buyer Person', buyerCounty: 'Bong', message: 'Is this still available?'},
+  });
+  assert.equal(inq.status, 201);
+  const inqId = inq.data.inquiry.id;
+
+  const anonList = await req(new CookieJar(), '/api/v1/marketplace/inquiries');
+  assert.deepEqual(anonList.data.inquiries, []);
+  const ownerList = await req(new CookieJar(), `/api/v1/marketplace/inquiries?listingId=${listingId}`, {headers: keyHdr('inq-owner')});
+  assert.equal(ownerList.data.inquiries.length, 1);
+  assert.equal(JSON.stringify(ownerList.data).includes('owner_token'), false);
+
+  assert.equal((await req(jar, `/api/v1/marketplace/inquiries/${inqId}`, {method: 'PATCH', body: {farmerReply: 'Hacked reply'}})).status, 403);
+  assert.equal((await req(jar, `/api/v1/marketplace/inquiries/${inqId}`, {method: 'PATCH', headers: keyHdr('inq-owner'), body: {farmerReply: 'Yes, available.'}})).status, 200);
+});
+
+test('25. Retries stay safe: the owner key is never stored in the idempotency table and a replay creates no duplicate', async () => {
+  const jar = new CookieJar();
+  const body = listingBody('retry-owner');
+  const headers = {'Idempotency-Key': 'op-test-ownerkey-0001'};
+  const first = await req(jar, '/api/v1/marketplace/listings', {method: 'POST', body, headers});
+  const replay = await req(jar, '/api/v1/marketplace/listings', {method: 'POST', body, headers});
+  assert.equal(first.status, 201);
+  assert.equal(replay.data.replayed, true);
+  assert.equal(replay.data.listing.id, first.data.listing.id);
+
+  const rows = getDb().prepare('SELECT actor, response_json FROM sync_operations WHERE op_key = ?').all('op-test-ownerkey-0001') as {
+    actor: string;
+    response_json: string;
+  }[];
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].response_json.includes(K('retry-owner')), false);
+  assert.equal(rows[0].actor.includes(K('retry-owner')), false);
+
+  // The creator's key still works after the retry; someone else's does not.
+  const base = `/api/v1/marketplace/listings/${first.data.listing.id}`;
+  assert.equal((await req(jar, base, {method: 'PATCH', headers: keyHdr('retry-owner'), body: {priceLrd: 7300}})).status, 200);
+  assert.equal((await req(jar, base, {method: 'PATCH', headers: keyHdr('someone-else'), body: {priceLrd: 1}})).status, 403);
 });

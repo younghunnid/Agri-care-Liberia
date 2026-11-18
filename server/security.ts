@@ -51,6 +51,29 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   return crypto.timingSafeEqual(derived, expected);
 }
 
+const OWNER_KEY_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
+
+export function isValidOwnerKey(key: unknown): key is string {
+  return typeof key === 'string' && OWNER_KEY_PATTERN.test(key);
+}
+
+/** Keyed hash of a listing owner secret. The secret itself is never stored. */
+export function hashOwnerKey(key: string): string {
+  // Must be stable across restarts (unlike the ephemeral session fallback), or every listing would lose its owner.
+  // Production sets SESSION_SECRET; rotating it invalidates existing owner keys.
+  const hmacKey =
+    process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 16 ? process.env.SESSION_SECRET : 'agri-owner-key-dev-fallback';
+  return crypto.createHmac('sha256', hmacKey).update(`listing-owner-v1:${key}`).digest('hex');
+}
+
+/** Constant-time check. An empty stored hash (legacy listing) never matches anything. */
+export function verifyOwnerKey(key: unknown, storedHash: string): boolean {
+  if (!storedHash || !isValidOwnerKey(key)) return false;
+  const a = Buffer.from(hashOwnerKey(key), 'hex');
+  const b = Buffer.from(storedHash, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 export function hashIdentifier(value: string): string {
   return crypto.createHmac('sha256', getSessionSecret()).update(value).digest('hex').slice(0, 24);
 }

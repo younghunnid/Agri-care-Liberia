@@ -3,6 +3,7 @@ import {Link} from 'react-router-dom';
 import {Bookmark, BookOpen, MessageSquare, Mic, Store, Users, WifiOff} from 'lucide-react';
 import {useApp} from '../../context/AppContext';
 import {apiFetch} from '../../lib/api';
+import {hasListingKey} from '../../lib/listingKeys';
 import {getOfflineGuides} from '../../lib/offlineStorage';
 import {
   getDemoOwnerToken,
@@ -35,13 +36,13 @@ export const FarmerDashboardPage: React.FC = () => {
     Promise.all([
       apiFetch<{saved: unknown[]}>('/farmer/saved'),
       apiFetch<{questions: unknown[]}>('/farmer/questions'),
-      apiFetch<{listings: unknown[]}>(`/marketplace/listings?ownerToken=${encodeURIComponent(ownerToken)}`),
+      apiFetch<{listings: {id: number; can_manage?: boolean}[]}>('/marketplace/listings'),
       apiFetch<{inquiries: unknown[]}>('/marketplace/inquiries'),
     ])
       .then(([s, q, l, i]) => {
         setSavedCount(s.saved.length);
         setQuestionCount(q.questions.length);
-        setListingCount(l.listings.length);
+        setListingCount(l.listings.filter((x) => x.can_manage || hasListingKey(x.id)).length);
         setInquiryCount(i.inquiries.length);
       })
       .catch(() => undefined);

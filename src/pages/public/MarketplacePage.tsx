@@ -27,7 +27,7 @@ import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
 import {SafeImage} from '../../components/SafeImage';
 import {SpeakButton} from '../../components/SpeakButton';
-import {getDemoOwnerToken} from '../../lib/demoStorage';
+import {generateOwnerKey, hasListingKey, ownerHeaders, removeListingKey, saveListingKey} from '../../lib/listingKeys';
 import {compressPhoto} from '../../lib/imageCompress';
 import {LIBERIA_COUNTIES, MARKETPLACE_CATEGORIES, MARKETPLACE_UNITS} from '../../../server/constants';
 import {
@@ -44,7 +44,8 @@ import {normalizeLiberianPhone} from '../../lib/phone';
 
 export interface MarketplaceListing {
   id: number;
-  owner_token: string;
+  /** True only for an administrator or the signed-in seller. Anonymous owners are recognised by a key kept on their own device. */
+  can_manage?: boolean;
   seller_name: string;
   farm_name?: string;
   category: string;
@@ -162,7 +163,7 @@ export const MarketplacePage: React.FC = () => {
   const [postError, setPostError] = useState<string | null>(null);
   const [postSuccess, setPostSuccess] = useState<string | null>(null);
 
-  const ownerToken = getDemoOwnerToken();
+  const isMineItem = (item: MarketplaceListing) => Boolean(item.can_manage) || hasListingKey(item.id);
 
   const loadMarketplace = useCallback(async () => {
     if (!isOnline) {
@@ -177,7 +178,6 @@ export const MarketplacePage: React.FC = () => {
       if (availFilter) qs.set('availability', availFilter);
       if (maxPriceFilter && Number(maxPriceFilter) > 0) qs.set('maxPrice', maxPriceFilter);
       if (search.trim()) qs.set('q', search.trim());
-      qs.set('viewerToken', ownerToken);
 
       const listRes = await apiFetch<{
         listings: MarketplaceListing[];
@@ -201,7 +201,7 @@ export const MarketplacePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [isOnline, catFilter, countyFilter, availFilter, maxPriceFilter, search, ownerToken]);
+  }, [isOnline, catFilter, countyFilter, availFilter, maxPriceFilter, search]);
 
   useEffect(() => {
     void loadMarketplace();
@@ -245,7 +245,7 @@ export const MarketplacePage: React.FC = () => {
     item.category === 'Agricultural supplies';
 
   const displayedListings = listings.filter((item) => {
-    if (roleFilter === 'mine') return item.owner_token === ownerToken;
+    if (roleFilter === 'mine') return isMineItem(item);
     if (roleFilter === 'supplier') return isSupplierItem(item);
     if (roleFilter === 'farmer') return !isSupplierItem(item);
     return true;
@@ -348,8 +348,8 @@ export const MarketplacePage: React.FC = () => {
     try {
       await apiFetch(`/marketplace/listings/${item.id}`, {
         method: 'PATCH',
+        headers: ownerHeaders(item.id),
         body: JSON.stringify({
-          ownerToken,
           availabilityStatus: nextAvail,
         }),
       });
@@ -468,8 +468,8 @@ export const MarketplacePage: React.FC = () => {
       if (editingId) {
         await apiFetch(`/marketplace/listings/${editingId}`, {
           method: 'PATCH',
+          headers: ownerHeaders(editingId),
           body: JSON.stringify({
-            ownerToken,
             sellerName: formattedSeller,
             farmName,
             category,
@@ -487,10 +487,12 @@ export const MarketplacePage: React.FC = () => {
         });
         setPostSuccess('Listing updated successfully.');
       } else {
-        await apiFetch('/marketplace/listings', {
+        // A fresh secret for this listing: the server keeps only a hash; this device keeps the key to manage it later.
+        const newKey = generateOwnerKey();
+        const created = await apiFetch<{listing: {id: number}}>('/marketplace/listings', {
           method: 'POST',
           body: JSON.stringify({
-            ownerToken,
+            ownerKey: newKey,
             sellerName: formattedSeller,
             farmName,
             category,
@@ -507,6 +509,7 @@ export const MarketplacePage: React.FC = () => {
             phoneConsent,
           }),
         });
+        saveListingKey(created.listing.id, newKey);
         setPostSuccess(
           sellerType === 'supplier'
             ? 'Agricultural Supplier listing published to Marketplace!'
@@ -525,9 +528,11 @@ export const MarketplacePage: React.FC = () => {
 
   const handleDeleteListing = async (id: number) => {
     try {
-      await apiFetch(`/marketplace/listings/${id}?ownerToken=${encodeURIComponent(ownerToken)}`, {
+      await apiFetch(`/marketplace/listings/${id}`, {
         method: 'DELETE',
+        headers: ownerHeaders(id),
       });
+      removeListingKey(id);
       await loadMarketplace();
     } catch {
       // ignore
@@ -847,7 +852,7 @@ export const MarketplacePage: React.FC = () => {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                   {displayedListings.map((item) => {
-                    const isMine = item.owner_token === ownerToken;
+                    const isMine = isMineItem(item);
                     const avail = item.availability_status || 'Available';
                     const availClass = AVAILABILITY_BADGE_CLASS[avail] || AVAILABILITY_BADGE_CLASS.Available;
                     const callState = getCallState(item);

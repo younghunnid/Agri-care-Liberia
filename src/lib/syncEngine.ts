@@ -2,6 +2,7 @@ import {useSyncExternalStore} from 'react';
 import {ApiRequestError, apiFetch} from './api';
 import {kvGet, kvSet} from './offlineDb';
 import {getDemoOwnerToken} from './demoStorage';
+import {generateOwnerKey, getListingKey, saveListingKey} from './listingKeys';
 import {
   emitSync,
   getLastSyncAt,
@@ -85,13 +86,14 @@ function setRunning(value: boolean, message?: string | null): void {
 
 // ---------------------------------------------------------------- request bodies
 
-function listingBody(rec: ListingRecord, includeImage: boolean): Record<string, unknown> {
+function listingBody(rec: ListingRecord, includeImage: boolean, ownerKey?: string): Record<string, unknown> {
   const d = rec.data;
   const phone = d.phoneConsent ? d.sellerPhone : '';
   const baseSeller = (d.sellerName || 'Liberia Farmer').trim();
   const seller = d.sellerType === 'supplier' && !baseSeller.toLowerCase().includes('supplier') ? `${baseSeller} (Supplier)` : baseSeller;
   return {
-    ownerToken: getDemoOwnerToken(),
+    // The secret is sent only when creating; the server stores a hash and never returns it.
+    ...(ownerKey ? {ownerKey} : {}),
     sellerName: seller,
     farmName: d.farmName,
     category: d.category,
@@ -165,8 +167,14 @@ interface ListingResponse {
   replayed?: boolean;
 }
 
-async function sendListingCreate(op: SyncOp, rec: ListingRecord): Promise<void> {
-  const body = listingBody(rec, true);
+async function sendListingCreate(op: SyncOp, recIn: ListingRecord): Promise<void> {
+  // Records saved before ownership keys existed get one now (kept with the record so a retry reuses the same key).
+  let rec = recIn;
+  if (!rec.ownerKey) {
+    rec = {...rec, ownerKey: generateOwnerKey()};
+    await putListing(rec);
+  }
+  const body = listingBody(rec, true, rec.ownerKey);
   const sentHash = hashOf(body);
   // Remember what the first attempt carried, so a later replay of an older request is noticed.
   const first = rec.firstSentHash ?? sentHash;
@@ -183,8 +191,10 @@ async function sendListingCreate(op: SyncOp, rec: ListingRecord): Promise<void> 
 
   const latest = getListingRecords().find((l) => l.localId === rec.localId) ?? rec;
   const needsFollowUp = latest.rev !== op.rev || (res.replayed === true && first !== sentHash);
+  saveListingKey(res.listing.id, rec.ownerKey!);
   const confirmed: ListingRecord = {
     ...latest,
+    ownerKey: rec.ownerKey,
     serverId: res.listing.id,
     serverUpdatedAt: res.listing.updated_at,
     syncedAt: new Date().toISOString(),
@@ -216,8 +226,18 @@ async function sendListingUpdate(op: SyncOp, rec: ListingRecord): Promise<void> 
     ...listingBody(rec, false),
     ...(op.force || !rec.serverUpdatedAt ? {} : {baseUpdatedAt: rec.serverUpdatedAt}),
   };
+  const key = rec.ownerKey ?? getListingKey(rec.serverId);
+  if (!key) {
+    // Created before ownership keys existed (or site data was cleared): the server cannot be convinced this phone owns it.
+    throw new ApiRequestError(403, 'FORBIDDEN', 'This phone no longer holds the key for this listing, so it cannot change it. Sign in as the seller, or post a new listing.');
+  }
   const res = await withTimeout((signal) =>
-    apiFetch<ListingResponse>(`/marketplace/listings/${rec.serverId}`, {method: 'PATCH', body: JSON.stringify(body), signal})
+    apiFetch<ListingResponse>(`/marketplace/listings/${rec.serverId}`, {
+      method: 'PATCH',
+      headers: {'X-Listing-Key': key},
+      body: JSON.stringify(body),
+      signal,
+    })
   );
   const latest = getListingRecords().find((l) => l.localId === rec.localId) ?? rec;
   const newer = latest.rev !== op.rev;

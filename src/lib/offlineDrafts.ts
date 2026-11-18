@@ -1,5 +1,6 @@
 import {dbDelete, dbGetAll, dbPut, kvGet, kvSet} from './offlineDb';
 import {normalizeLiberianPhone} from './phone';
+import {generateOwnerKey} from './listingKeys';
 
 /**
  * Local records for things a farmer prepared on the phone (marketplace listings, expert
@@ -65,6 +66,8 @@ interface BaseRecord {
 
 export interface ListingRecord extends BaseRecord {
   type: 'listing';
+  /** Secret proving ownership of the listing; sent to the server on create (it stores only a hash) and as a header on edits. */
+  ownerKey?: string;
   data: ListingData;
 }
 export interface QuestionRecord extends BaseRecord {
@@ -241,6 +244,7 @@ export async function saveListingDraft(data: ListingData, localId?: string): Pro
         createdAt: now,
         updatedAt: now,
         data: cleanListing(data),
+        ownerKey: generateOwnerKey(),
       };
   await putListing(rec);
   return rec;

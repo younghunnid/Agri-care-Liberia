@@ -39,8 +39,7 @@ phone_consent, phone_verified, is_fictional_seller, availability_status, view_co
 ## 5. Authentication and authorization
 - **Passwords:** existing hashes are scrypt `salt:hex`. Verify them in PHP (`sodium`/pure-PHP scrypt with the same N, r, p, key length; compare with
   `hash_equals`), then **rehash with `password_hash` (Argon2id/bcrypt) on successful login**. Do not force resets.
-- **Strengthen authorization** (do not port the prototype weaknesses): replace marketplace `ownerToken` ownership with the signed-in user (keep the token only
-  for anonymous demo mode behind a flag); require auth or a per-request secret for `PATCH /expert-requests/demo/:id/reply`, language-lab review, and
+- **Strengthen authorization** (do not port the prototype weaknesses): the Node server now uses per-listing owner keys stored as HMAC hashes (`owner_key_hash`, `X-Listing-Key` header, allow-listed public JSON, `can_manage`). Port exactly that, add `owner_key_hash` to the MySQL table, and prefer signed-in seller ownership (keep anonymous keys only for demo mode behind a flag); require auth or a per-request secret for `PATCH /expert-requests/demo/:id/reply`, language-lab review, and
   inquiry updates; enforce role checks server-side on every route; add per-route rate limits for sync endpoints.
 - Session fixation: regenerate on login; CSRF token rotation on login/logout.
 

@@ -1,6 +1,6 @@
 import type {NextFunction, Response} from 'express';
 import {getDb} from './db.ts';
-import type {AuthedRequest} from './security.ts';
+import {hashOwnerKey, isValidOwnerKey, type AuthedRequest} from './security.ts';
 
 const KEY_PATTERN = /^[A-Za-z0-9._:-]{8,100}$/;
 const RETENTION_DAYS = 30;
@@ -8,7 +8,9 @@ const RETENTION_DAYS = 30;
 /** Who is making the request: the signed-in user, else the client-held owner/requester token. */
 function actorOf(req: AuthedRequest): string {
   if (req.user) return `user:${req.user.id}`;
-  const token = req.body?.ownerToken ?? req.body?.requesterToken;
+  // The owner key is a credential: scope by its hash, never by the raw value.
+  if (isValidOwnerKey(req.body?.ownerKey)) return `owner:${hashOwnerKey(req.body.ownerKey).slice(0, 32)}`;
+  const token = req.body?.requesterToken;
   return typeof token === 'string' && token.trim() ? `anon:${token.trim().slice(0, 80)}` : `ip:${req.ip}`;
 }
 
