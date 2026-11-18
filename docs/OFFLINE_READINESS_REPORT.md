@@ -4,6 +4,13 @@ Branch `feature/offline-first`. **Hackathon prototype, not a production system.*
 Testing so far was done in **desktop Chrome with simulations** (server stopped, `fetch` forced to fail, a 360/390 px iframe). **Nothing has been
 tested on a physical Android phone.** Treat every "verified" below as "verified in desktop Chrome".
 
+## 0. Physical Android findings (first real-phone test) and follow-up
+Tested at `http://192.168.100.96:3000`: Starter Pack saved 43/43 guides + 7 server guides but **0/9 pictures** ("This browser cannot store images offline"); Chrome said "This app cannot be installed"; text too small; utility controls took too much height.
+- **Cause (reproduced on desktop at the same LAN address):** plain http is not a secure context, so Cache Storage, service workers, `storage.estimate`, `crypto.randomUUID`, Web Locks and the microphone API are absent; IndexedDB still works. Picture URLs were fine (200, image/webp).
+- **Fixes (commit `a936eb2`):** pictures stored as Blobs in IndexedDB (DB v3) and rendered from there; retry fetches only missing pictures; offline-readiness card on `/downloads`; HTTPS test proxy + name-constrained 90-day local CA (`docs/ANDROID_HTTPS_TESTING.md`); mobile type scale (body 16 px, captions 15 px), one-row utility strip, grouped menu, 44 px controls.
+- **Desktop-verified:** 9/9 pictures at the insecure address, retry, persistence after tab reopen, 360/390 px layouts (no overflow; min font 15 px on guides/experts/downloads/offline, 14 px badges on marketplace), PWA manifest/icons/SW/install prompt on localhost, proxy blocking by curl.
+- **Still needs the physical phone:** CA trust, install, airplane-mode launch, touch use, camera/microphone, real readability.
+
 ## 1. Completed features
 
 | Stage | Feature | Commit |
