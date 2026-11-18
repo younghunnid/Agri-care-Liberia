@@ -12,7 +12,7 @@
     "lint": "tsc --noEmit",
     "db:bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "test:api": "tsx tests/api.test.ts",
-    "test:offline": "tsx tests/offlineAdvisor.test.ts && tsx tests/dataCache.test.ts"
+    "test:offline": "tsx tests/offlineAdvisor.test.ts && tsx tests/dataCache.test.ts && tsx tests/offlineInventory.test.ts"
   },
   "dependencies": {
     "@google/genai": "^3.4.0",

@@ -459,6 +459,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
                   {to: '/dashboard', label: 'Farmer Dashboard (Demo)', icon: LayoutDashboard},
                   {to: '/management', label: 'Prototype Admin & Review', icon: ShieldCheck},
                   {to: '/offline', label: 'Offline Saved Library', icon: Download},
+                  {to: '/downloads', label: 'My Offline Downloads', icon: Download},
                   {to: '/coming-soon', label: 'Coming Soon Innovations', icon: Sparkles},
                   {to: '/about', label: 'About Team 8 Platform', icon: Info},
                   {to: '/contact', label: 'Contact & Feedback', icon: MessageSquare},

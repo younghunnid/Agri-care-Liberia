@@ -36,7 +36,19 @@ export const StarterPackCard: React.FC = () => {
 
   useEffect(() => {
     void refresh();
-    return subscribeLibrary(() => void getStarterPackStatus().then(setStatus));
+    // Re-measure free space whenever something that could change it happens, so a "not enough space"
+    // warning clears itself once the farmer frees storage.
+    const recheck = () => void refresh();
+    const off = subscribeLibrary(recheck);
+    window.addEventListener('focus', recheck);
+    window.addEventListener('online', recheck);
+    document.addEventListener('visibilitychange', recheck);
+    return () => {
+      off();
+      window.removeEventListener('focus', recheck);
+      window.removeEventListener('online', recheck);
+      document.removeEventListener('visibilitychange', recheck);
+    };
   }, [refresh]);
 
   // Leaving the page must not leave a download running invisibly.
@@ -146,7 +158,10 @@ export const StarterPackCard: React.FC = () => {
         <p role="alert" className="rounded-xl bg-[#F5B942]/20 border border-[#F5B942]/60 px-4 py-3 text-sm flex gap-2">
           <AlertTriangle className="w-5 h-5 text-[#F5B942] shrink-0" aria-hidden="true" />
           <span>
-            Not enough free space (needs about {formatBytes(totalBytes)}). Remove some downloads below, then try again.
+            Not enough free space (needs about {formatBytes(totalBytes)}). Remove some downloads below, then try again.{' '}
+            <button type="button" onClick={() => void refresh()} className="underline font-bold min-h-[44px] px-1">
+              Check storage again
+            </button>
           </span>
         </p>
       )}

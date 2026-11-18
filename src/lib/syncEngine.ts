@@ -1,5 +1,6 @@
 import {useSyncExternalStore} from 'react';
 import {ApiRequestError, apiFetch} from './api';
+import {kvGet, kvSet} from './offlineDb';
 import {getDemoOwnerToken} from './demoStorage';
 import {
   emitSync,
@@ -376,13 +377,26 @@ export function syncNow(opts: SyncOptions = {}): Promise<SyncResult> {
 // ---------------------------------------------------------------- automatic sync
 
 let autoStarted = false;
+let autoSyncPaused = false;
+
+export const isAutoSyncPaused = (): boolean => autoSyncPaused;
+
+/**
+ * When paused, nothing is sent unless the farmer taps Sync Now. Saved in the browser so the choice
+ * survives a restart. (Drafts that were never marked "send when online" are never sent either way.)
+ */
+export async function setAutoSyncPaused(paused: boolean): Promise<void> {
+  autoSyncPaused = paused;
+  await kvSet('autoSyncPaused', paused).catch(() => undefined);
+  emitSync();
+}
 
 /** Retries when connectivity returns, the app is reopened, or a timer says an item is due. */
 export function startAutoSync(): void {
   if (autoStarted || typeof window === 'undefined') return;
   autoStarted = true;
   const attempt = () => {
-    if (!navigator.onLine) return;
+    if (!navigator.onLine || autoSyncPaused) return;
     const due = getSyncOps().some((o) => o.status === 'queued' && o.nextAttemptAt <= Date.now());
     if (due) void syncNow();
   };
@@ -391,10 +405,17 @@ export function startAutoSync(): void {
     if (document.visibilityState === 'visible') attempt();
   });
   setInterval(attempt, 15_000);
-  void initDrafts().then(attempt);
+  void kvGet<boolean>('autoSyncPaused')
+    .then((v) => {
+      autoSyncPaused = Boolean(v);
+      emitSync();
+    })
+    .catch(() => undefined)
+    .then(() => initDrafts())
+    .then(attempt);
 }
 
 /** Queue + immediate attempt when the phone believes it is online. */
 export function syncSoon(): void {
-  if (typeof navigator !== 'undefined' && navigator.onLine) void syncNow();
+  if (typeof navigator !== 'undefined' && navigator.onLine && !autoSyncPaused) void syncNow();
 }

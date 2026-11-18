@@ -11,6 +11,7 @@ import {GuideDetailPage} from './pages/public/GuideDetailPage';
 import {PestsDiseasesPage} from './pages/public/PestsDiseasesPage';
 import {OfflineLibraryPage} from './pages/public/OfflineLibraryPage';
 import {OfflineReaderPage} from './pages/public/OfflineReaderPage';
+import {OfflineDownloadsPage} from './pages/public/OfflineDownloadsPage';
 import {ExpertSupportPage} from './pages/public/ExpertSupportPage';
 import {LanguageLabPage} from './pages/public/LanguageLabPage';
 import {PhoneSimulatorPage} from './pages/public/PhoneSimulatorPage';
@@ -75,6 +76,7 @@ export default function App() {
             <Route path="/food-security" element={<MinistryDashboardPage />} />
             <Route path="/offline" element={<OfflineLibraryPage />} />
             <Route path="/offline/read/:id" element={<OfflineReaderPage />} />
+            <Route path="/downloads" element={<OfflineDownloadsPage />} />
             <Route path="/experts" element={<ExpertSupportPage />} />
             <Route path="/language-lab" element={<LanguageLabPage />} />
             <Route path="/phone-simulator" element={<PhoneSimulatorPage />} />
