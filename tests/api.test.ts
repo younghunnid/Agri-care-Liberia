@@ -13,7 +13,7 @@ process.env.NODE_ENV = 'production';
 
 import {createApp} from '../server.ts';
 import {closeDb, getDb} from '../server/db.ts';
-import {hashPassword} from '../server/security.ts';
+import {hashPassword, hashRequesterKey} from '../server/security.ts';
 import {normalizeLiberianPhone} from '../src/lib/phone.ts';
 
 let server: http.Server;
@@ -73,6 +73,57 @@ async function req(
   const data = await res.json().catch(() => ({}));
   return {status: res.status, data};
 }
+
+async function loginJar(identifier: string, password: string): Promise<CookieJar> {
+  const jar = new CookieJar();
+  const res = await req(jar, '/api/v1/auth/login', {method: 'POST', body: {identifier, password}});
+  assert.equal(res.status, 200, `login failed for ${identifier}`);
+  return jar;
+}
+const expertJar = () => loginJar('+231770000201', 'ExpertDemo!2026');
+let cachedAdmin: Promise<CookieJar> | null = null;
+function adminJar(): Promise<CookieJar> {
+  cachedAdmin ??= (async () => {
+    const db = getDb();
+    const role = db.prepare("SELECT id FROM roles WHERE name = 'admin'").get() as {id: number};
+    const id = Number(
+      db.prepare("INSERT INTO users (display_name, phone, password_hash, status) VALUES ('Sec Admin', '+231775555555', ?, 'active')").run(hashPassword('AdminTestPass!123')).lastInsertRowid
+    );
+    db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(id, role.id);
+    return loginJar('+231775555555', 'AdminTestPass!123');
+  })();
+  return cachedAdmin;
+}
+const farmerJars = new Map<string, Promise<CookieJar>>();
+/** Creates a farmer directly in the disposable test DB (the registration endpoint is rate limited to 10/hour) and logs in. */
+function farmerJar(phone: string, name: string): Promise<CookieJar> {
+  if (!farmerJars.has(phone)) {
+    farmerJars.set(
+      phone,
+      (async () => {
+        const db = getDb();
+        const role = db.prepare("SELECT id FROM roles WHERE name = 'farmer'").get() as {id: number};
+        const id = Number(
+          db.prepare("INSERT INTO users (display_name, phone, password_hash, status) VALUES (?, ?, ?, 'active')").run(name, phone, hashPassword('SafePassword123')).lastInsertRowid
+        );
+        db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(id, role.id);
+        db.prepare("INSERT INTO farmer_profiles (user_id, county, preferred_language, crops_of_interest) VALUES (?, 'Bong', 'en', '[]')").run(id);
+        return loginJar(phone, 'SafePassword123');
+      })()
+    );
+  }
+  return farmerJars.get(phone)!;
+}
+const SENSITIVE = ['requester_token', 'requester_key_hash', 'user_id', 'owner_token', 'owner_key_hash', 'demo-seed-req'];
+const expertBody = (name: string, extra: Record<string, unknown> = {}) => ({
+  requesterKey: K(name),
+  farmerName: `Farmer ${name}`,
+  category: 'Poultry farming',
+  county: 'Bong',
+  title: `Private question ${name}`,
+  description: `Private description for ${name}, written by the farmer.`,
+  ...extra,
+});
 
 /** Listing ownership secret for a test name (valid shape: 32-128 of A-Za-z0-9_-). */
 const K = (name: string): string => `${name}-owner-key-`.padEnd(48, 'k');
@@ -414,7 +465,13 @@ test('8. Local Language AI Lab enforces speaker consent and review status workfl
   assert.equal(withConsent.status, 201);
   assert.equal(withConsent.data.recording.review_status, 'pending_review');
 
-  const reviewed = await req(jar, `/api/v1/language-lab/recordings/${withConsent.data.recording.id}/review`, {
+  // Public visitors can no longer approve; a verified reviewer (approved expert) can.
+  const anonReview = await req(jar, `/api/v1/language-lab/recordings/${withConsent.data.recording.id}/review`, {
+    method: 'PATCH',
+    body: {reviewStatus: 'reviewed'},
+  });
+  assert.equal(anonReview.status, 401);
+  const reviewed = await req(await expertJar(), `/api/v1/language-lab/recordings/${withConsent.data.recording.id}/review`, {
     method: 'PATCH',
     body: {reviewStatus: 'reviewed'},
   });
@@ -427,7 +484,7 @@ test('9. Demo Expert Requests, Simulated Expert reply, and Management summary se
   const created = await req(jar, '/api/v1/expert-requests/demo', {
     method: 'POST',
     body: {
-      requesterToken: 'demo-user-99',
+      requesterKey: K('demo-user-99'),
       farmerName: 'Oldpa Sumo',
       category: 'Poultry farming',
       county: 'Margibi',
@@ -438,16 +495,16 @@ test('9. Demo Expert Requests, Simulated Expert reply, and Management summary se
   assert.equal(created.status, 201);
   assert.equal(created.data.request.status, 'Submitted');
 
-  const replied = await req(jar, `/api/v1/expert-requests/demo/${created.data.request.id}/reply`, {
-    method: 'PATCH',
-    body: {
-      expertReply: 'Remove damp litter immediately, add dry shavings, and check roof overhang.',
-      status: 'Answered',
-      assignedExpertName: 'Dr. Samuel Tarr (Simulated Extension Officer)',
-    },
-  });
+  const replyBody = {
+    expertReply: 'Remove damp litter immediately, add dry shavings, and check roof overhang.',
+    status: 'Answered',
+    assignedExpertName: 'Dr. Samuel Tarr (Simulated Extension Officer)',
+  };
+  assert.equal((await req(jar, `/api/v1/expert-requests/demo/${created.data.request.id}/reply`, {method: 'PATCH', body: replyBody})).status, 401);
+  const replied = await req(await expertJar(), `/api/v1/expert-requests/demo/${created.data.request.id}/reply`, {method: 'PATCH', body: replyBody});
   assert.equal(replied.status, 200);
   assert.equal(replied.data.request.status, 'Answered');
+  assert.notEqual(replied.data.request.assigned_expert_name, 'Dr. Samuel Tarr (Simulated Extension Officer)');
 
   const summary = await req(jar, '/api/v1/prototype/management-summary');
   assert.equal(summary.status, 200);
@@ -456,7 +513,7 @@ test('9. Demo Expert Requests, Simulated Expert reply, and Management summary se
 });
 
 test('10. Demo Reset restores clean hackathon prototype dataset', async () => {
-  const jar = new CookieJar();
+  const jar = await adminJar();
   const resetRes = await req(jar, '/api/v1/demo/reset', {method: 'POST', body: {}});
   assert.equal(resetRes.status, 200);
   assert.equal(resetRes.data.ok, true);
@@ -843,7 +900,7 @@ test('19. Idempotent expert question sync creates one request and keeps the phot
   const jar = new CookieJar();
   const key = 'op-test-question-001';
   const body = {
-    requesterToken: 'tok-q-1',
+    requesterKey: K('tok-q-1'),
     farmerName: 'Offline Farmer',
     category: 'Soil fertility and land preparation',
     county: 'Lofa',
@@ -856,7 +913,7 @@ test('19. Idempotent expert question sync creates one request and keeps the phot
   assert.equal(a.status, 201);
   assert.equal(b.data.replayed, true);
   assert.equal(b.data.request.id, a.data.request.id);
-  const count = getDb().prepare('SELECT COUNT(*) AS c FROM demo_expert_requests WHERE requester_token = ?').get('tok-q-1') as {c: number};
+  const count = getDb().prepare('SELECT COUNT(*) AS c FROM demo_expert_requests WHERE requester_key_hash = ?').get(hashRequesterKey(K('tok-q-1'))) as {c: number};
   assert.equal(count.c, 1);
   assert.ok(a.data.request.voice_note_data_url.startsWith('data:audio/'));
 });
@@ -1018,4 +1075,158 @@ test('25. Retries stay safe: the owner key is never stored in the idempotency ta
   const base = `/api/v1/marketplace/listings/${first.data.listing.id}`;
   assert.equal((await req(jar, base, {method: 'PATCH', headers: keyHdr('retry-owner'), body: {priceLrd: 7300}})).status, 200);
   assert.equal((await req(jar, base, {method: 'PATCH', headers: keyHdr('someone-else'), body: {priceLrd: 1}})).status, 403);
+});
+
+// ---------------------------------------------------------------- expert request privacy and reply authorization
+
+test('26. Anonymous visitors see only fictional sample expert requests and no credentials', async () => {
+  const jar = new CookieJar();
+  const mine = await req(jar, '/api/v1/expert-requests/demo', {method: 'POST', body: expertBody('priv-a')});
+  assert.equal(mine.status, 201);
+  const text = JSON.stringify(mine.data);
+  for (const f of SENSITIVE) assert.equal(text.includes(f), false, `create response leaks ${f}`);
+  assert.equal(text.includes(K('priv-a')), false);
+
+  const anon = await req(new CookieJar(), '/api/v1/expert-requests/demo');
+  assert.equal(anon.status, 200);
+  const listText = JSON.stringify(anon.data);
+  for (const f of SENSITIVE) assert.equal(listText.includes(f), false, `list leaks ${f}`);
+  assert.equal(anon.data.requests.some((r: {title: string}) => r.title === 'Private question priv-a'), false);
+  assert.ok(anon.data.requests.length >= 1, 'seeded fictional samples stay public');
+  assert.equal(anon.data.requests.every((r: {is_mine: boolean; can_reply: boolean}) => r.is_mine === false && r.can_reply === false), true);
+});
+
+test('27. A device sees only its own requests; legacy tokens and keys in URLs grant nothing', async () => {
+  const a = await req(new CookieJar(), '/api/v1/expert-requests/demo', {method: 'POST', body: expertBody('dev-a')});
+  const b = await req(new CookieJar(), '/api/v1/expert-requests/demo', {method: 'POST', body: expertBody('dev-b')});
+  const asA = await req(new CookieJar(), '/api/v1/expert-requests/demo', {headers: {'X-Requester-Key': K('dev-a')}});
+  const idsA = asA.data.requests.map((r: {id: number}) => r.id);
+  assert.ok(idsA.includes(a.data.request.id));
+  assert.equal(idsA.includes(b.data.request.id), false);
+  assert.equal(asA.data.requests.find((r: {id: number}) => r.id === a.data.request.id).is_mine, true);
+
+  const wrong = await req(new CookieJar(), '/api/v1/expert-requests/demo', {headers: {'X-Requester-Key': K('nobody')}});
+  assert.equal(wrong.data.requests.some((r: {id: number}) => r.id === a.data.request.id), false);
+  const viaUrl = await req(new CookieJar(), `/api/v1/expert-requests/demo?token=${K('dev-a')}&requesterKey=${K('dev-a')}&requester_token=dev-a`);
+  assert.equal(viaUrl.data.requests.some((r: {id: number}) => r.id === a.data.request.id), false);
+
+  // Publishing without any identity at all is refused.
+  const noKey = await req(new CookieJar(), '/api/v1/expert-requests/demo', {method: 'POST', body: expertBody('x', {requesterKey: undefined})});
+  assert.equal(noKey.status, 400);
+  const shortKey = await req(new CookieJar(), '/api/v1/expert-requests/demo', {method: 'POST', body: expertBody('x', {requesterKey: 'short'})});
+  assert.equal(shortKey.status, 400);
+  // The server keeps only a hash.
+  const row = getDb().prepare('SELECT requester_key_hash, requester_token FROM demo_expert_requests WHERE id = ?').get(a.data.request.id) as {
+    requester_key_hash: string;
+    requester_token: string;
+  };
+  assert.equal(row.requester_key_hash, hashRequesterKey(K('dev-a')));
+  assert.equal(row.requester_token, '');
+});
+
+test('28. Only approved experts and administrators can reply; there is no spoofable bypass', async () => {
+  const created = await req(new CookieJar(), '/api/v1/expert-requests/demo', {method: 'POST', body: expertBody('reply-target')});
+  const id = created.data.request.id;
+  const url = `/api/v1/expert-requests/demo/${id}/reply`;
+  const body = {expertReply: 'Move the birds to a dry pen and keep water clean.', status: 'Answered', assignedExpertName: 'Impostor Expert'};
+
+  assert.equal((await req(new CookieJar(), url, {method: 'PATCH', body})).status, 401);
+  // The requester themself, a different farmer, and spoofed role claims are all refused.
+  assert.equal((await req(new CookieJar(), url, {method: 'PATCH', body, headers: {'X-Requester-Key': K('reply-target')}})).status, 401);
+  const farmer = await farmerJar('+231776666661', 'Reply Farmer');
+  assert.equal((await req(farmer, url, {method: 'PATCH', body})).status, 403);
+  assert.equal((await req(farmer, url, {method: 'PATCH', body: {...body, role: 'admin', roles: ['expert']}, headers: {'X-Role': 'admin', Authorization: 'Bearer expert', 'X-Expert': '1'}})).status, 403);
+  assert.equal((await req(new CookieJar(), url, {method: 'PATCH', body: {...body, role: 'expert'}, headers: {'X-Role': 'expert', Cookie: 'role=expert; agri_role=admin'}})).status, 401);
+  const stillOpen = getDb().prepare('SELECT status, expert_reply FROM demo_expert_requests WHERE id = ?').get(id) as {status: string; expert_reply: string};
+  assert.equal(stillOpen.status, 'Submitted');
+  assert.equal(stillOpen.expert_reply, '');
+
+  // A real approved expert can; the displayed name comes from the account, not the request body.
+  const expert = await expertJar();
+  const ok = await req(expert, url, {method: 'PATCH', body});
+  assert.equal(ok.status, 200);
+  assert.equal(ok.data.request.status, 'Answered');
+  assert.notEqual(ok.data.request.assigned_expert_name, 'Impostor Expert');
+  assert.equal(JSON.stringify(ok.data).includes('requester_key_hash'), false);
+  assert.equal((await req(expert, '/api/v1/expert-requests/demo/999999/reply', {method: 'PATCH', body})).status, 404);
+  assert.equal((await req(expert, url, {method: 'PATCH', body: {expertReply: 'no'}})).status, 400);
+
+  // Administrators can too, and the requester sees the answer on their own request.
+  assert.equal((await req(await adminJar(), url, {method: 'PATCH', body: {...body, expertReply: 'Admin follow-up: vaccinate only on a vet officer\'s advice.'}})).status, 200);
+  const seen = await req(new CookieJar(), '/api/v1/expert-requests/demo', {headers: {'X-Requester-Key': K('reply-target')}});
+  assert.match(seen.data.requests.find((r: {id: number}) => r.id === id).expert_reply, /Admin follow-up/);
+});
+
+test('29. Experts and admins see the full queue; signed-in farmers see only their own; no credentials ever returned', async () => {
+  const farmer = await farmerJar('+231776666662', 'Account Farmer');
+  const created = await req(farmer, '/api/v1/expert-requests/demo', {method: 'POST', body: expertBody('acct-q', {requesterKey: undefined})});
+  assert.equal(created.status, 201);
+  assert.equal(created.data.request.is_mine, true);
+  const other = await farmerJar('+231776666663', 'Other Account Farmer');
+
+  const ownView = await req(farmer, '/api/v1/expert-requests/demo');
+  assert.ok(ownView.data.requests.some((r: {id: number}) => r.id === created.data.request.id));
+  const otherView = await req(other, '/api/v1/expert-requests/demo');
+  assert.equal(otherView.data.requests.some((r: {id: number}) => r.id === created.data.request.id), false);
+
+  for (const jar of [await expertJar(), await adminJar()]) {
+    const view = await req(jar, '/api/v1/expert-requests/demo');
+    assert.ok(view.data.requests.some((r: {id: number}) => r.id === created.data.request.id));
+    assert.equal(view.data.requests.every((r: {can_reply: boolean}) => r.can_reply === true), true);
+    const text = JSON.stringify(view.data);
+    for (const f of SENSITIVE) assert.equal(text.includes(f), false, `responder view leaks ${f}`);
+  }
+});
+
+// ---------------------------------------------------------------- language lab review and demo reset
+
+test('30. Language lab review is limited to experts/admins; public submissions cannot self-approve', async () => {
+  const anon = new CookieJar();
+  const sub = await req(anon, '/api/v1/language-lab/recordings', {
+    method: 'POST',
+    body: {
+      languageCode: 'bas',
+      topicSlug: 'rice',
+      speakerName: 'Test Speaker',
+      questionText: 'How do I plant rice?',
+      answerText: 'Plant at the start of the rains in rows.',
+      consentConfirmed: true,
+      reviewStatus: 'reviewed',
+      review_status: 'reviewed',
+      isSampleDemo: false,
+    },
+  });
+  assert.equal(sub.status, 201);
+  assert.equal(sub.data.recording.review_status, 'pending_review');
+  const id = sub.data.recording.id;
+  const url = `/api/v1/language-lab/recordings/${id}/review`;
+
+  assert.equal((await req(anon, url, {method: 'PATCH', body: {reviewStatus: 'reviewed'}})).status, 401);
+  const farmer = await farmerJar('+231776666664', 'Lab Farmer');
+  assert.equal((await req(farmer, url, {method: 'PATCH', body: {reviewStatus: 'reviewed'}})).status, 403);
+  assert.equal((await req(farmer, url, {method: 'PATCH', body: {reviewStatus: 'reviewed', role: 'admin'}, headers: {'X-Role': 'admin'}})).status, 403);
+  const row = getDb().prepare('SELECT review_status FROM local_language_recordings WHERE id = ?').get(id) as {review_status: string};
+  assert.equal(row.review_status, 'pending_review');
+
+  const expert = await expertJar();
+  assert.equal((await req(expert, url, {method: 'PATCH', body: {reviewStatus: 'bogus'}})).status, 400);
+  assert.equal((await req(expert, '/api/v1/language-lab/recordings/999999/review', {method: 'PATCH', body: {reviewStatus: 'reviewed'}})).status, 404);
+  const approved = await req(expert, url, {method: 'PATCH', body: {reviewStatus: 'reviewed'}});
+  assert.equal(approved.status, 200);
+  assert.equal(approved.data.recording.review_status, 'reviewed');
+  const rejected = await req(await adminJar(), url, {method: 'PATCH', body: {reviewStatus: 'needs_rerecording'}});
+  assert.equal(rejected.data.recording.review_status, 'needs_rerecording');
+  const audit = getDb().prepare("SELECT COUNT(*) AS c FROM audit_logs WHERE action = 'language_recording_reviewed' AND target_id = ?").get(String(id)) as {c: number};
+  assert.equal(audit.c, 2);
+});
+
+test('31. Resetting demo data is administrator-only (kept last: it reseeds the prototype tables)', async () => {
+  assert.equal((await req(new CookieJar(), '/api/v1/demo/reset', {method: 'POST', body: {}})).status, 401);
+  const farmer = await farmerJar('+231776666665', 'Reset Farmer');
+  assert.equal((await req(farmer, '/api/v1/demo/reset', {method: 'POST', body: {}})).status, 403);
+  assert.equal((await req(await expertJar(), '/api/v1/demo/reset', {method: 'POST', body: {}})).status, 403);
+  const before = (getDb().prepare('SELECT COUNT(*) AS c FROM marketplace_listings').get() as {c: number}).c;
+  assert.ok(before > 11, 'earlier tests left extra listings that an unauthorised reset must not wipe');
+  assert.equal((await req(await adminJar(), '/api/v1/demo/reset', {method: 'POST', body: {}})).status, 200);
+  assert.equal((getDb().prepare('SELECT COUNT(*) AS c FROM marketplace_listings').get() as {c: number}).c, 11);
 });

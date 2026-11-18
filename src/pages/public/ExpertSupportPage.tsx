@@ -15,7 +15,7 @@ import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
 import {SafeImage} from '../../components/SafeImage';
 import {SpeakButton} from '../../components/SpeakButton';
-import {getDemoOwnerToken} from '../../lib/demoStorage';
+import {getRequesterKey, requesterHeaders} from '../../lib/listingKeys';
 import {compressPhoto} from '../../lib/imageCompress';
 import {DraftError, queueRecord, saveQuestionDraft, validateQuestion} from '../../lib/offlineDrafts';
 import {syncSoon} from '../../lib/syncEngine';
@@ -78,19 +78,18 @@ export const ExpertSupportPage: React.FC = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const voiceChunksRef = useRef<Blob[]>([]);
   const voiceCaps = detectVoiceCapabilities();
-  const ownerToken = getDemoOwnerToken();
+  // Only verified expert or administrator accounts can answer; everyone else just reads.
+  const canRespond = Boolean(user?.roles.some((r) => r === 'expert' || r === 'admin'));
 
   const loadRequests = useCallback(async () => {
     if (!isOnline) return;
     try {
-      const res = await apiFetch<{requests: DemoExpertRequest[]}>(
-        `/expert-requests/demo?token=${encodeURIComponent(ownerToken)}`
-      );
+      const res = await apiFetch<{requests: DemoExpertRequest[]}>('/expert-requests/demo', {headers: requesterHeaders()});
       setRequests(res.requests);
     } catch {
       // ignore fetch errors when offline
     }
-  }, [isOnline, ownerToken]);
+  }, [isOnline, user]);
 
   useEffect(() => {
     void loadRequests();
@@ -194,7 +193,7 @@ export const ExpertSupportPage: React.FC = () => {
       await apiFetch('/expert-requests/demo', {
         method: 'POST',
         body: JSON.stringify({
-          requesterToken: ownerToken,
+          requesterKey: getRequesterKey(),
           farmerName,
           category,
           county,
@@ -233,7 +232,6 @@ export const ExpertSupportPage: React.FC = () => {
         body: JSON.stringify({
           expertReply: reply,
           status: 'Answered',
-          assignedExpertName: expertNames[id] || 'Dr. Samuel Tarr (Simulated Demo Extension Officer)',
         }),
       });
       setReplyDrafts((prev) => ({...prev, [id]: ''}));
@@ -565,7 +563,7 @@ export const ExpertSupportPage: React.FC = () => {
         /* SIMULATED EXPERT DASHBOARD TAB */
         <section className="space-y-4">
           <div className="rounded-2xl bg-[#F5B942]/25 border border-[#F5B942] p-4 text-sm text-[#183B2B]">
-            <strong>Simulated Expert Dashboard (Hackathon Demo):</strong> This view demonstrates how a Liberian extension officer reviews farmer submissions (including photos and voice notes) and sends practical advice back to the farmer.
+            <strong>Expert Dashboard (Hackathon Demo):</strong> This view demonstrates how a Liberian extension officer reviews farmer submissions (including photos and voice notes) and sends practical advice back to the farmer. Visitors see only sample requests and their own; approved experts and administrators see the full queue after signing in.
           </div>
 
           <div className="space-y-4">
@@ -602,34 +600,33 @@ export const ExpertSupportPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="rounded-2xl bg-[#F3F8F0] p-4 space-y-3">
-                  <label htmlFor={`reply-name-${req.id}`} className="block text-xs font-semibold text-[#183B2B]">
-                    Post or Update Simulated Expert Response
-                  </label>
-                  <input
-                    id={`reply-name-${req.id}`}
-                    type="text"
-                    value={expertNames[req.id] ?? 'Dr. Samuel Tarr (Simulated Extension Officer)'}
-                    onChange={(e) => setExpertNames((prev) => ({...prev, [req.id]: e.target.value}))}
-                    className="w-full min-h-[44px] rounded-xl border border-[#183B2B]/15 bg-white px-3 text-xs"
-                  />
-                  <textarea
-                    rows={3}
-                    value={replyDrafts[req.id] || ''}
-                    onChange={(e) => setReplyDrafts((prev) => ({...prev, [req.id]: e.target.value}))}
-                    placeholder="Write clear, low-risk guidance for the farmer..."
-                    className="w-full rounded-xl border border-[#183B2B]/15 bg-white p-3 text-sm"
-                  />
-                  <button
-                    type="button"
-                    disabled={savingReplyId === req.id}
-                    onClick={() => void handleExpertReply(req.id)}
-                    className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#16803C] text-white text-xs sm:text-sm font-semibold hover:bg-[#116630] disabled:opacity-50"
-                  >
-                    <Send className="w-4 h-4" aria-hidden="true" />
-                    <span>{savingReplyId === req.id ? 'Saving Reply...' : 'Send Expert Reply'}</span>
-                  </button>
-                </div>
+                {canRespond ? (
+                  <div className="rounded-2xl bg-[#F3F8F0] p-4 space-y-3">
+                    <p className="text-xs font-semibold text-[#183B2B]">
+                      Reply as {user?.displayName} (your account name is shown to the farmer)
+                    </p>
+                    <textarea
+                      rows={3}
+                      value={replyDrafts[req.id] || ''}
+                      onChange={(e) => setReplyDrafts((prev) => ({...prev, [req.id]: e.target.value}))}
+                      placeholder="Write clear, low-risk guidance for the farmer..."
+                      className="w-full rounded-xl border border-[#183B2B]/15 bg-white p-3 text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={savingReplyId === req.id}
+                      onClick={() => void handleExpertReply(req.id)}
+                      className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#16803C] text-white text-xs sm:text-sm font-semibold hover:bg-[#116630] disabled:opacity-50"
+                    >
+                      <Send className="w-4 h-4" aria-hidden="true" />
+                      <span>{savingReplyId === req.id ? 'Saving Reply...' : 'Send Expert Reply'}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <p className="rounded-2xl bg-[#F3F8F0] p-4 text-sm text-[#183B2B]/85">
+                    Only signed-in, approved experts and administrators can reply. Your own requests and any reply to them appear here.
+                  </p>
+                )}
               </div>
             ))}
           </div>

@@ -62,3 +62,28 @@ export function ownerHeaders(listingId: number): Record<string, string> {
   const key = getListingKey(listingId);
   return key ? {'X-Listing-Key': key} : {};
 }
+
+// ---------------------------------------------------------------- expert-request requester key
+
+const REQUESTER_KEY = 'agri_requester_key_v1';
+
+/**
+ * One random secret per device for the expert requests it submits. The server stores only a hash and never returns it, so only this
+ * device (or the signed-in account that submitted) can read its own private requests. Stored unencrypted in the browser profile.
+ */
+export function getRequesterKey(): string {
+  try {
+    let key = localStorage.getItem(REQUESTER_KEY);
+    if (!key || !/^[A-Za-z0-9_-]{32,128}$/.test(key)) {
+      key = generateOwnerKey();
+      localStorage.setItem(REQUESTER_KEY, key);
+    }
+    return key;
+  } catch {
+    return generateOwnerKey(); // storage blocked: requests still work but cannot be listed again from this browser
+  }
+}
+
+export function requesterHeaders(): Record<string, string> {
+  return {'X-Requester-Key': getRequesterKey()};
+}

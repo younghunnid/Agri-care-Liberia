@@ -43,6 +43,8 @@ phone_consent, phone_verified, is_fictional_seller, availability_status, view_co
   inquiry updates; enforce role checks server-side on every route; add per-route rate limits for sync endpoints.
 - Session fixation: regenerate on login; CSRF token rotation on login/logout.
 
+**Also port (expert/language-lab hardening):** `demo_expert_requests.requester_key_hash`, allow-listed expert-request JSON with `is_mine`/`can_reply`, `X-Requester-Key` header, role-checked reply/review/reset endpoints, account-derived expert names, audit entries.
+
 ## 6. Uploads and media
 Move base64 photos and voice notes out of rows into files stored **outside the web root**, served through an authorised PHP route; keep the JSON shape
 (`photoDataUrl`, `audioDataUrl`) in the API for the client or add URLs with a compatibility shim. Validate real MIME type, cap size (client already

@@ -71,7 +71,9 @@ const EXPERIMENTAL_MATCHES: Array<{keywords: string[]; matchedTopic: string; not
 ];
 
 export const LanguageLabPage: React.FC = () => {
-  const {isOnline} = useApp();
+  const {isOnline, user} = useApp();
+  // Approving or rejecting submissions is limited to verified reviewers (expert or administrator accounts).
+  const canReview = Boolean(user?.roles.some((r) => r === 'expert' || r === 'admin'));
   const [recordings, setRecordings] = useState<RecordingItem[]>([]);
   const [langFilter, setLangFilter] = useState('');
   const [loading, setLoading] = useState(true);
@@ -227,7 +229,8 @@ export const LanguageLabPage: React.FC = () => {
       });
       await loadRecordings();
     } catch {
-      // ignore
+      // Not authorised (or offline): the list is reloaded so the screen shows the real status.
+      await loadRecordings();
     }
   };
 
@@ -370,6 +373,7 @@ export const LanguageLabPage: React.FC = () => {
                 )}
               </div>
 
+              {canReview ? (
               <div className="pt-3 border-t border-[#183B2B]/10 flex flex-wrap items-center justify-between gap-2">
                 <label htmlFor={`rev-${rec.id}`} className="text-xs font-semibold text-[#183B2B]/70">
                   Review Status:
@@ -387,6 +391,11 @@ export const LanguageLabPage: React.FC = () => {
                   <option value="needs_rerecording">Needs Re-recording</option>
                 </select>
               </div>
+              ) : (
+                <p className="pt-3 border-t border-[#183B2B]/10 text-sm text-[#183B2B]/80">
+                  Review status: <strong>{rec.review_status.replace(/_/g, ' ')}</strong>. Only signed-in reviewers can change it.
+                </p>
+              )}
             </article>
           ))}
         </div>

@@ -74,6 +74,20 @@ export function verifyOwnerKey(key: unknown, storedHash: string): boolean {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+/** Keyed hash of a device's expert-request secret (domain-separated from listing owner keys). */
+export function hashRequesterKey(key: string): string {
+  const hmacKey =
+    process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 16 ? process.env.SESSION_SECRET : 'agri-owner-key-dev-fallback';
+  return crypto.createHmac('sha256', hmacKey).update(`expert-requester-v1:${key}`).digest('hex');
+}
+
+export function verifyRequesterKey(key: unknown, storedHash: string): boolean {
+  if (!storedHash || !isValidOwnerKey(key)) return false;
+  const a = Buffer.from(hashRequesterKey(key), 'hex');
+  const b = Buffer.from(storedHash, 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 export function hashIdentifier(value: string): string {
   return crypto.createHmac('sha256', getSessionSecret()).update(value).digest('hex').slice(0, 24);
 }

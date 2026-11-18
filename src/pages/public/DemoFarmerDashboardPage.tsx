@@ -14,7 +14,7 @@ import {
 import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
 import {getOfflineGuides} from '../../lib/offlineStorage';
-import {hasListingKey} from '../../lib/listingKeys';
+import {hasListingKey, requesterHeaders} from '../../lib/listingKeys';
 import {countByStatus} from '../../lib/offlineInventory';
 import {getListingRecords, getQuestionRecords, getSyncVersion, subscribeSync} from '../../lib/offlineDrafts';
 import {
@@ -51,6 +51,7 @@ interface ExpertReqSummary {
   category: string;
   status: string;
   expert_reply: string;
+  is_mine?: boolean;
 }
 
 export const DemoFarmerDashboardPage: React.FC = () => {
@@ -75,14 +76,14 @@ export const DemoFarmerDashboardPage: React.FC = () => {
     Promise.all([
       apiFetch<{listings: ListingSummary[]}>('/marketplace/listings'),
       apiFetch<{inquiries: InquirySummary[]}>(`/marketplace/inquiries`),
-      apiFetch<{requests: ExpertReqSummary[]}>(`/expert-requests/demo?token=${encodeURIComponent(ownerToken)}`),
+      apiFetch<{requests: ExpertReqSummary[]}>('/expert-requests/demo', {headers: requesterHeaders()}),
     ])
       .then(([lRes, iRes, eRes]) => {
         // The server returns every public listing; "mine" are the ones whose ownership key this phone holds.
         setMyListings(lRes.listings.filter((l) => l.can_manage || hasListingKey(l.id)));
         setServerStatus('ok');
         setMyInquiries(iRes.inquiries.slice(0, 6));
-        setMyRequests(eRes.requests.slice(0, 6));
+        setMyRequests(eRes.requests.filter((r) => r.is_mine).slice(0, 6));
       })
       .catch(() => setServerStatus('error'));
   }, [isOnline, ownerToken]);

@@ -84,12 +84,22 @@ export const PrototypeManagementPage: React.FC = () => {
     void loadAll();
   }, [loadAll]);
 
+  const canReview = Boolean(user?.roles.some((r) => r === 'expert' || r === 'admin'));
+
   const handleRecordingStatus = async (id: number, reviewStatus: RecordingRow['review_status']) => {
-    await apiFetch(`/language-lab/recordings/${id}/review`, {
-      method: 'PATCH',
-      body: JSON.stringify({reviewStatus}),
-    });
-    setNotice(`Recording #${id} updated to ${reviewStatus}.`);
+    if (!canReview) {
+      setNotice('Sign in as an approved expert or administrator to review language recordings.');
+      return;
+    }
+    try {
+      await apiFetch(`/language-lab/recordings/${id}/review`, {
+        method: 'PATCH',
+        body: JSON.stringify({reviewStatus}),
+      });
+      setNotice(`Recording #${id} updated to ${reviewStatus}.`);
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Could not update the review status.');
+    }
     await loadAll();
   };
 
@@ -304,6 +314,8 @@ export const PrototypeManagementPage: React.FC = () => {
               </div>
               <select
                 aria-label={`Review status for ${rec.question_text}`}
+                disabled={!canReview}
+                title={canReview ? undefined : 'Only signed-in reviewers can change this'}
                 value={rec.review_status}
                 onChange={(e) => void handleRecordingStatus(rec.id, e.target.value as RecordingRow['review_status'])}
                 className="min-h-[44px] rounded-xl border border-[#183B2B]/20 px-3 text-xs font-semibold"

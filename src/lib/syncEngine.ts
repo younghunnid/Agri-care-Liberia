@@ -1,8 +1,7 @@
 import {useSyncExternalStore} from 'react';
 import {ApiRequestError, apiFetch} from './api';
 import {kvGet, kvSet} from './offlineDb';
-import {getDemoOwnerToken} from './demoStorage';
-import {generateOwnerKey, getListingKey, saveListingKey} from './listingKeys';
+import {generateOwnerKey, getListingKey, getRequesterKey, saveListingKey} from './listingKeys';
 import {
   emitSync,
   getLastSyncAt,
@@ -115,7 +114,8 @@ function listingBody(rec: ListingRecord, includeImage: boolean, ownerKey?: strin
 function questionBody(rec: QuestionRecord): Record<string, unknown> {
   const d = rec.data;
   return {
-    requesterToken: getDemoOwnerToken(),
+    // Device secret; the server stores only a hash and never returns it.
+    requesterKey: getRequesterKey(),
     farmerName: d.farmerName,
     category: d.category,
     county: d.county,

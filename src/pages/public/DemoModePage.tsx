@@ -22,7 +22,8 @@ import {
 } from '../../lib/demoStorage';
 
 export const DemoModePage: React.FC = () => {
-  const {setListenMode, setLanguage} = useApp();
+  const {setListenMode, setLanguage, user} = useApp();
+  const isAdmin = Boolean(user?.roles.includes('admin'));
   const navigate = useNavigate();
   const [completed, setCompleted] = useState<Record<string, boolean>>(() => getCompletedScenarios());
   const [resetting, setResetting] = useState(false);
@@ -72,6 +73,11 @@ export const DemoModePage: React.FC = () => {
     try {
       clearLocalDemoState();
       setCompleted({});
+      if (!isAdmin) {
+        // Resetting shared server data wipes everyone's demo content, so the server only allows administrators to do it.
+        setStatusNotice('Scenario progress on this phone was reset. Resetting the shared demo data needs an administrator account.');
+        return;
+      }
       await apiFetch('/demo/reset', {method: 'POST'});
       setStatusNotice('Demo marketplace (farmers & suppliers), simulated expert queue, and scenario progress reset to clean hackathon defaults.');
     } catch (err) {
@@ -104,7 +110,7 @@ export const DemoModePage: React.FC = () => {
           className="min-h-[48px] inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#F5B942] text-[#183B2B] text-sm font-extrabold hover:bg-[#f7c55f] disabled:opacity-60 shrink-0"
         >
           <RotateCcw className="w-4 h-4" aria-hidden="true" />
-          <span>{resetting ? 'Resetting Demo...' : 'Reset Demo Data'}</span>
+          <span>{resetting ? 'Resetting Demo...' : isAdmin ? 'Reset Demo Data' : 'Reset My Progress'}</span>
         </button>
       </div>
 

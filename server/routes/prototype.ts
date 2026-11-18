@@ -5,7 +5,15 @@ import {
   MARKETPLACE_UNITS,
 } from '../constants.ts';
 import {getDb} from '../db.ts';
-import {type AuthedRequest, hashOwnerKey, isValidOwnerKey, requireRole, verifyOwnerKey, writeAuditLog} from '../security.ts';
+import {
+  type AuthedRequest,
+  hashOwnerKey,
+  hashRequesterKey,
+  isValidOwnerKey,
+  requireRole,
+  verifyOwnerKey,
+  writeAuditLog,
+} from '../security.ts';
 import {idempotent} from '../idempotency.ts';
 import {seedPrototypeData} from '../seedPrototype.ts';
 import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
@@ -645,7 +653,8 @@ prototypeRouter.post('/language-lab/recordings', (req, res) => {
   res.status(201).json({recording});
 });
 
-prototypeRouter.patch('/language-lab/recordings/:id/review', (req, res) => {
+// Only verified reviewers (expert or administrator accounts) may approve, reject or reset a submission's review status.
+prototypeRouter.patch('/language-lab/recordings/:id/review', requireRole('expert', 'admin'), (req: AuthedRequest, res) => {
   const db = getDb();
   const id = Number(req.params.id);
   const {reviewStatus} = req.body ?? {};
@@ -653,27 +662,116 @@ prototypeRouter.patch('/language-lab/recordings/:id/review', (req, res) => {
     res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'Invalid review status.'}});
     return;
   }
+  const exists = db.prepare('SELECT id FROM local_language_recordings WHERE id = ?').get(id);
+  if (!exists) {
+    res.status(404).json({error: {code: 'NOT_FOUND', message: 'Recording not found.'}});
+    return;
+  }
   db.prepare('UPDATE local_language_recordings SET review_status = ? WHERE id = ?').run(reviewStatus, id);
+  writeAuditLog({
+    actorUserId: req.user!.id,
+    actorRole: req.user!.roles.includes('admin') ? 'admin' : 'expert',
+    action: 'language_recording_reviewed',
+    targetType: 'local_language_recording',
+    targetId: id,
+    details: {reviewStatus},
+    ip: req.ip,
+  });
   const recording = db.prepare('SELECT * FROM local_language_recordings WHERE id = ?').get(id);
   res.json({recording});
 });
 
 // 3. DEMO & VISITOR EXPERT REQUESTS (Accessible without login wall + syncs with Simulated Expert Dashboard)
-prototypeRouter.get('/expert-requests/demo', (req, res) => {
+interface RawExpertRequestRow {
+  id: number;
+  user_id: number | null;
+  requester_token: string;
+  requester_key_hash: string;
+  farmer_name: string;
+  category: string;
+  county: string;
+  title: string;
+  description: string;
+  photo_data_url: string;
+  voice_note_data_url: string;
+  voice_note_summary: string;
+  status: string;
+  assigned_expert_name: string;
+  expert_reply: string;
+  is_simulated_demo: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Fictional seeded samples are public demonstration content. Everything a real person submitted is private. */
+const PUBLIC_SAMPLE_SQL = "requester_token LIKE 'demo-seed-req-%' AND user_id IS NULL AND requester_key_hash = ''";
+
+/** Explicit allow-list: requester_token, requester_key_hash and user_id are never returned. */
+function toPublicExpertRequest(row: RawExpertRequestRow, isMine: boolean, canReply: boolean) {
+  return {
+    id: row.id,
+    farmer_name: row.farmer_name,
+    category: row.category,
+    county: row.county,
+    title: row.title,
+    description: row.description,
+    photo_data_url: row.photo_data_url,
+    voice_note_data_url: row.voice_note_data_url,
+    voice_note_summary: row.voice_note_summary,
+    status: row.status,
+    assigned_expert_name: row.assigned_expert_name,
+    expert_reply: row.expert_reply,
+    is_simulated_demo: row.is_simulated_demo,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    is_mine: isMine,
+    can_reply: canReply,
+  };
+}
+
+/**
+ * Who sees what: experts and administrators see the whole queue (they answer it); a signed-in farmer or a device holding the
+ * requester key (header `X-Requester-Key`, never a URL) sees its own requests; everyone else sees only the fictional samples.
+ */
+prototypeRouter.get('/expert-requests/demo', (req: AuthedRequest, res) => {
   const db = getDb();
-  const token = typeof req.query.token === 'string' ? req.query.token.trim() : '';
-  const rows = token
-    ? db
-        .prepare('SELECT * FROM demo_expert_requests WHERE requester_token = ? OR is_simulated_demo = 1 ORDER BY id DESC LIMIT 40')
-        .all(token)
-    : db.prepare('SELECT * FROM demo_expert_requests ORDER BY id DESC LIMIT 40').all();
-  res.json({requests: rows});
+  const isResponder = Boolean(req.user?.roles.some((r) => r === 'expert' || r === 'admin'));
+  const key = req.get('X-Requester-Key');
+  const keyHash = isValidOwnerKey(key) ? hashRequesterKey(key) : '';
+
+  let rows: RawExpertRequestRow[];
+  if (isResponder) {
+    rows = db.prepare('SELECT * FROM demo_expert_requests ORDER BY id DESC LIMIT 100').all() as unknown as RawExpertRequestRow[];
+  } else {
+    const clauses = [`(${PUBLIC_SAMPLE_SQL})`];
+    const args: (string | number)[] = [];
+    if (keyHash) {
+      clauses.push('requester_key_hash = ?');
+      args.push(keyHash);
+    }
+    if (req.user) {
+      clauses.push('user_id = ?');
+      args.push(req.user.id);
+    }
+    rows = db
+      .prepare(`SELECT * FROM demo_expert_requests WHERE ${clauses.join(' OR ')} ORDER BY id DESC LIMIT 40`)
+      .all(...args) as unknown as RawExpertRequestRow[];
+  }
+  res.json({
+    requests: rows.map((r) =>
+      toPublicExpertRequest(
+        r,
+        Boolean((keyHash && r.requester_key_hash === keyHash) || (req.user && r.user_id === req.user.id)),
+        isResponder
+      )
+    ),
+  });
 });
 
 prototypeRouter.post('/expert-requests/demo', idempotent('expert.request.create'), (req: AuthedRequest, res) => {
   const db = getDb();
   const {
-    requesterToken,
+    requesterKey,
     farmerName,
     category,
     county,
@@ -684,6 +782,13 @@ prototypeRouter.post('/expert-requests/demo', idempotent('expert.request.create'
     voiceNoteSummary,
   } = req.body ?? {};
 
+  // Without an account, the device must supply a high-entropy secret so only it can see this request again.
+  if (!req.user && !isValidOwnerKey(requesterKey)) {
+    res.status(400).json({
+      error: {code: 'VALIDATION_ERROR', message: 'A device requester key (32 to 128 letters, digits, - or _) is required to ask without signing in.'},
+    });
+    return;
+  }
   const cleanTitle = typeof title === 'string' ? title.trim() : '';
   const cleanDesc = typeof description === 'string' ? description.trim() : '';
   const cleanCat = typeof category === 'string' && category.trim() ? category.trim().slice(0, 80) : 'General Farming';
@@ -715,13 +820,13 @@ prototypeRouter.post('/expert-requests/demo', idempotent('expert.request.create'
   const ins = db
     .prepare(
       `INSERT INTO demo_expert_requests (
-        user_id, requester_token, farmer_name, category, county, title, description,
+        user_id, requester_token, requester_key_hash, farmer_name, category, county, title, description,
         photo_data_url, voice_note_data_url, voice_note_summary, status, is_simulated_demo
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Submitted', 1)`
+      ) VALUES (?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Submitted', 1)`
     )
     .run(
       req.user?.id ?? null,
-      typeof requesterToken === 'string' ? requesterToken.trim().slice(0, 80) : '',
+      isValidOwnerKey(requesterKey) ? hashRequesterKey(requesterKey) : '',
       cleanFarmer,
       cleanCat,
       cleanCounty,
@@ -732,14 +837,20 @@ prototypeRouter.post('/expert-requests/demo', idempotent('expert.request.create'
       typeof voiceNoteSummary === 'string' ? voiceNoteSummary.trim().slice(0, 400) : ''
     );
 
-  const created = db.prepare('SELECT * FROM demo_expert_requests WHERE id = ?').get(Number(ins.lastInsertRowid));
-  res.status(201).json({request: created});
+  const created = db.prepare('SELECT * FROM demo_expert_requests WHERE id = ?').get(Number(ins.lastInsertRowid)) as unknown as RawExpertRequestRow;
+  res.status(201).json({request: toPublicExpertRequest(created, true, false)});
 });
 
-prototypeRouter.patch('/expert-requests/demo/:id/reply', (req, res) => {
+// Only verified expert or administrator accounts may reply. The replying expert's name comes from their account, never from the request.
+prototypeRouter.patch('/expert-requests/demo/:id/reply', requireRole('expert', 'admin'), (req: AuthedRequest, res) => {
   const db = getDb();
   const id = Number(req.params.id);
-  const {expertReply, status, assignedExpertName} = req.body ?? {};
+  const {expertReply, status} = req.body ?? {};
+  const existing = db.prepare('SELECT id FROM demo_expert_requests WHERE id = ?').get(id);
+  if (!existing) {
+    res.status(404).json({error: {code: 'NOT_FOUND', message: 'Request not found.'}});
+    return;
+  }
   if (typeof expertReply !== 'string' || expertReply.trim().length < 5) {
     res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'Expert reply must be at least 5 characters.'}});
     return;
@@ -749,17 +860,20 @@ prototypeRouter.patch('/expert-requests/demo/:id/reply', (req, res) => {
     `UPDATE demo_expert_requests
      SET expert_reply = ?,
          status = ?,
-         assigned_expert_name = COALESCE(?, assigned_expert_name),
+         assigned_expert_name = ?,
          updated_at = datetime('now')
      WHERE id = ?`
-  ).run(
-    expertReply.trim().slice(0, 2500),
-    nextStatus,
-    typeof assignedExpertName === 'string' && assignedExpertName.trim() ? assignedExpertName.trim().slice(0, 80) : null,
-    id
-  );
-  const updated = db.prepare('SELECT * FROM demo_expert_requests WHERE id = ?').get(id);
-  res.json({request: updated});
+  ).run(expertReply.trim().slice(0, 2500), nextStatus, req.user!.displayName.slice(0, 80), id);
+  writeAuditLog({
+    actorUserId: req.user!.id,
+    actorRole: req.user!.roles.includes('admin') ? 'admin' : 'expert',
+    action: 'expert_request_replied',
+    targetType: 'demo_expert_request',
+    targetId: id,
+    ip: req.ip,
+  });
+  const updated = db.prepare('SELECT * FROM demo_expert_requests WHERE id = ?').get(id) as unknown as RawExpertRequestRow;
+  res.json({request: toPublicExpertRequest(updated, false, true)});
 });
 
 // 4. PROTOTYPE MANAGEMENT & ANALYTICS (Clearly separates actual DB counts vs simulated demo counts)
@@ -789,7 +903,8 @@ prototypeRouter.get('/prototype/management-summary', (_req, res) => {
 });
 
 // 5. ADMIN AUDIT LOGS CHECK FOR PROTECTED ROUTE COMPATIBILITY
-prototypeRouter.post('/demo/reset', (_req, res) => {
+// Wipes and reseeds demonstration data, so it is administrator-only.
+prototypeRouter.post('/demo/reset', requireRole('admin'), (_req, res) => {
   seedPrototypeData(true);
   res.json({ok: true, message: 'Demo marketplace, recordings, and simulated expert queue reset to clean hackathon defaults.'});
 });
