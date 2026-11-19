@@ -17,6 +17,7 @@ import {useApp} from '../../context/AppContext';
 import {SafeImage} from '../../components/SafeImage';
 import {SpeakButton} from '../../components/SpeakButton';
 import {ListenOfflineSection} from '../../components/AudioLessonCard';
+import {GuidanceBanner, PlantingGuidanceCard, StorageGuidanceCard} from '../../components/guidance/GuidanceBits';
 import {CROPS_LIBRARY, type CropGuideEntry} from '../../data/cropsLibrary';
 import {recordRecentlyViewedGuide, saveDemoAdvice} from '../../lib/demoStorage';
 
@@ -159,6 +160,13 @@ export const CropsLibraryPage: React.FC = () => {
               <p className="text-xs font-bold text-[#16803C]">
                 Typical Planting Window: {selectedCrop.plantingWindow}
               </p>
+            </div>
+
+            {/* Phase 2A: planting months against this month, and harvest handling and storage, with the demonstration labels */}
+            <div className="space-y-4" data-testid="crop-guidance">
+              <GuidanceBanner />
+              <PlantingGuidanceCard slug={selectedCrop.slug} />
+              <StorageGuidanceCard slug={selectedCrop.slug} />
             </div>
 
             {/* Structured Sections */}

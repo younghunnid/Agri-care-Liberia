@@ -337,9 +337,9 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#183B2B]/10 pb-safe"
       >
         <div className="grid grid-cols-5 h-[4.25rem] items-center">
-          <Link to="/" className={mobileTabClass(location.pathname === '/')}>
+          <Link to="/today" className={mobileTabClass(location.pathname.startsWith('/today'))} data-testid="tab-today">
             <Home className="w-5 h-5 mb-0.5" aria-hidden="true" />
-            <span>Home</span>
+            <span>Today</span>
           </Link>
           <Link to="/advisor" className={mobileTabClass(location.pathname.startsWith('/advisor'))}>
             <Mic className="w-5 h-5 mb-0.5" aria-hidden="true" />

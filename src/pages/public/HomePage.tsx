@@ -112,6 +112,12 @@ export const HomePage: React.FC = () => {
             )}
           </div>
 
+          {/* FARMER HOME SCREEN */}
+          <Link to="/today" data-testid="home-today" className="group flex items-center justify-between gap-4 rounded-3xl bg-[#183B2B] text-white p-5 shadow-md min-h-[88px]">
+            <span className="space-y-1"><span className="block font-display text-xl font-extrabold">My farm today</span><span className="block text-sm text-white/85">Five quick actions, reminders for your crops, and what is waiting to send. Works offline.</span></span>
+            <ArrowRight className="w-6 h-6 shrink-0 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+          </Link>
+
           {/* 4 PROMINENT PRIMARY HOMEPAGE ACTIONS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link

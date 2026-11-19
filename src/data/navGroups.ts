@@ -25,7 +25,9 @@ export const NAV_GROUPS: NavGroup[] = [
       {label: 'Advice you can read offline', to: '/offline', kinds: ['working']},
       {label: 'Weather and planting', to: '/weather', kinds: ['simulated'], note: 'Sample weather only. Not live.'},
       {label: 'Soil and seeds', to: '/soil', kinds: ['working']},
-      {label: 'Harvest and storage', to: '/guides', kinds: ['working']},
+      {label: 'Planting months by crop', to: '/guidance', kinds: ['draft'], note: 'Demonstration guidance. Works offline. Not reviewed by an agronomist.'},
+      {label: 'Harvest handling and storage by crop', to: '/guidance?tab=storage', kinds: ['draft'], note: 'Demonstration guidance. Works offline.'},
+      {label: 'Harvest and storage guides', to: '/guides', kinds: ['working']},
       {label: 'Farm emergencies', kinds: ['future']},
     ],
   },
@@ -48,6 +50,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'tools', title: 'Farm Tools', blurb: 'Simple tools for your farm.',
     items: [
+      {label: 'My farm today (home screen)', to: '/today', kinds: ['working', 'simulated'], note: 'Reminders use sample weather, not live. Works offline.'},
       {label: 'Sell my harvest', to: '/harvest/sell', kinds: ['working', 'simulated'], note: 'Save offline, sent when online. No payments.'},
       {label: 'Find harvest (buyers)', to: '/harvest', kinds: ['simulated'], note: 'Demonstration listings. No payments.'},
       {label: 'Farm cost and profit calculator', to: '/tools/calculator', kinds: ['working']},
