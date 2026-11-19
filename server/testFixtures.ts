@@ -23,6 +23,8 @@ const COUNTABLE = new Set([
   'local_language_recordings',
   'audit_logs',
   'sync_operations',
+  'verification_challenges',
+  'trusted_devices',
 ]);
 
 function tokenGuard(expected: string) {
@@ -51,7 +53,7 @@ export function mountTestFixtures(app: Express): void {
   router.use(tokenGuard(token));
 
   router.post('/users', (req, res) => {
-    const {displayName, phone, password, roles, expertStatus, county} = req.body ?? {};
+    const {displayName, phone, password, roles, expertStatus, county, phoneVerified} = req.body ?? {};
     if (typeof displayName !== 'string' || typeof phone !== 'string' || typeof password !== 'string' || !Array.isArray(roles)) {
       res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'displayName, phone, password and roles[] are required.'}});
       return;
@@ -59,8 +61,9 @@ export function mountTestFixtures(app: Express): void {
     const db = getDb();
     const id = Number(
       db
-        .prepare("INSERT INTO users (display_name, phone, password_hash, status) VALUES (?, ?, ?, 'active')")
-        .run(displayName, phone, hashPassword(password)).lastInsertRowid
+        .prepare(`INSERT INTO users (display_name, phone, password_hash, status, phone_verified_at, phone_claim_expires_at)
+                  VALUES (?, ?, ?, 'active', CASE WHEN ? = 1 THEN datetime('now') END, CASE WHEN ? = 1 THEN NULL ELSE datetime('now', '+72 hours') END)`)
+        .run(displayName, phone, hashPassword(password), phoneVerified === false ? 0 : 1, phoneVerified === false ? 0 : 1).lastInsertRowid
     );
     for (const roleName of roles as string[]) {
       const role = db.prepare('SELECT id FROM roles WHERE name = ?').get(roleName) as {id: number} | undefined;
@@ -83,6 +86,49 @@ export function mountTestFixtures(app: Express): void {
       );
     }
     res.status(201).json({id});
+  });
+
+  // ---- test-only authentication adapters (narrow and explicit; mounted only with APP_ENV=test and the fixture token) ----
+  /** Creates a REAL trusted-device row for an existing user and returns the raw cookie value, so a test can sign in through the normal login path. */
+  router.post('/trusted-devices', async (req, res) => {
+    const {phone} = req.body ?? {};
+    const u = getDb().prepare('SELECT id FROM users WHERE phone = ?').get(String(phone)) as {id: number} | undefined;
+    if (!u) { res.status(404).json({error: {code: 'NOT_FOUND', message: 'No such user.'}}); return; }
+    const {createTrustedDevice} = await import('./authSecurity.ts');
+    const d = createTrustedDevice(u.id, 'Test fixture');
+    res.status(201).json({token: d.token, id: d.id});
+  });
+  router.get('/users/by-phone/:phone', (req, res) => {
+    const u = getDb().prepare('SELECT id, phone, phone_verified_at, session_version FROM users WHERE phone = ?').get(String(req.params.phone));
+    if (!u) { res.status(404).json({error: {code: 'NOT_FOUND', message: 'No such user.'}}); return; }
+    res.json({user: u});
+  });
+  /** Makes a user's unverified-claim window end `hours` ago-from-now offset (negative = already expired). */
+  router.post('/users/claim-expiry', (req, res) => {
+    const {phone, hoursFromNow} = req.body ?? {};
+    getDb().prepare("UPDATE users SET phone_claim_expires_at = datetime('now', ?) WHERE phone = ?").run(`${Number(hoursFromNow) >= 0 ? '+' : ''}${Number(hoursFromNow)} hours`, String(phone));
+    res.json({ok: true});
+  });
+  /** Moves the clock of challenges for a user/purpose back by `ms` (to test expiry and resend cooldown without waiting). Never exposes secrets. */
+  router.post('/challenges/age', (req, res) => {
+    const {userId, phone, purpose, ms} = req.body ?? {};
+    const n = Number(ms);
+    const where = userId ? 'user_id = ?' : 'phone = ?';
+    const r = getDb().prepare(`UPDATE verification_challenges SET created_ms = created_ms - ?, expires_ms = expires_ms - ?, last_sent_ms = last_sent_ms - ?, verified_ms = CASE WHEN verified_ms IS NULL THEN NULL ELSE verified_ms - ? END WHERE ${where} AND purpose = ?`)
+      .run(n, n, n, n, userId ?? String(phone), String(purpose));
+    res.json({changed: Number(r.changes)});
+  });
+  router.get('/challenges', (req, res) => {
+    const userId = Number(req.query.userId);
+    const rows = getDb().prepare('SELECT purpose, status, attempts, send_count, phone FROM verification_challenges WHERE user_id = ? ORDER BY id DESC').all(userId);
+    res.json({challenges: rows});
+  });
+  router.delete('/otp-rate-events', (_req, res) => { getDb().prepare('DELETE FROM otp_rate_events').run(); getDb().prepare('DELETE FROM rate_limit_attempts').run(); res.json({ok: true}); });
+  router.get('/audit-text', (_req, res) => {
+    // Everything the audit log and challenge table contain, flattened, so tests can scan it for secrets/codes.
+    const a = getDb().prepare('SELECT action, details_json, ip_hash FROM audit_logs').all();
+    const c = getDb().prepare('SELECT public_id, purpose, phone, status FROM verification_challenges').all();
+    res.json({text: JSON.stringify([a, c])});
   });
 
   router.get('/count/:table', (req, res) => {

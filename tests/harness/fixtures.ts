@@ -24,8 +24,32 @@ export class Fixtures {
   }
 
   /** Creates an active user with the given roles (and a farmer/expert profile when relevant). */
-  async createUser(input: {displayName: string; phone: string; password: string; roles: ('farmer' | 'expert' | 'admin')[]; expertStatus?: string; county?: string}) {
+  async createUser(input: {displayName: string; phone: string; password: string; roles: ('farmer' | 'expert' | 'admin')[]; expertStatus?: string; county?: string; phoneVerified?: boolean}) {
     return this.ok<{id: number}>('POST', '/users', input);
+  }
+
+  // ---- authentication adapters (SMS verification milestone). Narrow, explicit, test-only; real login code paths still run. ----
+  /** Creates a real trusted-device row for an existing user and returns the cookie value to put in a jar as `agri_device`. */
+  async trustDevice(phone: string): Promise<string> {
+    return (await this.ok<{token: string}>('POST', '/trusted-devices', {phone})).token;
+  }
+  async userByPhone(phone: string) {
+    return (await this.ok<{user: {id: number; phone: string; phone_verified_at: string | null; session_version: number}}>('GET', `/users/by-phone/${encodeURIComponent(phone)}`)).user;
+  }
+  async setClaimExpiry(phone: string, hoursFromNow: number): Promise<void> {
+    await this.ok('POST', '/users/claim-expiry', {phone, hoursFromNow});
+  }
+  async ageChallenges(by: {userId?: number; phone?: string}, purpose: string, ms: number): Promise<number> {
+    return (await this.ok<{changed: number}>('POST', '/challenges/age', {...by, purpose, ms})).changed;
+  }
+  async challenges(userId: number) {
+    return (await this.ok<{challenges: {purpose: string; status: string; attempts: number; send_count: number; phone: string}[]}>('GET', `/challenges?userId=${userId}`)).challenges;
+  }
+  async resetOtpRates(): Promise<void> {
+    await this.ok('DELETE', '/otp-rate-events');
+  }
+  async auditText(): Promise<string> {
+    return (await this.ok<{text: string}>('GET', '/audit-text')).text;
   }
   async count(table: string): Promise<number> {
     return (await this.ok<{count: number}>('GET', `/count/${table}`)).count;

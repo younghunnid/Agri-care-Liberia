@@ -8,11 +8,15 @@ import {createServer as createViteServer} from 'vite';
 import {getDb} from './server/db.ts';
 import {seedInitialData} from './server/seed.ts';
 import {sessionMiddleware} from './server/security.ts';
+import {getAuthConfig} from './server/authConfig.ts';
 import {v1Router} from './server/routes/v1.ts';
 
 export async function createApp() {
   // Initialize isolated database, run migrations, and seed sample demonstration dataset
   assertSafeTestEnvironment(); // refuses APP_ENV=test on the default database BEFORE anything is opened
+  const authCfg = getAuthConfig(); // fails fast on unsafe SMS/OTP settings (e.g. the simulated provider in production)
+  if (authCfg.smsProvider === 'none') console.warn('[auth] SMS_PROVIDER=none: sign-in from a NEW device and SMS password recovery are unavailable (fail closed). Trusted devices still work.');
+  else console.warn('[auth] SMS_PROVIDER=simulated: DEMO MODE. Verification messages are simulated and nothing is sent.');
   getDb();
   seedInitialData();
 

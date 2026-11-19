@@ -7,6 +7,11 @@ import {ProtectedRoute} from './components/ProtectedRoute';
 import {HomePage} from './pages/public/HomePage';
 import {CropProblemsPage} from './pages/public/CropProblemsPage';
 import {FarmCalculatorPage} from './pages/public/FarmCalculatorPage';
+import {VerifyCodePage} from './pages/public/VerifyCodePage';
+import {ForgotPasswordPage} from './pages/public/ForgotPasswordPage';
+import {DemoSmsInboxPage} from './pages/public/DemoSmsInboxPage';
+import {AccountSecurityPage} from './pages/farmer/AccountSecurityPage';
+import {TrustedDevicesPage} from './pages/farmer/TrustedDevicesPage';
 import {LearnPage} from './pages/public/LearnPage';
 import {LessonPage} from './pages/public/LessonPage';
 import {CassavaDemoPage} from './pages/public/CassavaDemoPage';
@@ -99,6 +104,10 @@ export default function App() {
             <Route path="/contact" element={<ContactFeedbackPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/verify" element={<VerifyCodePage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ForgotPasswordPage />} />
+            <Route path="/demo/sms-inbox" element={<DemoSmsInboxPage />} />
 
             {/* Authenticated Farmer Routes */}
             <Route path="/farmer" element={<ProtectedRoute><FarmerDashboardPage /></ProtectedRoute>} />
@@ -106,6 +115,9 @@ export default function App() {
             <Route path="/farmer/questions" element={<ProtectedRoute><MyQuestionsPage /></ProtectedRoute>} />
             <Route path="/farmer/expert-requests" element={<ProtectedRoute><ExpertRequestsPage /></ProtectedRoute>} />
             <Route path="/farmer/profile" element={<ProtectedRoute><ProfilePreferencesPage /></ProtectedRoute>} />
+
+            <Route path="/account/security" element={<ProtectedRoute><AccountSecurityPage /></ProtectedRoute>} />
+            <Route path="/account/devices" element={<ProtectedRoute><TrustedDevicesPage /></ProtectedRoute>} />
 
             {/* Expert Routes */}
             <Route path="/expert" element={<ProtectedRoute requiredRoles={['expert', 'admin']}><ExpertDashboardPage /></ProtectedRoute>} />

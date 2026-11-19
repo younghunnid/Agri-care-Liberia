@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
+    "db:migrate:down": "tsx scripts/migrate-down.ts",
+    "auth:recover-account": "tsx scripts/recover-account.ts",
     "db:bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "test:api": "tsx tests/api.test.ts",
     "dev:https": "node scripts/dev-https-proxy.mjs",
@@ -19,6 +21,7 @@
     "test:offline": "tsx tests/offlineAdvisor.test.ts && tsx tests/dataCache.test.ts && tsx tests/offlineInventory.test.ts",
     "test:h1": "tsx --test tests/h1.test.ts",
     "test:h2": "tsx --test tests/h2.test.ts",
+    "test:sms": "tsx --test tests/sms-auth.test.ts",
     "test:m3": "tsx --test tests/m3/run.ts",
     "test:m3:unit": "php backend-php/tests/m3_unit.php"
   },

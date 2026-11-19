@@ -95,12 +95,15 @@ export function hashIdentifier(value: string): string {
 interface SessionPayload {
   uid: number;
   exp: number;
+  /** users.session_version at issue time. A bump (password reset/change, device revoke-all, phone change) invalidates every older cookie. */
+  sv: number;
 }
 
-export function signSessionToken(userId: number, ttlSeconds = 60 * 60 * 24 * 7): string {
+export function signSessionToken(userId: number, sessionVersion: number, ttlSeconds = 60 * 60 * 24 * 7): string {
   const payload: SessionPayload = {
     uid: userId,
     exp: Math.floor(Date.now() / 1000) + ttlSeconds,
+    sv: sessionVersion,
   };
   const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
   const sig = crypto.createHmac('sha256', getSessionSecret()).update(encoded).digest('base64url');
@@ -121,7 +124,7 @@ export function verifySessionToken(token: string | undefined): SessionPayload | 
 
   try {
     const parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as SessionPayload;
-    if (!parsed.uid || !parsed.exp || parsed.exp < Math.floor(Date.now() / 1000)) {
+    if (!parsed.uid || !parsed.exp || !Number.isInteger(parsed.sv) || parsed.exp < Math.floor(Date.now() / 1000)) {
       return null;
     }
     return parsed;
@@ -226,7 +229,13 @@ export function loadUserById(userId: number): SessionUser | null {
 export function sessionMiddleware(req: AuthedRequest, res: Response, next: NextFunction): void {
   const token = req.cookies?.[SESSION_COOKIE_NAME] as string | undefined;
   const payload = verifySessionToken(token);
-  req.user = payload ? loadUserById(payload.uid) : null;
+  // Server-enforced revocation: the cookie's version must equal the user's current session_version (tokens without one are rejected).
+  let current: number | null = null;
+  if (payload) {
+    const row = getDb().prepare('SELECT session_version AS v FROM users WHERE id = ?').get(payload.uid) as {v: number} | undefined;
+    current = row ? row.v : null;
+  }
+  req.user = payload && current !== null && payload.sv === current ? loadUserById(payload.uid) : null;
 
   let anonToken = req.cookies?.[ANON_COOKIE_NAME] as string | undefined;
   if (!anonToken || !/^[a-f0-9]{24,64}$/.test(anonToken)) {

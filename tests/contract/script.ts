@@ -22,6 +22,8 @@ export interface Step {
   body?: unknown | ((ctx: Ctx) => unknown);
   headers?: Record<string, string>;
   skipCsrf?: boolean;
+  /** Runs BEFORE the request and is not recorded (test setup, e.g. registering a trusted device through the fixture adapter). */
+  before?: (ctx: Ctx) => Promise<void>;
   /** Runs after the response, to remember ids (e.g. a created listing) for later steps. */
   capture?: (data: any, ctx: Ctx) => void;
 }
@@ -64,7 +66,8 @@ export const STEPS: Step[] = [
   {name: 'register duplicate phone', jar: 'farmer2', method: 'POST', path: '/api/v1/auth/register', body: {displayName: 'Dup Farmer', phone: '+231771234001', password: 'SafePassword123', county: 'Lofa', preferredLanguage: 'en', cropsOfInterest: []}},
   {name: 'me (farmer)', jar: 'farmer', path: '/api/v1/auth/me'},
   {name: 'login wrong password', jar: 'farmer2', method: 'POST', path: '/api/v1/auth/login', body: {identifier: '+231771234001', password: 'WrongPassword!1'}},
-  {name: 'login ok', jar: 'farmer2', method: 'POST', path: '/api/v1/auth/login', body: {identifier: '+231771234001', password: 'SafePassword123'}},
+  {name: 'login ok', jar: 'farmer2', method: 'POST', path: '/api/v1/auth/login', body: {identifier: '+231771234001', password: 'SafePassword123'},
+    before: async (ctx) => { ctx.jars.farmer2.set('agri_device', await ctx.fx.trustDevice('+231771234001')); }},
   {name: 'request without CSRF token', jar: 'anon', method: 'POST', path: '/api/v1/feedback', skipCsrf: true, body: {name: 'X', message: 'No csrf header'}},
   // --- signed-in farmer
   {name: 'profile get', jar: 'farmer', path: '/api/v1/profile'},

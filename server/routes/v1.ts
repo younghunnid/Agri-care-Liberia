@@ -10,6 +10,13 @@ import {askAgriculturalAdvisor, isAiConfigured} from '../ai.ts';
 import {prototypeRouter} from './prototype.ts';
 import {idempotent} from '../idempotency.ts';
 import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
+import {authSecurityRouter} from './authSecurity.ts';
+import {
+  CHALLENGE_COOKIE, CLAIM_COOKIE, DEVICE_COOKIE, challengeCookieOptions, clearHold, findTrustedDevice, getSessionVersion, hasPhoneOnFile, passwordProblem, resolvePhoneForRegistration,
+} from '../authSecurity.ts';
+import {OtpError, maskPhone, startChallenge} from '../otp.ts';
+import {getAuthConfig} from '../authConfig.ts';
+import {getSmsProvider} from '../sms/index.ts';
 import {
   type AuthedRequest,
   CSRF_COOKIE_NAME,
@@ -34,6 +41,8 @@ export const v1Router = Router();
 // Apply CSRF protection to all state-changing API requests
 v1Router.use(verifyCsrf);
 v1Router.use(prototypeRouter);
+// Verification, new-device sign-in, password recovery, phone ownership, trusted devices (registered BEFORE the routes below that they replace)
+v1Router.use(authSecurityRouter);
 
 // 1. Health & CSRF
 v1Router.get('/health', (_req, res) => {
@@ -342,8 +351,9 @@ v1Router.post('/auth/register', (req: AuthedRequest, res) => {
     res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'Enter a valid email address.'}});
     return;
   }
-  if (cleanPassword.length < 8 || cleanPassword.length > 128) {
-    res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'Password must be at least 8 characters.'}});
+  const pwProblem = passwordProblem(cleanPassword, {phone: cleanPhone, displayName: cleanName});
+  if (pwProblem) {
+    res.status(400).json({error: {code: 'VALIDATION_ERROR', message: pwProblem}});
     return;
   }
   if (!LIBERIA_COUNTIES.includes(cleanCounty as (typeof LIBERIA_COUNTIES)[number])) {
@@ -351,7 +361,10 @@ v1Router.post('/auth/register', (req: AuthedRequest, res) => {
     return;
   }
 
-  const existingPhone = db.prepare('SELECT id FROM users WHERE phone = ?').get(cleanPhone);
+  // A number is never reserved just because it was typed once (Decision 8): an UNVERIFIED claim that has expired is released to the new registrant,
+  // while a verified number and an unexpired claim are never taken. The verified owner can free a number by proving possession (phone-claim flow).
+  const phoneState = resolvePhoneForRegistration(cleanPhone, req.cookies?.[CLAIM_COOKIE]);
+  const existingPhone = phoneState === 'taken';
   if (existingPhone) {
     res.status(409).json({error: {code: 'PHONE_EXISTS', message: 'An account with this phone number already exists.'}});
     return;
@@ -371,8 +384,9 @@ v1Router.post('/auth/register', (req: AuthedRequest, res) => {
   let userId = 0;
   try {
     const resUser = db
-      .prepare("INSERT INTO users (display_name, phone, email, password_hash, status) VALUES (?, ?, ?, ?, 'active')")
-      .run(cleanName, cleanPhone, cleanEmail, passwordHash);
+      .prepare(`INSERT INTO users (display_name, phone, email, password_hash, status, phone_claim_expires_at)
+                VALUES (?, ?, ?, ?, 'active', datetime('now', ?))`)
+      .run(cleanName, cleanPhone, cleanEmail, passwordHash, `+${getAuthConfig().unverifiedClaimHoursNew} hours`);
     userId = Number(resUser.lastInsertRowid);
 
     db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(userId, farmerRole.id);
@@ -388,7 +402,8 @@ v1Router.post('/auth/register', (req: AuthedRequest, res) => {
     throw err;
   }
 
-  const token = signSessionToken(userId);
+  clearHold(cleanPhone);
+  const token = signSessionToken(userId, getSessionVersion(userId) ?? 0);
   res.cookie(SESSION_COOKIE_NAME, token, cookieOptions(req, true));
 
   writeAuditLog({
@@ -432,9 +447,9 @@ v1Router.post('/auth/login', (req: AuthedRequest, res) => {
       ? phoneIdent.normalized
       : normalizePhone(rawIdent);
   const userRow = db
-    .prepare('SELECT id, password_hash, status FROM users WHERE phone = ? OR lower(email) = ?')
+    .prepare('SELECT id, password_hash, status, phone, phone_verified_at FROM users WHERE phone = ? OR lower(email) = ?')
     .get(normalized, rawIdent.toLowerCase()) as
-    | {id: number; password_hash: string; status: string}
+    | {id: number; password_hash: string; status: string; phone: string; phone_verified_at: string | null}
     | undefined;
 
   if (!userRow || !verifyPassword(cleanPassword, userRow.password_hash)) {
@@ -455,7 +470,40 @@ v1Router.post('/auth/login', (req: AuthedRequest, res) => {
     return;
   }
 
-  const token = signSessionToken(userRow.id);
+  // Password is right. Only a trusted device (valid, unexpired, unrevoked, THIS user's) may receive a session now; anything else must prove
+  // possession of the account's phone first. No session cookie is issued until the code is verified.
+  if (!findTrustedDevice(userRow.id, req.cookies?.[DEVICE_COOKIE])) {
+    if (!hasPhoneOnFile(userRow.phone)) {
+      res.status(409).json({error: {code: 'PHONE_RECOVERY_REQUIRED', message: 'This account has no phone number that can receive a code. Please contact the project team for account recovery.'}});
+      return;
+    }
+    const purpose = userRow.phone_verified_at ? 'new_device_login' : 'phone_confirm';
+    startChallenge({userId: userRow.id, purpose, phone: userRow.phone, ip: req.ip || 'unknown'})
+      .then((started) => {
+        res.cookie(CHALLENGE_COOKIE, `${started.publicId}.${started.bindingSecret}`, challengeCookieOptions(req));
+        writeAuditLog({actorUserId: userRow.id, actorRole: 'user', action: 'otp_sent', targetType: 'user', targetId: userRow.id, details: {purpose}, ip: req.ip});
+        const now = Date.now();
+        res.status(202).json({
+          status: 'VERIFICATION_REQUIRED',
+          purpose,
+          maskedPhone: maskPhone(userRow.phone),
+          expiresInSeconds: Math.max(0, Math.ceil((started.expiresMs - now) / 1000)),
+          resendAfterSeconds: Math.max(0, Math.ceil((started.resendAfterMs - now) / 1000)),
+          demo: getSmsProvider().name === 'simulated',
+        });
+      })
+      .catch((e) => {
+        if (e instanceof OtpError) {
+          if (e.retryAfterSeconds) res.setHeader('Retry-After', String(e.retryAfterSeconds));
+          res.status(e.status).json({error: {code: e.code, message: e.message}});
+          return;
+        }
+        res.status(500).json({error: {code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.'}});
+      });
+    return;
+  }
+
+  const token = signSessionToken(userRow.id, getSessionVersion(userRow.id) ?? 0);
   res.cookie(SESSION_COOKIE_NAME, token, cookieOptions(req, true));
   const user = loadUserById(userRow.id);
 
@@ -484,105 +532,6 @@ v1Router.post('/auth/logout', (req: AuthedRequest, res) => {
   }
   res.clearCookie(SESSION_COOKIE_NAME, clearCookieOptions(req, true));
   res.json({ok: true});
-});
-
-v1Router.post('/auth/forgot-password', (req, res) => {
-  const db = getDb();
-  const {identifier} = req.body ?? {};
-  const rawIdent = typeof identifier === 'string' ? identifier.trim() : '';
-  const rl = checkAndRecordRateLimit(hashIdentifier(req.ip || 'unknown'), 'password_reset', 5, 60, true);
-  if (!rl.allowed) {
-    res.status(429).json({error: {code: 'RATE_LIMITED', message: 'Too many reset requests. Please try later.'}});
-    return;
-  }
-
-  const phoneIdent = normalizeLiberianPhone(rawIdent);
-  const normalized = rawIdent.includes('@')
-    ? rawIdent.toLowerCase()
-    : phoneIdent.valid
-      ? phoneIdent.normalized
-      : normalizePhone(rawIdent);
-  const userRow = rawIdent
-    ? (db
-        .prepare('SELECT id FROM users WHERE phone = ? OR lower(email) = ?')
-        .get(normalized, rawIdent.toLowerCase()) as {id: number} | undefined)
-    : undefined;
-
-  if (userRow) {
-    const rawToken = crypto.randomBytes(24).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-    db.prepare(
-      `INSERT INTO password_resets (user_id, token_hash, expires_at)
-       VALUES (?, ?, datetime('now', '+30 minutes'))`
-    ).run(userRow.id, tokenHash);
-
-    writeAuditLog({
-      actorUserId: userRow.id,
-      actorRole: 'system',
-      action: 'password_reset_requested',
-      targetType: 'user',
-      targetId: userRow.id,
-      ip: req.ip,
-    });
-
-    // Safe development-only testing mechanism: log ONLY to server console in non-production, NEVER return token in HTTP response!
-    if (process.env.NODE_ENV !== 'production') {
-      console.info(`[DEV-ONLY PASSWORD RESET] user_id=${userRow.id} reset_token=${rawToken}`);
-    }
-  }
-
-  res.json({
-    deliveryConfigured: false,
-    message:
-      'Automated SMS/email password reset delivery is not configured on this server. If an account matches, a reset record was logged for administrator/developer verification—no reset link is displayed here for your security.',
-  });
-});
-
-v1Router.post('/auth/reset-password', (req, res) => {
-  const db = getDb();
-  const {token, newPassword} = req.body ?? {};
-  if (typeof token !== 'string' || token.length < 16 || typeof newPassword !== 'string' || newPassword.length < 8) {
-    res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'Valid reset token and password (8+ chars) required.'}});
-    return;
-  }
-
-  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-  const resetRow = db
-    .prepare(
-      `SELECT id, user_id FROM password_resets
-       WHERE token_hash = ? AND used_at IS NULL AND datetime(expires_at) > datetime('now')
-       ORDER BY id DESC LIMIT 1`
-    )
-    .get(tokenHash) as {id: number; user_id: number} | undefined;
-
-  if (!resetRow) {
-    res.status(400).json({error: {code: 'INVALID_RESET_TOKEN', message: 'Reset token is invalid or expired.'}});
-    return;
-  }
-
-  db.exec('BEGIN IMMEDIATE;');
-  try {
-    db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(
-      hashPassword(newPassword),
-      resetRow.user_id
-    );
-    db.prepare("UPDATE password_resets SET used_at = datetime('now') WHERE id = ?").run(resetRow.id);
-    db.exec('COMMIT;');
-  } catch (err) {
-    db.exec('ROLLBACK;');
-    throw err;
-  }
-
-  writeAuditLog({
-    actorUserId: resetRow.user_id,
-    actorRole: 'user',
-    action: 'password_reset_completed',
-    targetType: 'user',
-    targetId: resetRow.user_id,
-    ip: req.ip,
-  });
-
-  res.json({ok: true, message: 'Password updated. You may now sign in.'});
 });
 
 // 5. AI Agricultural Advisor

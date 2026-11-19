@@ -13,8 +13,15 @@ import {normalizeLiberianPhone} from '../src/lib/phone.ts';
 let backend: Backend;
 let fx: Fixtures;
 
-async function loginJar(identifier: string, password: string): Promise<CookieJar> {
+/** Signs in through the NORMAL login path, from a device the test fixture has registered as trusted (new-device verification is covered in sms-auth.test.ts). */
+async function trustedJar(phone: string): Promise<CookieJar> {
   const jar = new CookieJar();
+  jar.set('agri_device', await fx.trustDevice(phone));
+  return jar;
+}
+
+async function loginJar(identifier: string, password: string): Promise<CookieJar> {
+  const jar = await trustedJar(identifier);
   const res = await req(jar, '/api/v1/auth/login', {method: 'POST', body: {identifier, password}});
   assert.equal(res.status, 200, `login failed for ${identifier}`);
   return jar;
@@ -192,7 +199,7 @@ test('6. Admin question assignment, expert response, and guide approval workflow
   // Bootstrap an admin user through the fixture contract
   await fx.createUser({displayName: 'Test Admin', phone: '+231779999999', password: 'AdminTestPass!123', roles: ['admin']});
 
-  const adminJar = new CookieJar();
+  const adminJar = await trustedJar('+231779999999');
   const loginAdmin = await req(adminJar, '/api/v1/auth/login', {
     method: 'POST',
     body: {identifier: '+231779999999', password: 'AdminTestPass!123'},
@@ -213,7 +220,7 @@ test('6. Admin question assignment, expert response, and guide approval workflow
   assert.equal(assignRes.status, 200);
 
   // Expert logs in and answers
-  const expertJar = new CookieJar();
+  const expertJar = await trustedJar('+231770000201');
   const loginExp = await req(expertJar, '/api/v1/auth/login', {
     method: 'POST',
     body: {identifier: '+231770000201', password: 'ExpertDemo!2026'},
@@ -612,7 +619,7 @@ test('13. Farmer registration validates Liberian phone, rejects duplicates and i
   const logoutRes = await req(regJar, '/api/v1/auth/logout', {method: 'POST', body: {}});
   assert.equal(logoutRes.status, 200);
 
-  const loginJar = new CookieJar();
+  const loginJar = await trustedJar('+231770333333');
   const loginRes = await req(loginJar, '/api/v1/auth/login', {
     method: 'POST',
     body: {identifier: '077 033 3333', password: 'SafePassword123'},
@@ -911,7 +918,7 @@ test('22. A signed-in seller and an administrator can manage a listing without t
   assert.equal((await req(seller, `/api/v1/marketplace/listings/${id}`, {method: 'PATCH', body: {priceLrd: 6100}})).status, 200);
 
   await fx.createUser({displayName: 'Own Admin', phone: '+231778888888', password: 'AdminTestPass!123', roles: ['admin']});
-  const admin = new CookieJar();
+  const admin = await trustedJar('+231778888888');
   assert.equal((await req(admin, '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231778888888', password: 'AdminTestPass!123'}})).status, 200);
   assert.equal((await req(admin, `/api/v1/marketplace/listings/${id}`, {method: 'PATCH', body: {priceLrd: 6200}})).status, 200);
 

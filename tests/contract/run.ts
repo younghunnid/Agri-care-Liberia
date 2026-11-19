@@ -29,11 +29,16 @@ async function main(): Promise<void> {
   const backend = await startBackend();
   try {
     const jars: Record<JarName, CookieJar> = {anon: new CookieJar(), farmer: new CookieJar(), farmer2: new CookieJar(), other: new CookieJar(), admin: new CookieJar(), expert: new CookieJar()};
+    // Setup logins (not recorded) go through the normal login path from devices the fixture registered as trusted.
+    const trust = async (jar: CookieJar, phone: string) => jar.set('agri_device', await backend.fixtures.trustDevice(phone));
     await backend.fixtures.createUser({displayName: 'Contract Admin', phone: '+231775550001', password: 'AdminTestPass!123', roles: ['admin']});
+    await trust(jars.admin, '+231775550001');
     const adminLogin = await req(jars.admin, '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231775550001', password: 'AdminTestPass!123'}});
     await backend.fixtures.createUser({displayName: 'Contract Other Farmer', phone: '+231771234002', password: 'SafePassword123', roles: ['farmer']});
+    await trust(jars.other, '+231771234002');
     const otherLogin = await req(jars.other, '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231771234002', password: 'SafePassword123'}});
     if (otherLogin.status !== 200) throw new Error('Could not sign in the contract second farmer.');
+    await trust(jars.expert, '+231770000201');
     const expertLogin = await req(jars.expert, '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231770000201', password: 'ExpertDemo!2026'}});
     if (adminLogin.status !== 200 || expertLogin.status !== 200) throw new Error('Could not sign in the contract admin/expert users.');
 
@@ -43,6 +48,7 @@ async function main(): Promise<void> {
       const urlPath = typeof step.path === 'function' ? step.path(ctx) : step.path;
       const body = typeof step.body === 'function' ? (step.body as (c: Ctx) => unknown)(ctx) : step.body;
       const method = step.method ?? 'GET';
+      await step.before?.(ctx); // setup only; never recorded
       const res = await req(jars[step.jar], urlPath, {method, body, headers: step.headers, skipCsrf: step.skipCsrf});
       step.capture?.(res.data, ctx);
       recorded.push({

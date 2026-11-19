@@ -547,6 +547,14 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
                       <LayoutDashboard className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
                       <span>Farmer Account</span>
                     </Link>
+                    <Link
+                      to="/account/security"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl min-h-[44px] text-sm font-medium hover:bg-[#F3F8F0]"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
+                      <span>Account Security</span>
+                    </Link>
                     {isExpert && (
                       <Link
                         to="/expert"

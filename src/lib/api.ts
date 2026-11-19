@@ -38,11 +38,14 @@ async function ensureCsrfToken(forceRefresh = false): Promise<string> {
 export class ApiRequestError extends Error {
   status: number;
   code: string;
+  /** Parsed JSON body of the failed response (for extra fields such as attemptsLeft). Never contains secrets. */
+  body?: unknown;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, body?: unknown) {
     super(message);
     this.status = status;
     this.code = code;
+    this.body = body;
   }
 }
 
@@ -114,7 +117,7 @@ export async function apiFetch<T>(
     if (response.status === 403 && code === 'CSRF_INVALID' && isStateChanging && !_csrfRetried) {
       return apiFetch<T>(path, options, true);
     }
-    throw new ApiRequestError(response.status, code, message);
+    throw new ApiRequestError(response.status, code, message, parsed);
   }
 
   return parsed as T;

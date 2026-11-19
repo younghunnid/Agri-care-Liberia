@@ -494,6 +494,8 @@ If plenty plant (more than 1 out of 10) get twist-twist yellow leaf on the new t
       expertId,
       'Draining excess floodwater gradually down to 3–4 cm will protect your newly transplanted seedlings from submergence stress. Open the spillway slowly so soil around young roots is not washed away, and check that bunds have no weak cracks.'
     );
+    // Synthetic demonstration numbers (+23177000xxxx) belong to nobody: treat them as verified so the demo accounts work (a new device still needs a code).
+    db.prepare("UPDATE users SET phone_verified_at = datetime('now'), phone_claim_expires_at = NULL WHERE phone GLOB '+23177000[0-9][0-9][0-9][0-9]'").run();
   }
 
   // 6. Default Platform Settings

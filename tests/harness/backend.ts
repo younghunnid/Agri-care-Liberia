@@ -18,6 +18,8 @@ export interface Backend {
   mode: 'in-process' | 'external';
   baseUrl: string;
   fixtures: Fixtures;
+  /** Operator token for the development-only simulated SMS inbox (in-process mode). */
+  operatorToken: string;
   stop(): Promise<void>;
 }
 
@@ -27,7 +29,7 @@ export async function startBackend(): Promise<Backend> {
     const token = process.env.TEST_FIXTURE_TOKEN ?? '';
     if (token.length < 16) throw new Error('External mode needs TEST_FIXTURE_TOKEN (>= 16 chars) matching the server under test.');
     setBaseUrl(external);
-    return {mode: 'external', baseUrl: external, fixtures: new Fixtures(token), stop: async () => undefined};
+    return {mode: 'external', baseUrl: external, fixtures: new Fixtures(token), operatorToken: process.env.DEMO_OPERATOR_TOKEN ?? '', stop: async () => undefined};
   }
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agri-advisory-test-'));
@@ -38,6 +40,12 @@ export async function startBackend(): Promise<Backend> {
   process.env.NODE_ENV = 'production';
   process.env.APP_ENV = 'test';
   process.env.TEST_FIXTURE_TOKEN = token;
+  // Simulated SMS (development/test only): codes are readable ONLY through the operator-token-protected inbox.
+  const operatorToken = crypto.randomBytes(24).toString('hex');
+  process.env.SMS_PROVIDER = 'simulated';
+  process.env.SIMULATED_INBOX = '1';
+  process.env.DEMO_OPERATOR_TOKEN = operatorToken;
+  process.env.OTP_HMAC_SECRET = crypto.randomBytes(32).toString('hex');
 
   // Imported only now, after the environment above is in place.
   const {createApp} = await import('../../server.ts');
@@ -54,6 +62,7 @@ export async function startBackend(): Promise<Backend> {
     mode: 'in-process',
     baseUrl,
     fixtures: new Fixtures(token),
+    operatorToken,
     stop: async () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
       closeDb();

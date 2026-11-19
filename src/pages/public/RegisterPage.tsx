@@ -62,7 +62,7 @@ export const RegisterPage: React.FC = () => {
       });
       setUser(res.user);
       await setLanguage(preferredLanguage);
-      navigate('/farmer');
+      navigate('/account/security'); // the new number is not verified yet: ask the farmer to confirm it
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to complete registration.');
     } finally {
@@ -201,13 +201,13 @@ export const RegisterPage: React.FC = () => {
 
           <div>
             <label htmlFor="reg-password" className="block text-sm font-semibold mb-1.5">
-              Password (minimum 8 characters)
+              Password (minimum 10 characters)
             </label>
             <input
               id="reg-password"
               type="password"
               required
-              minLength={8}
+              minLength={10}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full min-h-[44px] rounded-xl border border-[#183B2B]/20 px-3.5 text-sm"

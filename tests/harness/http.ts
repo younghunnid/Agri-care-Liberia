@@ -20,6 +20,10 @@ export class CookieJar {
     }
   }
 
+  set(name: string, value: string): void {
+    this.cookies.set(name, value);
+  }
+
   headerValue(): string {
     return Array.from(this.cookies.entries())
       .map(([k, v]) => `${k}=${v}`)
