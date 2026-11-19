@@ -20,6 +20,9 @@ import {compressPhoto} from '../../lib/imageCompress';
 import {DraftError, queueRecord, saveQuestionDraft, validateQuestion} from '../../lib/offlineDrafts';
 import {syncSoon} from '../../lib/syncEngine';
 import {LocalQuestionsPanel} from '../../components/LocalRecordsPanels';
+import {RequestProgress} from '../../components/RequestProgress';
+import {StatusLabel} from '../../components/StatusLabel';
+import {SIMULATED_REPLY_NOTICE} from '../../lib/expertStatus';
 import {KNOWLEDGE_CATEGORIES} from '../../data/knowledgeCenter';
 import {detectVoiceCapabilities} from '../../lib/voice';
 
@@ -46,6 +49,7 @@ interface DemoExpertRequest {
   expert_reply: string;
   assigned_expert_name: string;
   created_at: string;
+  is_mine?: boolean;
 }
 
 export const ExpertSupportPage: React.FC = () => {
@@ -89,6 +93,7 @@ export const ExpertSupportPage: React.FC = () => {
 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingRequests, setLoadingRequests] = useState(false);
+  const [loadedOnce, setLoadedOnce] = useState(false);
 
   /**
    * Loads the request list. The server answer is checked before it is used: a reply that is not the expected list (for example an HTML
@@ -102,6 +107,7 @@ export const ExpertSupportPage: React.FC = () => {
       if (!Array.isArray(res?.requests)) throw new Error('unexpected-response');
       setRequests(res.requests as DemoExpertRequest[]);
       setLoadError(null);
+      setLoadedOnce(true);
     } catch (err) {
       const unexpected = err instanceof Error && err.message === 'unexpected-response';
       setLoadError(unexpected
@@ -302,6 +308,23 @@ export const ExpertSupportPage: React.FC = () => {
         </div>
       )}
 
+      {!isOnline && (
+        <div role="status" data-testid="experts-offline-banner" className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-amber-950 space-y-1">
+          <p className="text-sm font-bold">You are offline.</p>
+          <p className="text-sm">You can still write a question. It is saved on this phone and sent once, when you are online again. Replies need internet.</p>
+        </div>
+      )}
+
+      <section aria-label="How asking an expert works" data-testid="experts-how" className="rounded-2xl bg-white border border-[#183B2B]/12 p-4 space-y-2">
+        <div className="flex flex-wrap items-center gap-2"><StatusLabel kind="working" text="Questions: working" /><StatusLabel kind="simulated" text="Expert replies: simulated" /></div>
+        <ol className="list-decimal pl-5 text-sm text-[#183B2B]/90 space-y-0.5">
+          <li>Write your question. Add a photo if you can.</li>
+          <li>Send it. Offline? It waits on your phone and is sent later.</li>
+          <li>Come back to see the status and the reply under <strong>Your requests</strong>.</li>
+        </ol>
+        <p className="text-xs text-[#183B2B]/70">In this prototype, replies are typed in a demonstration dashboard. They are not verified advice from a real agricultural expert.</p>
+      </section>
+
       {/* Mode Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
@@ -447,7 +470,7 @@ export const ExpertSupportPage: React.FC = () => {
                 <label className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-[#183B2B]/15 text-xs font-semibold cursor-pointer hover:bg-[#DDEFE0]">
                   <Camera className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
                   <span>{photoDataUrl ? 'Change Photo' : 'Attach Crop or Coop Photo'}</span>
-                  <input type="file" accept="image/*" onChange={(e) => void handlePhotoSelect(e)} className="sr-only" />
+                  <input type="file" accept="image/*" aria-label="Attach a crop or farm photo" onChange={(e) => void handlePhotoSelect(e)} className="sr-only" />
                 </label>
                 {photoDataUrl && (
                   <div className="flex items-center gap-3">
@@ -491,10 +514,11 @@ export const ExpertSupportPage: React.FC = () => {
                 )}
                 <input
                   type="text"
+                  aria-label="Voice note summary (optional): what you said and in which language"
                   value={voiceNoteSummary}
                   onChange={(e) => setVoiceNoteSummary(e.target.value)}
                   placeholder="Optional note: e.g., Spoken in Bassa or Liberian English"
-                  className="w-full min-h-[44px] rounded-xl border border-[#183B2B]/15 bg-white px-3 text-xs"
+                  className="w-full min-h-[44px] rounded-xl border border-[#183B2B]/15 bg-white px-3 text-sm"
                 />
               </div>
             </div>
@@ -545,50 +569,51 @@ export const ExpertSupportPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-3">
-              {requests.map((req) => (
-                <article
-                  key={req.id}
-                  className="rounded-2xl bg-white border border-[#183B2B]/10 p-5 space-y-3"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="text-xs text-[#183B2B]/65">
-                        {req.farmer_name} · {req.county} County · {req.category} · Status: <strong>{req.status}</strong>
-                      </p>
-                      <h3 className="font-display text-lg font-bold text-[#183B2B] mt-0.5">{req.title}</h3>
-                    </div>
-                    {req.expert_reply && (
-                      <SpeakButton
-                        compact
-                        id={`exp-reply-${req.id}`}
-                        label={req.title}
-                        text={`Expert reply for ${req.title}. ${req.expert_reply}`}
-                      />
-                    )}
-                  </div>
-                  <p className="text-sm text-[#183B2B]/80">{req.description}</p>
-                  {req.photo_data_url && (
-                    <img src={req.photo_data_url} alt="Farmer uploaded photo" className="max-h-36 rounded-xl object-cover" />
-                  )}
-                  {req.voice_note_data_url && (
-                    <audio controls src={req.voice_note_data_url} className="w-full max-w-sm h-10" />
-                  )}
-                  {req.expert_reply ? (
-                    <div className="rounded-2xl bg-[#DDEFE0] p-4 space-y-1">
-                      <p className="text-xs font-bold text-[#16803C]">
-                        Reply from {req.assigned_expert_name || 'Agricultural Expert (Simulated Demo)'}
-                      </p>
-                      <p className="text-sm text-[#183B2B] leading-relaxed">{req.expert_reply}</p>
-                    </div>
-                  ) : (
-                    <p className="text-xs font-medium text-amber-800">
-                      Awaiting expert review — switch to Simulated Expert Dashboard to demonstrate an officer reply live.
-                    </p>
-                  )}
-                </article>
-              ))}
-            </div>
+            {!loadedOnce && loadingRequests && (
+              <p role="status" data-testid="requests-loading" className="rounded-2xl bg-white border border-[#183B2B]/12 p-4 text-sm text-[#183B2B]/80">Loading requests…</p>
+            )}
+            {loadedOnce && requests.length === 0 && !loadError && (
+              <p data-testid="requests-empty" className="rounded-2xl bg-white border border-dashed border-[#183B2B]/25 p-4 text-sm text-[#183B2B]/80">No requests yet. Write your first question above.</p>
+            )}
+            {([['mine', 'Your requests', requests.filter((r) => r.is_mine)], ['sample', 'Sample requests (demonstration data)', requests.filter((r) => !r.is_mine)]] as const).map(([kind, heading, list]) => (
+              (list.length > 0 || kind === 'mine') && (loadedOnce || list.length > 0) && (
+                <div key={kind} className="space-y-3" data-testid={`requests-${kind}`}>
+                  <h3 className="font-display text-lg font-extrabold text-[#183B2B] flex flex-wrap items-center gap-2">{heading}{kind === 'sample' && <StatusLabel kind="simulated" />}</h3>
+                  {kind === 'mine' && list.length === 0 && <p data-testid="mine-empty" className="rounded-2xl bg-white border border-dashed border-[#183B2B]/25 p-4 text-sm text-[#183B2B]/80">You have not sent a question from this phone yet. Questions you save offline are listed in the box above until they are sent.</p>}
+                  {list.map((req) => (
+                    <article key={req.id} className="rounded-2xl bg-white border border-[#183B2B]/10 p-5 space-y-3" data-request-id={req.id} data-mine={req.is_mine ? '1' : '0'}>
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="text-xs text-[#183B2B]/75">{req.farmer_name} · {req.county} County · {req.category}</p>
+                          <h4 className="font-display text-lg font-bold text-[#183B2B] mt-0.5">{req.title}</h4>
+                        </div>
+                        {req.expert_reply && (
+                          <SpeakButton compact id={`exp-reply-${req.id}`} label={req.title} text={`Reply for ${req.title}. ${req.expert_reply}`} />
+                        )}
+                      </div>
+                      <RequestProgress status={req.status} />
+                      <p className="text-sm text-[#183B2B]/80">{req.description}</p>
+                      {req.photo_data_url && (
+                        <img src={req.photo_data_url} alt="Farmer uploaded photo" className="max-h-36 rounded-xl object-cover" />
+                      )}
+                      {req.voice_note_data_url && (
+                        <audio controls src={req.voice_note_data_url} className="w-full max-w-sm h-10" />
+                      )}
+                      {req.expert_reply ? (
+                        <div className="rounded-2xl bg-[#DDEFE0] p-4 space-y-2" data-testid="reply-box">
+                          <StatusLabel kind="simulated" text="Simulated demo reply" />
+                          <p className="text-xs font-bold text-[#0F5C2A]">Reply from {req.assigned_expert_name || 'Agricultural Expert (Simulated Demo)'}</p>
+                          <p className="text-sm text-[#183B2B] leading-relaxed">{req.expert_reply}</p>
+                          <p className="text-xs text-[#183B2B]/80" data-testid="reply-notice">{SIMULATED_REPLY_NOTICE}</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm font-medium text-amber-900">No reply yet. In this demonstration, a person types the reply in the Simulated Expert Dashboard.</p>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )
+            ))}
           </section>
         </div>
       ) : (
@@ -598,6 +623,8 @@ export const ExpertSupportPage: React.FC = () => {
             <strong>Expert Dashboard (Hackathon Demo):</strong> This view demonstrates how a Liberian extension officer reviews farmer submissions (including photos and voice notes) and sends practical advice back to the farmer. Visitors see only sample requests and their own; approved experts and administrators see the full queue after signing in.
           </div>
 
+          {!loadedOnce && loadingRequests && <p role="status" className="rounded-2xl bg-white border border-[#183B2B]/12 p-4 text-sm text-[#183B2B]/80">Loading requests…</p>}
+          {loadedOnce && requests.length === 0 && !loadError && <p data-testid="dashboard-empty" className="rounded-2xl bg-white border border-dashed border-[#183B2B]/25 p-4 text-sm text-[#183B2B]/80">There are no requests to show yet.</p>}
           <div className="space-y-4">
             {requests.map((req) => (
               <div key={req.id} className="rounded-3xl bg-white border border-[#183B2B]/10 p-5 sm:p-6 space-y-4">
@@ -625,7 +652,8 @@ export const ExpertSupportPage: React.FC = () => {
 
                 {req.expert_reply && (
                   <div className="rounded-2xl bg-[#F3F8F0] p-4 space-y-1">
-                    <p className="text-xs font-bold text-[#16803C]">
+                    <StatusLabel kind="simulated" text="Simulated demo reply" />
+                    <p className="text-xs font-bold text-[#0F5C2A]">
                       Current Reply ({req.assigned_expert_name || 'Extension Officer'}):
                     </p>
                     <p className="text-sm text-[#183B2B]">{req.expert_reply}</p>

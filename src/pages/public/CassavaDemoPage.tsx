@@ -14,9 +14,9 @@ export const DEMO_STEPS: Step[] = [
   {n: 5, text: 'Save the advice for offline reading', to: '/advice/crop-problems?demo=1', kinds: ['working'], note: 'Stored in the phone\'s IndexedDB.'},
   {n: 6, text: 'Turn off the internet and open the saved advice', to: '/advice/crop-problems', kinds: ['working'], note: 'Saved list is at the bottom of the same page. Needs the app installed or opened once online.'},
   {n: 7, text: 'Draft a question for an expert (still offline)', to: '/experts', kinds: ['working'], note: 'Use the "Ask an agricultural expert" button; the form is pre-filled.'},
-  {n: 8, text: 'Reconnect: the question is sent', to: '/experts?tab=dashboard', kinds: ['working'], note: 'Existing offline queue and sync.'},
-  {n: 9, text: 'An expert answers in the demonstration dashboard', to: '/experts?tab=dashboard', kinds: ['simulated'], note: 'The reply is typed by the presenter. It is a simulated expert, not a real agronomist.'},
-  {n: 10, text: 'Read a related farming guide', to: '/guides', kinds: ['working'], note: 'Learning center with quizzes is a future feature (H2).'},
+  {n: 8, text: 'Reconnect: the question is sent', to: '/experts?tab=dashboard', kinds: ['working'], note: 'Existing offline queue and sync. Under "Your requests" the status reads Waiting for an expert.'},
+  {n: 9, text: 'An expert answers in the demonstration dashboard', to: '/experts?tab=dashboard', kinds: ['simulated'], note: 'The reply is typed by the presenter. Status changes to Answered and the reply is labelled "Simulated demo reply". It is not verified advice from a real agronomist.'},
+  {n: 10, text: 'Open the related cassava lesson and take its quiz', to: '/learn/cassava-basics', kinds: ['working', 'draft'], note: 'Short lesson, 4-question quiz with scores and explanations. Progress is saved offline. Team 8 draft content.'},
   {n: 11, text: 'Open the farm cost and profit calculator', to: '/tools/calculator', kinds: ['working'], note: 'Example: costs L$5,000, sales L$8,000, estimated profit L$3,000.'},
 ];
 
@@ -42,7 +42,7 @@ export const CassavaDemoPage: React.FC = () => (
       <p><strong>Working:</strong> crop problem guide, saving offline, offline questions and sending, calculator.</p>
       <p><strong>Simulated:</strong> expert replies, weather, sample market listings.</p>
       <p><strong>Draft:</strong> all agricultural advice is Team 8 draft until an expert reviews it.</p>
-      <p><strong>Future:</strong> other crops, emergency guidance, quizzes, community, support directory, local languages, SMS and USSD.</p>
+      <p><strong>Future:</strong> other crops, emergency guidance, community, support directory, local languages, SMS and USSD.</p>
     </section>
   </div>
 );

@@ -47,12 +47,12 @@ const KIND = {
   saved: {label: 'Saved information', cls: 'bg-blue-50 text-blue-900 border-blue-200'},
   sample: {label: 'Sample / demonstration', cls: 'bg-amber-100 text-amber-900 border-amber-300'},
   synthetic: {label: 'Synthetic demo data', cls: 'bg-purple-50 text-purple-900 border-purple-200'},
-  mine: {label: 'Your own data (private)', cls: 'bg-[#DDEFE0] text-[#16803C] border-[#16803C]/30'},
+  mine: {label: 'Your own data (private)', cls: 'bg-[#DDEFE0] text-[#0F5C2A] border-[#16803C]/40'},
   real: {label: 'Real (from server)', cls: 'bg-white text-[#183B2B] border-[#183B2B]/25'},
 } as const;
 
 const KindBadge: React.FC<{kind: keyof typeof KIND}> = ({kind}) => (
-  <span className={`inline-block px-2.5 py-1 rounded-full border text-[11px] font-bold ${KIND[kind].cls}`}>{KIND[kind].label}</span>
+  <span className={`inline-block px-2.5 py-1 rounded-full border text-xs font-bold ${KIND[kind].cls}`}>{KIND[kind].label}</span>
 );
 
 const Section: React.FC<{id: string; title: string; icon?: React.ReactNode; badge?: React.ReactNode; children: React.ReactNode}> = ({id, title, icon, badge, children}) => (
@@ -468,7 +468,7 @@ export const OfflineDownloadsPage: React.FC = () => {
               </button>
             </Section>
           )}
-          <p className="text-[11px] text-[#183B2B]/55 flex items-center gap-1">
+          <p className="text-xs text-[#183B2B]/70 flex items-center gap-1">
             <RefreshCw className="w-3 h-3" aria-hidden="true" /> Checked {formatExact(inv.takenAt)}
           </p>
         </>

@@ -19,7 +19,9 @@ import {summariseSavedWork} from '../src/lib/offlineInventory.ts';
 import {DEMO_STEPS} from '../src/pages/public/CassavaDemoPage.tsx';
 
 const appSrc = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
-const routes = new Set([...appSrc.matchAll(/<Route path="([^"]+)"/g)].map((m) => m[1]));
+const routePatterns = [...appSrc.matchAll(/<Route path="([^"]+)"/g)].map((m) => m[1]);
+/** A path is a route if it equals one exactly or matches a `:param` route such as /learn/:id. */
+const routes = {has: (p: string) => routePatterns.some((r) => r === p || new RegExp('^' + r.replace(/:[^/]+/g, '[^/]+') + '$').test(p))};
 const input = (over: Partial<CalcInput> = {}): CalcInput => ({...emptyInput(), ...over});
 
 // ------------------------------------------------------------ calculator

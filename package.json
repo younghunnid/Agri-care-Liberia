@@ -18,6 +18,7 @@
     "test:contract:update": "tsx tests/contract/run.ts --update",
     "test:offline": "tsx tests/offlineAdvisor.test.ts && tsx tests/dataCache.test.ts && tsx tests/offlineInventory.test.ts",
     "test:h1": "tsx --test tests/h1.test.ts",
+    "test:h2": "tsx --test tests/h2.test.ts",
     "test:m3": "tsx --test tests/m3/run.ts",
     "test:m3:unit": "php backend-php/tests/m3_unit.php"
   },

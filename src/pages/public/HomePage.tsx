@@ -206,7 +206,7 @@ export const HomePage: React.FC = () => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="rounded-3xl bg-[#DDEFE0] border border-[#16803C]/25 p-6 flex flex-col justify-between gap-4">
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-[#16803C]">
+            <p className="text-xs font-semibold text-[#0F5C2A]">
               Hackathon Prototype Showcase · Nov 20–22, 2026
             </p>
             <h2 className="font-display text-xl sm:text-2xl font-extrabold text-[#183B2B]">
@@ -364,7 +364,7 @@ export const HomePage: React.FC = () => {
                   <span className="w-10 h-10 rounded-xl bg-[#DDEFE0] text-[#16803C] flex items-center justify-center shrink-0">
                     <ModIcon className="w-5 h-5" aria-hidden="true" />
                   </span>
-                  <span className="text-[11px] font-bold text-[#183B2B]/65">{mod.tag}</span>
+                  <span className="text-xs font-bold text-[#183B2B]/75">{mod.tag}</span>
                 </div>
                 <div className="space-y-1">
                   <h3 className="font-display font-bold text-base text-[#183B2B] group-hover:text-[#16803C]">
@@ -565,7 +565,7 @@ export const HomePage: React.FC = () => {
       {/* OFFLINE LIBRARY & LOW-BANDWIDTH + ABOUT TEAM 8 */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="rounded-3xl bg-[#DDEFE0] border border-[#16803C]/20 p-6 sm:p-8 space-y-4">
-          <div className="flex items-center gap-2.5 text-[#16803C] font-semibold text-sm">
+          <div className="flex items-center gap-2.5 text-[#0F5C2A] font-semibold text-sm">
             <Download className="w-5 h-5" aria-hidden="true" />
             <span>Offline Library &amp; Low-Bandwidth Support</span>
           </div>

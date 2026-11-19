@@ -40,7 +40,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       {label: 'Farming guides', to: '/guides', kinds: ['working']},
       {label: 'Listen to guidance', to: '/guides?listen=1', kinds: ['working']},
-      {label: 'Quizzes and lessons', kinds: ['future']},
+      {label: 'Farming lessons and quizzes', to: '/learn', kinds: ['working', 'draft'], note: 'Five short lessons. Your progress is saved on this phone.'},
     ],
   },
   {
