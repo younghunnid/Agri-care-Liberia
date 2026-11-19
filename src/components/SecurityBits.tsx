@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {Loader2, ShieldAlert, WifiOff} from 'lucide-react';
 import {ApiRequestError} from '../lib/api';
+import {DemoSmsInbox} from './DemoSmsInbox';
 
 /** Exact wording required on every verification screen. */
 export const DEMO_NOTICE = 'Demo mode — verification messages are simulated. No SMS will be sent.';
@@ -59,18 +60,22 @@ interface CodeEntryProps {
   error: string | null;
   notice?: string | null;
   submitLabel?: string;
+  /** Show the in-website Demo SMS Inbox (server says it is enabled for this environment). */
+  demoInbox?: boolean;
   onSubmit: (code: string) => void;
   onResend?: () => void;
 }
 
 /** Six-digit code field for low-cost phones: numeric keypad, one-time-code autofill, large buttons, timers, resend. The code is kept only in component state. */
-export const CodeEntry: React.FC<CodeEntryProps> = ({online, busy, expiresIn, resendAfter, sentToken, error, notice, submitLabel = 'Verify', onSubmit, onResend}) => {
+export const CodeEntry: React.FC<CodeEntryProps> = ({online, busy, expiresIn, resendAfter, sentToken, error, notice, submitLabel = 'Verify', demoInbox = false, onSubmit, onResend}) => {
   const [code, setCode] = useState('');
   const left = useCountdown(expiresIn, sentToken);
   const wait = useCountdown(resendAfter, sentToken);
   useEffect(() => { setCode(''); }, [sentToken]);
   const ready = /^\d{6}$/.test(code) && online && !busy;
   return (
+    <div className="space-y-4">
+    <DemoSmsInbox enabled={demoInbox} online={online} refreshKey={sentToken} onUseCode={(c) => setCode(c)} />
     <form onSubmit={(e) => { e.preventDefault(); if (ready) onSubmit(code); }} className="space-y-4" noValidate>
       <div>
         <label htmlFor="otp-code" className="block text-base font-bold text-[#183B2B]">Six-digit code</label>
@@ -94,6 +99,7 @@ export const CodeEntry: React.FC<CodeEntryProps> = ({online, busy, expiresIn, re
         </button>
       )}
     </form>
+    </div>
   );
 };
 

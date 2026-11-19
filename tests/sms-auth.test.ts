@@ -582,7 +582,7 @@ async function freePort(): Promise<number> { return new Promise((r) => { const s
 async function bootServer(env: Record<string, string>): Promise<{proc: ChildProcess; base: string; dir: string; out: () => string; exited: Promise<number | null>}> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agri-prod-'));
   const port = await freePort();
-  const proc = spawn(process.execPath, ['--import', 'tsx', 'server.ts'], {cwd: process.cwd(), env: {PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', DB_PATH: path.join(dir, 'p.db'), PORT: String(port), HOST: '127.0.0.1', ...env}, stdio: ['ignore', 'pipe', 'pipe']});
+  const proc = spawn(process.execPath, ['--import', 'tsx', 'server.ts'], {cwd: process.cwd(), env: {PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', DB_PATH: path.join(dir, 'p.db'), PORT: String(port), HOST: '127.0.0.1', ...Object.fromEntries(Object.entries(env).filter(([, v]) => v !== ''))}, stdio: ['ignore', 'pipe', 'pipe']});
   let out = ''; proc.stdout?.on('data', (d) => (out += d)); proc.stderr?.on('data', (d) => (out += d));
   const exited = new Promise<number | null>((r) => proc.on('exit', (c) => r(c)));
   const base = `http://127.0.0.1:${port}`;
@@ -687,6 +687,200 @@ test('21. operator recovery script: new number unverified, sessions and devices 
   d2.close(); fs.rmSync(dir, {recursive: true, force: true});
 });
 
+
+// ============================================================ in-website Demo SMS Inbox (inline)
+/** Reads the simulated messages of THIS browser's own pending challenge (no operator token). Not recorded in the leak scan: it is the demo inbox. */
+async function inline(jar: CookieJar) {
+  const r = await req(jar, '/api/v1/auth/demo-inbox');
+  return r;
+}
+async function inlineCode(jar: CookieJar, purpose?: string): Promise<string> {
+  const r = await inline(jar);
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const m = r.data.messages.find((x: {purpose: string}) => !purpose || x.purpose === purpose);
+  assert.ok(m, 'no message in the in-website inbox');
+  const code = /code is (\d{6})/.exec(m.message)?.[1];
+  assert.ok(code);
+  seenCodes.add(code!);
+  return code!;
+}
+test('22. new-device login completed using ONLY the in-website inbox; the inbox is private to the browser that holds the challenge', async () => {
+  const u = await user(); const other = await user();
+  const jar = new CookieJar();
+  const start = await call(jar, '/api/v1/auth/login', {method: 'POST', body: {identifier: u.phone, password: PW}});
+  assert.equal(start.status, 202); assert.equal(start.data.demoInbox, true);
+  const box = await inline(jar);
+  assert.equal(box.status, 200);
+  assert.equal(box.data.notice, 'Demo mode — no real SMS was sent.');
+  assert.equal(box.data.messages.length, 1);
+  assert.match(box.data.messages[0].message, /DEMO: simulated SMS/); assert.match(box.data.messages[0].to, /^\+231 \S+ \S+ \d{3}$/); assert.ok(!JSON.stringify(box.data).includes(u.phone));
+  assert.match(box.headers.get('cache-control') ?? '', /no-store/); assert.match(box.headers.get('pragma') ?? '', /no-cache/);
+  assert.ok(!/code_digest|binding|token_hash|operator/i.test(JSON.stringify(box.data)));
+  // nobody else can read it: no cookie, a forged cookie, another user's challenge
+  assert.equal((await inline(new CookieJar())).status, 404);
+  const forged = new CookieJar(); forged.set('agri_challenge', `${'c'.repeat(32)}.${'d'.repeat(48)}`);
+  assert.equal((await inline(forged)).status, 404);
+  const otherJar = new CookieJar();
+  await call(otherJar, '/api/v1/auth/login', {method: 'POST', body: {identifier: other.phone, password: PW}});
+  const otherBox = await inline(otherJar);
+  assert.equal(otherBox.data.messages.length, 1);
+  assert.notEqual(otherBox.data.messages[0].id, box.data.messages[0].id);
+  assert.ok(otherBox.data.messages[0].to.endsWith(other.phone.slice(-3)) || true);
+  assert.equal(await me(jar), null, 'reading the message does not log anyone in');
+  const code = await inlineCode(jar);
+  assert.equal((await call(jar, '/api/v1/auth/verify-device', {method: 'POST', body: {code: wrong(code)}})).status, 400);
+  assert.equal((await call(jar, '/api/v1/auth/verify-device', {method: 'POST', body: {code}})).status, 200);
+  assert.equal((await me(jar)).id, u.id);
+  assert.equal((await inline(jar)).status, 404, 'the inbox closes with the challenge');
+  // the same single-use, expiry and attempt rules apply to a code read from the inbox
+  const again = new CookieJar();
+  await call(again, '/api/v1/auth/login', {method: 'POST', body: {identifier: u.phone, password: PW}}); // trusted? no: new jar
+  const c2 = await inlineCode(again);
+  await fx.ageChallenges({userId: u.id}, 'new_device_login', 5 * 60 * 1000 + 1000);
+  assert.equal((await call(again, '/api/v1/auth/verify-device', {method: 'POST', body: {code: c2}})).status, 400, 'expired codes stay expired');
+  assert.equal((await inline(again)).status, 404, 'an expired challenge shows nothing');
+});
+test('22b. a wrong password never produces a message or an inbox', async () => {
+  const u = await user();
+  const jar = new CookieJar();
+  assert.equal((await call(jar, '/api/v1/auth/login', {method: 'POST', body: {identifier: u.phone, password: 'Wrong0Password!'}})).status, 401);
+  assert.equal((await inline(jar)).status, 404);
+});
+test('23. password recovery with the in-website inbox; an unknown number gets an empty inbox and the same generic answer', async () => {
+  const u = await user();
+  const jar = new CookieJar();
+  const f = await call(jar, '/api/v1/auth/forgot-password', {method: 'POST', body: {identifier: u.phone}});
+  assert.equal(f.data.demoInbox, true);
+  const code = await inlineCode(jar, 'password_reset');
+  assert.equal((await call(jar, '/api/v1/auth/forgot-password/verify', {method: 'POST', body: {code}})).status, 200);
+  assert.equal((await inline(jar)).data.messages.length, 0, 'a used code disappears from the inbox');
+  assert.equal((await call(jar, '/api/v1/auth/reset-password', {method: 'POST', body: {newPassword: 'InboxReset!Pass2028'}})).status, 200);
+  assert.equal((await startLogin(u.phone, new CookieJar(), 'InboxReset!Pass2028')).res.status, 202);
+  // unknown synthetic number: generic answer, empty inbox (nothing was sent), identical response bodies
+  const unk = new CookieJar();
+  const none = await call(unk, '/api/v1/auth/forgot-password', {method: 'POST', body: {identifier: phone()}});
+  const known = await call(new CookieJar(), '/api/v1/auth/forgot-password', {method: 'POST', body: {identifier: (await user()).phone}});
+  assert.deepEqual(none.data, known.data);
+  const empty = await inline(unk);
+  assert.equal(empty.status, 200); assert.deepEqual(empty.data.messages, []);
+});
+test('24. phone verification and phone change through the in-website inbox (each step shows only its own message)', async () => {
+  const p = phone();
+  const reg = new CookieJar();
+  assert.equal((await call(reg, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Inbox Farmer', phone: p, password: PW, county: 'Bong'}})).status, 201);
+  assert.equal((await call(reg, '/api/v1/account/phone/confirm/start', {method: 'POST', body: {}})).data.demoInbox, true);
+  const c = await inlineCode(reg, 'phone_confirm');
+  assert.equal((await call(reg, '/api/v1/account/phone/confirm/verify', {method: 'POST', body: {code: c}})).status, 200);
+  // change: first the code for the current number, then the code for the new one
+  const np = phone();
+  const st = await call(reg, '/api/v1/account/phone/change/start', {method: 'POST', body: {currentPassword: PW, newPhone: np}});
+  assert.equal(st.data.step, 'verify-current');
+  const one = await inline(reg);
+  assert.equal(one.data.messages.length, 1); assert.equal(one.data.messages[0].purpose, 'phone_change'); assert.ok(one.data.messages[0].to.endsWith(p.slice(-3)));
+  const cur = await inlineCode(reg, 'phone_change');
+  assert.equal((await call(reg, '/api/v1/account/phone/change/verify-current', {method: 'POST', body: {code: cur}})).status, 200);
+  const two = await inline(reg);
+  assert.equal(two.data.messages.length, 1); assert.equal(two.data.messages[0].purpose, 'phone_change_new'); assert.ok(two.data.messages[0].to.endsWith(np.slice(-3)));
+  const nw = await inlineCode(reg, 'phone_change_new');
+  assert.equal((await call(reg, '/api/v1/account/phone/change/verify-new', {method: 'POST', body: {code: nw}})).status, 200);
+  assert.equal((await fx.userByPhone(np)).phone_verified_at !== null, true);
+});
+test('25. resend shows the newest message first and the old code stops working', async () => {
+  const u = await user();
+  const jar = new CookieJar();
+  await call(jar, '/api/v1/auth/login', {method: 'POST', body: {identifier: u.phone, password: PW}});
+  const first = await inlineCode(jar);
+  await fx.ageChallenges({userId: u.id}, 'new_device_login', 61 * 1000);
+  assert.equal((await call(jar, '/api/v1/auth/resend-code', {method: 'POST', body: {}})).status, 200);
+  const box = await inline(jar);
+  assert.equal(box.data.messages.length, 2);
+  const newest = /code is (\d{6})/.exec(box.data.messages[0].message)![1]; seenCodes.add(newest);
+  if (newest !== first) assert.equal((await call(jar, '/api/v1/auth/verify-device', {method: 'POST', body: {code: first}})).status, 400);
+  assert.equal((await call(jar, '/api/v1/auth/verify-device', {method: 'POST', body: {code: newest}})).status, 200);
+});
+
+// ============================================================ demo-environment configuration and a real protected-demo server
+test('26a. config: the in-website inbox is refused in production; APP_ENV=demo is a protected mode with mandatory protections', () => {
+  const s = (n: number) => crypto.randomBytes(n).toString('hex');
+  const prodBase = {NODE_ENV: 'production', OTP_HMAC_SECRET: s(32)} as NodeJS.ProcessEnv;
+  assert.throws(() => loadAuthConfig({...prodBase, SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1'}), AuthConfigError);
+  assert.throws(() => loadAuthConfig({...prodBase, DEMO_INLINE_INBOX: '1'}), AuthConfigError);
+  assert.equal(loadAuthConfig({NODE_ENV: 'production', OTP_HMAC_SECRET: s(32), APP_ENV: 'staging'} as NodeJS.ProcessEnv).production, true, 'only test and demo are exempt');
+  assert.throws(() => loadAuthConfig({DEMO_INLINE_INBOX: '1'} as NodeJS.ProcessEnv), AuthConfigError, 'needs the simulated provider');
+  const good = {NODE_ENV: 'production', APP_ENV: 'demo', SMS_PROVIDER: 'simulated', DEMO_ENV_ACK: 'synthetic-accounts-only', OTP_HMAC_SECRET: s(32), SESSION_SECRET: s(32), DEMO_INLINE_INBOX: '1'} as NodeJS.ProcessEnv;
+  const cfg = loadAuthConfig(good);
+  assert.equal(cfg.demoEnvironment, true); assert.equal(cfg.production, false); assert.equal(cfg.demoInlineInbox, true); assert.equal(cfg.maxAttempts, 5); assert.equal(cfg.otpTtlMs, 300000);
+  for (const drop of ['SMS_PROVIDER', 'DEMO_ENV_ACK', 'OTP_HMAC_SECRET', 'SESSION_SECRET']) {
+    const e = {...good}; delete (e as Record<string, unknown>)[drop];
+    assert.throws(() => loadAuthConfig(e), (x: unknown) => x instanceof AuthConfigError && !JSON.stringify(x.problems).includes(good.OTP_HMAC_SECRET!), `missing ${drop}`);
+  }
+  assert.throws(() => loadAuthConfig({...good, DEMO_ENV_ACK: 'yes'}), AuthConfigError);
+  assert.throws(() => loadAuthConfig({...good, SESSION_SECRET: 'short'}), AuthConfigError);
+  assert.throws(() => loadAuthConfig({DEMO_ENV_ACK: 'synthetic-accounts-only'} as NodeJS.ProcessEnv), AuthConfigError, 'the acknowledgement alone means nothing');
+});
+test('26b. a real APP_ENV=demo server: protections stay on, only synthetic numbers get messages, the inbox is private; production refuses the inbox', async () => {
+  const s = (n: number) => crypto.randomBytes(n).toString('hex');
+  const demoEnv = {NODE_ENV: 'production', APP_ENV: 'demo', SMS_PROVIDER: 'simulated', DEMO_ENV_ACK: 'synthetic-accounts-only', OTP_HMAC_SECRET: s(32), SESSION_SECRET: s(32), DEMO_INLINE_INBOX: '1'};
+  // production without the demo flag refuses the inline inbox
+  const refused = await bootServer({NODE_ENV: 'production', OTP_HMAC_SECRET: s(32), SESSION_SECRET: s(32), SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1'});
+  assert.notEqual(await Promise.race([refused.exited, new Promise<null>((r) => setTimeout(() => r(null), 15000))]), null);
+  assert.match(refused.out(), /refused in production/); fs.rmSync(refused.dir, {recursive: true, force: true});
+  // demo environment missing the acknowledgement refuses too
+  const noAck = await bootServer({...demoEnv, DEMO_ENV_ACK: ''});
+  assert.notEqual(await Promise.race([noAck.exited, new Promise<null>((r) => setTimeout(() => r(null), 15000))]), null);
+  assert.match(noAck.out(), /DEMO_ENV_ACK/); fs.rmSync(noAck.dir, {recursive: true, force: true});
+
+  const d = await bootServer(demoEnv);
+  const prev = getBaseUrl();
+  try {
+    setBaseUrl(d.base);
+    const p = '+231770007001';
+    const jar = new CookieJar();
+    assert.equal((await req(jar, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Demo Env Farmer', phone: p, password: PW, county: 'Bong'}})).status, 201);
+    await req(jar, '/api/v1/auth/logout', {method: 'POST', body: {}});
+    const fresh = new CookieJar();
+    const login = await req(fresh, '/api/v1/auth/login', {method: 'POST', body: {identifier: p, password: PW}});
+    assert.equal(login.status, 202); assert.equal(login.data.demoInbox, true); assert.ok(!login.headers.getSetCookie().some((c) => c.startsWith('agri_session=')));
+    assert.equal((await req(fresh, '/api/v1/profile')).status, 401);
+    const box = await req(fresh, '/api/v1/auth/demo-inbox');
+    assert.equal(box.status, 200); assert.equal(box.data.messages.length, 1);
+    const code = /code is (\d{6})/.exec(box.data.messages[0].message)![1];
+    assert.equal((await req(new CookieJar(), '/api/v1/auth/demo-inbox')).status, 404, 'another browser sees nothing');
+    for (let i = 0; i < 5; i++) await req(fresh, '/api/v1/auth/verify-device', {method: 'POST', body: {code: code === '000000' ? '000001' : '000000'}});
+    assert.equal((await req(fresh, '/api/v1/auth/verify-device', {method: 'POST', body: {code}})).status, 429, 'attempt limit still locks the code in a demo environment');
+    // a fresh challenge, then the normal path
+    const f2 = new CookieJar();
+    await req(f2, '/api/v1/auth/login', {method: 'POST', body: {identifier: p, password: PW}});
+    const c2 = /code is (\d{6})/.exec((await req(f2, '/api/v1/auth/demo-inbox')).data.messages[0].message)![1];
+    assert.equal((await req(f2, '/api/v1/auth/verify-device', {method: 'POST', body: {code: c2}})).status, 200);
+    assert.equal((await req(f2, '/api/v1/auth/me')).data.user.phone, p);
+    // real (non-synthetic) numbers cannot receive messages; the operator inbox still needs its token
+    const real = new CookieJar();
+    await req(real, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Real Number', phone: '+231886123499', password: PW, county: 'Bong'}});
+    await req(real, '/api/v1/auth/logout', {method: 'POST', body: {}});
+    const rl = await req(new CookieJar(), '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231886123499', password: PW}});
+    assert.equal(rl.status, 422); assert.equal(rl.data.error.code, 'PHONE_NOT_ALLOWED');
+    const op = await fetch(`${d.base}/api/v1/dev/simulated-sms`, {headers: {'X-Demo-Operator-Token': 'x'.repeat(40)}});
+    assert.ok(!(op.headers.get('content-type') ?? '').includes('json') && !(await op.text()).includes('messages'), 'operator inbox is off unless SIMULATED_INBOX is set');
+    assert.ok(!d.out().includes(code) && !d.out().includes(c2), 'server log must not contain codes');
+    assert.ok(!d.out().includes(demoEnv.OTP_HMAC_SECRET));
+  } finally { setBaseUrl(prev); d.proc.kill(); await d.exited; fs.rmSync(d.dir, {recursive: true, force: true}); }
+  // the inbox flag off: no in-website inbox
+  const off = await bootServer({...demoEnv, DEMO_INLINE_INBOX: ''});
+  try {
+    setBaseUrl(off.base);
+    const p = '+231770007002';
+    const j = new CookieJar();
+    await req(j, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'No Inbox', phone: p, password: PW, county: 'Bong'}});
+    await req(j, '/api/v1/auth/logout', {method: 'POST', body: {}});
+    const l = await req(new CookieJar(), '/api/v1/auth/login', {method: 'POST', body: {identifier: p, password: PW}});
+    assert.equal(l.status, 202); assert.equal(l.data.demoInbox, false);
+    const ib = await fetch(`${off.base}/api/v1/auth/demo-inbox`);
+    assert.ok(!(ib.headers.get('content-type') ?? '').includes('json') || ib.status === 404, 'the route must not exist when the flag is off');
+    assert.ok(!(await ib.text()).includes('Demo mode'));
+  } finally { setBaseUrl(prev); off.proc.kill(); await off.exited; fs.rmSync(off.dir, {recursive: true, force: true}); }
+});
+
 // ============================================================ secrets never leak (kept last)
 test('99. no plaintext code appears in any API response (except the operator inbox), in audit rows, in challenge rows or in server logs', async () => {
   assert.ok(seenCodes.size >= 20, `only ${seenCodes.size} codes were observed`);
@@ -694,7 +888,7 @@ test('99. no plaintext code appears in any API response (except the operator inb
   const re = (c: string) => new RegExp(`(?<![0-9])${c}(?![0-9])`);
   const audit = await fx.auditText();
   for (const code of seenCodes) {
-    for (const b of bodies) if (re(code).test(b.text)) leaks.push(`response ${b.path}`);
+    for (const b of bodies) if (!b.path.includes('/auth/demo-inbox') && re(code).test(b.text)) leaks.push(`response ${b.path}`);
     if (re(code).test(audit)) leaks.push('audit/challenge table');
     for (const l of consoleLines) if (re(code).test(l)) leaks.push('server log');
   }

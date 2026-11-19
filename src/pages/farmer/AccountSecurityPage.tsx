@@ -11,8 +11,9 @@ interface Security {
   passwordPolicy: {minLength: number};
   recovery: {viaVerifiedPhone: boolean; operatorRecovery: boolean};
   demoMode: boolean;
+  demoInbox?: boolean;
 }
-interface Started { expiresInSeconds: number; resendAfterSeconds: number; maskedPhone?: string; step?: string; demo?: boolean }
+interface Started { expiresInSeconds: number; resendAfterSeconds: number; maskedPhone?: string; step?: string; demo?: boolean; demoInbox?: boolean }
 
 const input = 'mt-1 w-full min-h-[52px] rounded-xl border border-[#183B2B]/30 bg-white px-3.5 text-base';
 const btn = 'min-h-[52px] rounded-2xl px-5 text-base font-extrabold disabled:bg-slate-300 disabled:text-slate-700';
@@ -84,7 +85,7 @@ export const AccountSecurityPage: React.FC = () => {
               ? <p className="inline-flex items-center gap-1 text-sm font-bold text-[#0F5C2A]" data-testid="phone-status"><CheckCircle2 className="w-4 h-4" aria-hidden /> Verified: this number can receive codes and recover your account</p>
               : <p className="inline-flex items-start gap-1 text-sm font-bold text-amber-900" data-testid="phone-status"><TriangleAlert className="w-4 h-4 shrink-0 mt-0.5" aria-hidden /> Not verified yet. Until you verify it you cannot recover your account by SMS{sec.phone.claimExpiresAt ? '.' : '.'} Unverified numbers can be claimed by their real owner.</p>}
             {!sec.phone.verified && sec.phone.onFile && !conf && <button type="button" onClick={startConfirm} disabled={busy || !isOnline} data-testid="confirm-start" className={`${btn} bg-[#16803C] text-white w-full`}>Send me a code to verify</button>}
-            {conf && <CodeEntry online={isOnline} busy={busy} expiresIn={conf.expiresInSeconds} resendAfter={conf.resendAfterSeconds} sentToken={confSent} error={confMsg?.kind === 'err' ? confMsg.text : null} submitLabel="Verify my number" onSubmit={verifyConfirm} onResend={startConfirm} />}
+            {conf && <CodeEntry online={isOnline} busy={busy} expiresIn={conf.expiresInSeconds} resendAfter={conf.resendAfterSeconds} sentToken={confSent} error={confMsg?.kind === 'err' ? confMsg.text : null} demoInbox={conf.demoInbox ?? sec.demoInbox} submitLabel="Verify my number" onSubmit={verifyConfirm} onResend={startConfirm} />}
             {msg(confMsg?.kind === 'ok' ? confMsg : null, 'confirm-msg')}
           </section>
 
@@ -118,7 +119,7 @@ export const AccountSecurityPage: React.FC = () => {
             {stage !== 'idle' && ch && (
               <>
                 <p className="text-base font-bold text-[#183B2B]" data-testid="ch-step">{stage === 'current' ? `Step 1 of 2: enter the code sent to your current number ${ch.maskedPhone ?? ''}` : `Step 2 of 2: enter the code sent to the NEW number ${ch.maskedPhone ?? ''}`}</p>
-                <CodeEntry online={isOnline} busy={busy} expiresIn={ch.expiresInSeconds} resendAfter={ch.resendAfterSeconds} sentToken={chSent} error={chMsg?.kind === 'err' ? chMsg.text : null} submitLabel={stage === 'current' ? 'Continue' : 'Change my number'} onSubmit={verifyChange} onResend={resendChange} />
+                <CodeEntry online={isOnline} busy={busy} expiresIn={ch.expiresInSeconds} resendAfter={ch.resendAfterSeconds} sentToken={chSent} error={chMsg?.kind === 'err' ? chMsg.text : null} demoInbox={ch.demoInbox ?? sec.demoInbox} submitLabel={stage === 'current' ? 'Continue' : 'Change my number'} onSubmit={verifyChange} onResend={resendChange} />
                 <button type="button" onClick={() => { setStage('idle'); setCh(null); }} className="min-h-[48px] text-sm font-semibold underline text-[#183B2B]">Cancel</button>
               </>
             )}

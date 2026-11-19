@@ -44,6 +44,7 @@ export async function startBackend(): Promise<Backend> {
   const operatorToken = crypto.randomBytes(24).toString('hex');
   process.env.SMS_PROVIDER = 'simulated';
   process.env.SIMULATED_INBOX = '1';
+  process.env.DEMO_INLINE_INBOX = '1';
   process.env.DEMO_OPERATOR_TOKEN = operatorToken;
   process.env.OTP_HMAC_SECRET = crypto.randomBytes(32).toString('hex');
 

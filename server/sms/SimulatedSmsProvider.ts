@@ -8,6 +8,7 @@ export interface SimulatedMessage {
   purpose: SmsPurpose;
   createdAt: string;
   expiresAtMs: number;
+  challengeId?: string;
 }
 
 const TTL_MS = 10 * 60 * 1000;
@@ -28,11 +29,11 @@ export class SimulatedSmsProvider implements SmsProvider {
     return /^\+231[2-9]\d{8}$/.test(phone) && phone.startsWith(this.allowedPrefix);
   }
 
-  async send(phoneNumber: string, message: string, purpose: SmsPurpose): Promise<SmsResult> {
+  async send(phoneNumber: string, message: string, purpose: SmsPurpose, meta?: {challengeId?: string}): Promise<SmsResult> {
     if (!this.isAllowed(phoneNumber)) throw new SmsRejectedError(`In demo mode only synthetic test numbers (${this.allowedPrefix}xxxx) can receive verification messages.`);
     this.prune();
     const id = crypto.randomBytes(8).toString('hex');
-    this.messages.push({id, to: phoneNumber, message: `${message} [DEMO: simulated SMS, nothing was sent]`, purpose, createdAt: new Date().toISOString(), expiresAtMs: Date.now() + TTL_MS});
+    this.messages.push({id, to: phoneNumber, message: `${message} [DEMO: simulated SMS, nothing was sent]`, purpose, createdAt: new Date().toISOString(), expiresAtMs: Date.now() + TTL_MS, challengeId: meta?.challengeId});
     if (this.messages.length > MAX_KEPT) this.messages.splice(0, this.messages.length - MAX_KEPT);
     return {accepted: true, providerMessageId: `sim-${id}`};
   }
@@ -41,6 +42,12 @@ export class SimulatedSmsProvider implements SmsProvider {
   list(): SimulatedMessage[] {
     this.prune();
     return [...this.messages].reverse();
+  }
+
+  /** Messages caused by ONE challenge, newest first (the in-website inbox). Never the whole list. */
+  listForChallenge(challengeId: string): SimulatedMessage[] {
+    this.prune();
+    return this.messages.filter((m) => m.challengeId === challengeId).reverse();
   }
 
   clear(): void { this.messages = []; }

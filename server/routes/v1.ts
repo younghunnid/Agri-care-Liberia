@@ -490,6 +490,7 @@ v1Router.post('/auth/login', (req: AuthedRequest, res) => {
           expiresInSeconds: Math.max(0, Math.ceil((started.expiresMs - now) / 1000)),
           resendAfterSeconds: Math.max(0, Math.ceil((started.resendAfterMs - now) / 1000)),
           demo: getSmsProvider().name === 'simulated',
+          demoInbox: getAuthConfig().demoInlineInbox && !getAuthConfig().production && getSmsProvider().name === 'simulated',
         });
       })
       .catch((e) => {

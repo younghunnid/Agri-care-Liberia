@@ -16,7 +16,7 @@ export async function createApp() {
   assertSafeTestEnvironment(); // refuses APP_ENV=test on the default database BEFORE anything is opened
   const authCfg = getAuthConfig(); // fails fast on unsafe SMS/OTP settings (e.g. the simulated provider in production)
   if (authCfg.smsProvider === 'none') console.warn('[auth] SMS_PROVIDER=none: sign-in from a NEW device and SMS password recovery are unavailable (fail closed). Trusted devices still work.');
-  else console.warn('[auth] SMS_PROVIDER=simulated: DEMO MODE. Verification messages are simulated and nothing is sent.');
+  else console.warn(`[auth] SMS_PROVIDER=simulated: DEMO MODE${authCfg.demoEnvironment ? ' (APP_ENV=demo, protected hackathon environment)' : ''}. Verification messages are simulated and nothing is sent.${authCfg.demoInlineInbox ? ' The in-website Demo SMS Inbox is ON.' : ''}`);
   getDb();
   seedInitialData();
 

@@ -6,7 +6,7 @@ import {useApp} from '../../context/AppContext';
 import {CodeEntry, DemoSmsBanner, NeedsConnection, errorText} from '../../components/SecurityBits';
 
 type Step = 'identify' | 'code' | 'password' | 'done';
-interface Started { message: string; expiresInSeconds: number; resendAfterSeconds: number; demo: boolean }
+interface Started { message: string; expiresInSeconds: number; resendAfterSeconds: number; demo: boolean; demoInbox?: boolean }
 
 /**
  * Password recovery in four screens: phone, six-digit code, new password, confirmation. Same answer for existing and unknown accounts; all
@@ -29,9 +29,9 @@ export const ForgotPasswordPage: React.FC = () => {
   // Come back to the right screen after a reload (the challenge lives in an HttpOnly cookie, not in this page).
   const restore = useCallback(async () => {
     try {
-      const c = await apiFetch<{purpose: string; status: string; expiresInSeconds: number; resendAfterSeconds: number; demo: boolean}>('/auth/challenge');
+      const c = await apiFetch<{purpose: string; status: string; expiresInSeconds: number; resendAfterSeconds: number; demo: boolean; demoInbox?: boolean}>('/auth/challenge');
       if (c.purpose !== 'password_reset') return;
-      setStarted({message: '', expiresInSeconds: c.expiresInSeconds, resendAfterSeconds: c.resendAfterSeconds, demo: c.demo});
+      setStarted({message: '', expiresInSeconds: c.expiresInSeconds, resendAfterSeconds: c.resendAfterSeconds, demo: c.demo, demoInbox: c.demoInbox});
       setSent((n) => n + 1);
       setStep(c.status === 'verified' ? 'password' : 'code');
     } catch { /* nothing in progress */ }
@@ -88,7 +88,7 @@ export const ForgotPasswordPage: React.FC = () => {
         {step === 'code' && started && (
           <>
             <p className="text-base text-[#183B2B]" data-testid="generic-sent">{started.message || 'If an account with a verified phone number matches, a code was sent to it.'}</p>
-            <CodeEntry online={isOnline} busy={busy} expiresIn={started.expiresInSeconds} resendAfter={started.resendAfterSeconds} sentToken={sent} error={error} notice={notice} submitLabel="Check the code" onSubmit={verify} onResend={resend} />
+            <CodeEntry online={isOnline} busy={busy} expiresIn={started.expiresInSeconds} resendAfter={started.resendAfterSeconds} sentToken={sent} error={error} notice={notice} demoInbox={started.demoInbox} submitLabel="Check the code" onSubmit={verify} onResend={resend} />
           </>
         )}
 

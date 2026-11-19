@@ -96,9 +96,9 @@ function sendLimits(phone: string, userId: number | null, ip: string): void {
   if (!ok) throw new OtpError('RATE_LIMITED', 429, 'Too many verification messages were requested. Please wait before trying again.', 3600);
 }
 
-async function deliver(row: {id: number}, phone: string, purpose: Purpose, code: string): Promise<void> {
+async function deliver(row: {id: number; publicId: string}, phone: string, purpose: Purpose, code: string): Promise<void> {
   try {
-    await getSmsProvider().send(phone, smsText(code), purpose);
+    await getSmsProvider().send(phone, smsText(code), purpose, {challengeId: row.publicId});
   } catch (e) {
     getDb().prepare("UPDATE verification_challenges SET status = 'send_failed' WHERE id = ? AND status = 'pending'").run(row.id);
     if (e instanceof SmsRejectedError) throw new OtpError('PHONE_NOT_ALLOWED', 422, e.message);
@@ -134,7 +134,7 @@ export async function startChallenge(input: StartInput): Promise<Started> {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(publicId, input.userId, input.purpose, input.phone, input.targetPhone ?? null, input.parentId ?? null,
       codeDigest(publicId, input.purpose, input.userId, input.phone, code), sha256(bindingSecret), now, now + cfg.otpTtlMs, now, keyHash('ip', input.ip || 'unknown'));
-    return {id: Number(r.lastInsertRowid)};
+    return {id: Number(r.lastInsertRowid), publicId};
   });
   await deliver(row, input.phone, input.purpose, code);
   return {publicId, bindingSecret, expiresMs: now + cfg.otpTtlMs, resendAfterMs: now + cfg.resendCooldownMs};
@@ -230,7 +230,7 @@ export async function resendChallenge(publicId: string | undefined, secret: stri
      WHERE id = ? AND status = 'pending' AND send_count < ? AND last_sent_ms <= ?`
   ).run(codeDigest(row.public_id, row.purpose, row.user_id, row.phone, code), now, now + cfg.otpTtlMs, row.id, cfg.maxSendsPerChallenge, now - cfg.resendCooldownMs);
   if (Number(res.changes) !== 1) throw new OtpError('COOLDOWN', 429, 'Please wait before asking for another code.', 60);
-  await deliver(row, row.phone, row.purpose, code);
+  await deliver({id: row.id, publicId: row.public_id}, row.phone, row.purpose, code);
   return {expiresMs: now + cfg.otpTtlMs, resendAfterMs: now + cfg.resendCooldownMs, row};
 }
 

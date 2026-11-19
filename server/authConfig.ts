@@ -4,13 +4,22 @@ import crypto from 'node:crypto';
  * Configuration of the SMS-verification features (Node reference). Fail-closed: invalid or dangerous settings stop the server at start-up
  * (createApp calls getAuthConfig()). Error messages name settings, never values.
  *
- * "Production" = NODE_ENV=production AND APP_ENV is not "test" (the black-box harness runs with NODE_ENV=production + APP_ENV=test on a disposable DB).
- * In production the simulated provider, the simulated inbox and the demo operator token are REFUSED, so they can never operate there.
+ * "Production" = NODE_ENV=production AND APP_ENV is neither "test" (the black-box harness: NODE_ENV=production + APP_ENV=test on a disposable DB)
+ * nor "demo" (an explicitly acknowledged hackathon demonstration server, see below). In production the simulated provider, both simulated inboxes and
+ * the demo operator token are REFUSED, so they can never operate there.
+ *
+ * APP_ENV=demo is a protected hackathon environment, not a loophole: it still enforces every authentication protection (codes, expiry, attempts, rate
+ * limits, device trust, session versions) and additionally REFUSES TO START unless: SMS_PROVIDER=simulated (so only synthetic numbers can ever receive
+ * a message), DEMO_ENV_ACK=synthetic-accounts-only, and strong OTP_HMAC_SECRET and SESSION_SECRET (the operator inbox, if enabled, additionally needs its own token).
  */
 export interface AuthConfig {
   production: boolean;
+  /** APP_ENV=demo: an explicitly acknowledged, protected hackathon demonstration server (NOT production). */
+  demoEnvironment: boolean;
   smsProvider: 'none' | 'simulated';
   simulatedInbox: boolean;
+  /** In-website "Demo SMS Inbox": a browser may read ONLY the simulated message of its own pending challenge. */
+  demoInlineInbox: boolean;
   operatorToken: string | null;
   otpSecret: string;
   simulatedPrefix: string;
@@ -52,23 +61,34 @@ const weak = (s: string): boolean => /^(change.?me|your[-_ ]|example|placeholder
 
 export function loadAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig {
   const problems: string[] = [];
-  const production = env.NODE_ENV === 'production' && env.APP_ENV !== 'test';
+  const demoEnvironment = env.APP_ENV === 'demo';
+  const production = env.NODE_ENV === 'production' && env.APP_ENV !== 'test' && !demoEnvironment;
 
   const providerRaw = (env.SMS_PROVIDER ?? 'none').trim().toLowerCase() || 'none';
   if (!['none', 'simulated'].includes(providerRaw)) problems.push('SMS_PROVIDER must be none or simulated (no live provider exists yet)');
   const smsProvider: 'none' | 'simulated' = providerRaw === 'simulated' ? 'simulated' : 'none';
   const simulatedInbox = flag(env.SIMULATED_INBOX, 'SIMULATED_INBOX', problems);
+  const demoInlineInbox = flag(env.DEMO_INLINE_INBOX, 'DEMO_INLINE_INBOX', problems);
   const operatorRaw = (env.DEMO_OPERATOR_TOKEN ?? '').trim();
 
   if (production) {
     if (smsProvider === 'simulated') problems.push('SMS_PROVIDER=simulated is refused in production');
     if (simulatedInbox) problems.push('SIMULATED_INBOX is refused in production');
+    if (demoInlineInbox) problems.push('DEMO_INLINE_INBOX is refused in production');
     if (operatorRaw) problems.push('DEMO_OPERATOR_TOKEN must not be set in production');
   }
   const otpRaw = env.OTP_HMAC_SECRET ?? '';
   if (production && (otpRaw.length < 32 || weak(otpRaw))) problems.push('OTP_HMAC_SECRET is required in production (at least 32 random characters)');
   if (!production && otpRaw && (otpRaw.length < 16 || weak(otpRaw))) problems.push('OTP_HMAC_SECRET is too short or looks like a placeholder');
   if (otpRaw && env.SESSION_SECRET && otpRaw === env.SESSION_SECRET) problems.push('OTP_HMAC_SECRET must differ from SESSION_SECRET');
+
+  if (demoInlineInbox && smsProvider !== 'simulated') problems.push('DEMO_INLINE_INBOX requires SMS_PROVIDER=simulated');
+  if (demoEnvironment) {
+    if (smsProvider !== 'simulated') problems.push('APP_ENV=demo requires SMS_PROVIDER=simulated (only synthetic numbers may ever receive a message)');
+    if (env.DEMO_ENV_ACK !== 'synthetic-accounts-only') problems.push('APP_ENV=demo requires DEMO_ENV_ACK=synthetic-accounts-only (confirms that only synthetic demonstration accounts are used)');
+    if (otpRaw.length < 32 || weak(otpRaw)) problems.push('APP_ENV=demo requires OTP_HMAC_SECRET (at least 32 random characters)');
+    if ((env.SESSION_SECRET ?? '').length < 32 || weak(env.SESSION_SECRET ?? '')) problems.push('APP_ENV=demo requires SESSION_SECRET (at least 32 random characters)');
+  } else if (env.DEMO_ENV_ACK) problems.push('DEMO_ENV_ACK is only meaningful with APP_ENV=demo');
 
   let operatorToken: string | null = null;
   if (simulatedInbox) {
@@ -84,7 +104,7 @@ export function loadAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig
 
   if (problems.length) throw new AuthConfigError(problems);
   return {
-    production, smsProvider, simulatedInbox, operatorToken,
+    production, demoEnvironment, smsProvider, simulatedInbox, demoInlineInbox, operatorToken,
     otpSecret: otpRaw || EPHEMERAL_OTP_SECRET,
     simulatedPrefix: prefix,
     trustedDeviceDays,

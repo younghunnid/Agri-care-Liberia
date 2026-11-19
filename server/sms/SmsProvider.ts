@@ -11,7 +11,8 @@ export interface SmsResult {
 
 export interface SmsProvider {
   readonly name: 'none' | 'simulated' | 'live';
-  send(phoneNumber: string, message: string, purpose: SmsPurpose): Promise<SmsResult>;
+  /** `meta.challengeId` ties the message to the verification challenge that caused it (used only by the simulated in-website inbox). */
+  send(phoneNumber: string, message: string, purpose: SmsPurpose, meta?: {challengeId?: string}): Promise<SmsResult>;
 }
 
 /** Delivery is not possible (no provider configured, or provider failure). Callers must fail closed. */

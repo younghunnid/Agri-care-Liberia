@@ -5,7 +5,7 @@ import {type ClientUser, useApp} from '../../context/AppContext';
 import {CodeEntry, DemoSmsBanner, NeedsConnection, errorText, goHomeFor} from '../../components/SecurityBits';
 
 interface ChallengeInfo {
-  purpose: string; maskedPhone: string | null; expiresInSeconds: number; resendAfterSeconds: number; attemptsLeft: number; canResend: boolean; demo: boolean;
+  purpose: string; maskedPhone: string | null; expiresInSeconds: number; resendAfterSeconds: number; attemptsLeft: number; canResend: boolean; demo: boolean; demoInbox?: boolean;
 }
 
 /** Step 2 of a new-device (or first) sign-in. The server checks the code; the session exists only after it succeeds. */
@@ -64,7 +64,7 @@ export const VerifyCodePage: React.FC = () => {
               {info.purpose === 'phone_confirm' ? 'We need to confirm your phone number. ' : 'This is a new phone or browser for your account. '}
               We sent a six-digit code to <strong>{info.maskedPhone}</strong>.
             </p>
-            <CodeEntry online={isOnline} busy={busy} expiresIn={info.expiresInSeconds} resendAfter={info.resendAfterSeconds} sentToken={sent} error={error} notice={notice} submitLabel="Verify and sign in" onSubmit={(c) => void submit(c)} onResend={() => void resend()} />
+            <CodeEntry online={isOnline} busy={busy} expiresIn={info.expiresInSeconds} resendAfter={info.resendAfterSeconds} sentToken={sent} error={error} notice={notice} demoInbox={info.demoInbox} submitLabel="Verify and sign in" onSubmit={(c) => void submit(c)} onResend={() => void resend()} />
             <Link to="/login" className="inline-flex items-center min-h-[44px] text-sm font-semibold underline text-[#183B2B]">Use a different account</Link>
           </>
         )}

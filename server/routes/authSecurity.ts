@@ -30,6 +30,8 @@ const GRANT_MS = 10 * 60 * 1000;
 const ip = (req: Request): string => req.ip || 'unknown';
 const err = (res: Response, status: number, code: string, message: string, extra: Record<string, unknown> = {}): void => { res.status(status).json({error: {code, message, ...extra}}); };
 const demo = (): boolean => getSmsProvider().name === 'simulated';
+/** The in-website Demo SMS Inbox is on (development / protected demo environment only). */
+const demoInbox = (): boolean => { const c = getAuthConfig(); return c.demoInlineInbox && !c.production && getSmsProvider() instanceof SimulatedSmsProvider; };
 
 function handleOtpError(res: Response, e: unknown): void {
   if (e instanceof OtpError) {
@@ -54,7 +56,7 @@ function startedBody(s: Started, purpose?: string, phone?: string): Record<strin
   const now = Date.now();
   return {
     status: 'VERIFICATION_REQUIRED', ...(purpose ? {purpose} : {}), ...(phone ? {maskedPhone: maskPhone(phone)} : {}),
-    expiresInSeconds: Math.max(0, Math.ceil((s.expiresMs - now) / 1000)), resendAfterSeconds: Math.max(0, Math.ceil((s.resendAfterMs - now) / 1000)), demo: demo(),
+    expiresInSeconds: Math.max(0, Math.ceil((s.expiresMs - now) / 1000)), resendAfterSeconds: Math.max(0, Math.ceil((s.resendAfterMs - now) / 1000)), demo: demo(), demoInbox: demoInbox(),
   };
 }
 
@@ -94,7 +96,7 @@ authSecurityRouter.get('/auth/challenge', (req, res) => {
   const d = describe(row);
   // Recovery challenges never show a phone (identical for existing and unknown accounts).
   const hidePhone = row.purpose === 'password_reset' || row.purpose === 'phone_claim';
-  res.json({...d, maskedPhone: hidePhone ? null : d.maskedPhone, status: row.status, demo: demo()});
+  res.json({...d, maskedPhone: hidePhone ? null : d.maskedPhone, status: row.status, demo: demo(), demoInbox: demoInbox()});
 });
 
 authSecurityRouter.post('/auth/verify-device', (req, res) => {
@@ -131,12 +133,12 @@ authSecurityRouter.post('/auth/resend-code', async (req, res) => {
         throw new OtpError(row.send_count >= cfg.maxSendsPerChallenge ? 'TOO_MANY_SENDS' : 'COOLDOWN', 429, 'Please wait before asking for another code.', 60);
       }
       getDb().prepare('UPDATE verification_challenges SET send_count = send_count + 1, last_sent_ms = ?, expires_ms = ? WHERE id = ?').run(now, now + cfg.otpTtlMs, row.id);
-      res.json({ok: true, expiresInSeconds: Math.ceil(cfg.otpTtlMs / 1000), resendAfterSeconds: Math.ceil(cfg.resendCooldownMs / 1000), demo: demo()});
+      res.json({ok: true, expiresInSeconds: Math.ceil(cfg.otpTtlMs / 1000), resendAfterSeconds: Math.ceil(cfg.resendCooldownMs / 1000), demo: demo(), demoInbox: demoInbox()});
       return;
     }
     const out = await resendChallenge(publicId, secret, ip(req));
     if (out.row.user_id) writeAuditLog({actorUserId: out.row.user_id, actorRole: 'user', action: 'otp_sent', targetType: 'user', targetId: out.row.user_id, details: {purpose: out.row.purpose, resend: true}, ip: req.ip});
-    res.json({ok: true, expiresInSeconds: Math.max(0, Math.ceil((out.expiresMs - Date.now()) / 1000)), resendAfterSeconds: Math.max(0, Math.ceil((out.resendAfterMs - Date.now()) / 1000)), demo: demo()});
+    res.json({ok: true, expiresInSeconds: Math.max(0, Math.ceil((out.expiresMs - Date.now()) / 1000)), resendAfterSeconds: Math.max(0, Math.ceil((out.resendAfterMs - Date.now()) / 1000)), demo: demo(), demoInbox: demoInbox()});
   } catch (e) { handleOtpError(res, e); }
 });
 
@@ -164,7 +166,7 @@ authSecurityRouter.post('/auth/forgot-password', async (req, res) => {
   }
   started ??= dummyChallenge('password_reset', ip(req));
   setChallengeCookie(req, res, started);
-  res.json({ok: true, message: 'If an account with a verified phone number matches, a verification code has been sent to it.', expiresInSeconds: Math.ceil(cfg.otpTtlMs / 1000), resendAfterSeconds: Math.ceil(cfg.resendCooldownMs / 1000), demo: demo()});
+  res.json({ok: true, message: 'If an account with a verified phone number matches, a verification code has been sent to it.', expiresInSeconds: Math.ceil(cfg.otpTtlMs / 1000), resendAfterSeconds: Math.ceil(cfg.resendCooldownMs / 1000), demo: demo(), demoInbox: demoInbox()});
 });
 
 authSecurityRouter.post('/auth/forgot-password/verify', (req, res) => {
@@ -216,7 +218,7 @@ authSecurityRouter.post('/auth/phone-claim/start', async (req, res) => {
   }
   started ??= dummyChallenge('phone_claim', ip(req));
   setChallengeCookie(req, res, started);
-  res.json({ok: true, message: 'If this number is waiting to be verified, a code has been sent to it.', expiresInSeconds: Math.ceil(cfg.otpTtlMs / 1000), resendAfterSeconds: Math.ceil(cfg.resendCooldownMs / 1000), demo: demo()});
+  res.json({ok: true, message: 'If this number is waiting to be verified, a code has been sent to it.', expiresInSeconds: Math.ceil(cfg.otpTtlMs / 1000), resendAfterSeconds: Math.ceil(cfg.resendCooldownMs / 1000), demo: demo(), demoInbox: demoInbox()});
 });
 
 authSecurityRouter.post('/auth/phone-claim/verify', (req, res) => {
@@ -243,7 +245,7 @@ authSecurityRouter.get('/account/security', requireAuth, (req: AuthedRequest, re
     devices: {count: listDevices(u.id, device?.id ?? null).length, currentTrusted: Boolean(device)},
     passwordPolicy: {minLength: getAuthConfig().passwordMinLength},
     recovery: {viaVerifiedPhone: Boolean(u.phone_verified_at), operatorRecovery: true},
-    demoMode: demo(),
+    demoMode: demo(), demoInbox: demoInbox(),
   });
 });
 
@@ -392,7 +394,33 @@ authSecurityRouter.post('/account/phone/change/verify-new', requireAuth, (req: A
   res.json({ok: true});
 });
 
-// =================================================================== development-only simulated inbox
+// =================================================================== in-website "Demo SMS Inbox" (development / protected demo only)
+/**
+ * Shows the simulated message(s) caused by the CALLER'S OWN pending challenge, so a presenter or a synthetic test user can read the code inside the
+ * website the way a phone would show it. Authorisation = the HttpOnly challenge cookie (a random secret that only the browser that started the
+ * challenge holds, and that only exists after the account's password was accepted, or for recovery/claim after the request was made). It never lists
+ * other challenges, other numbers or anything from the operator inbox; dummy challenges (unknown accounts) show an empty inbox. When the feature is off,
+ * or on a production server, it behaves like a route that does not exist. The server never logs, stores or returns codes anywhere else.
+ */
+authSecurityRouter.get('/auth/demo-inbox', (req, res, next) => {
+  const cfg = getAuthConfig();
+  const provider = getSmsProvider();
+  if (!cfg.demoInlineInbox || cfg.production || !(provider instanceof SimulatedSmsProvider)) { next('router'); return; }
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('X-Robots-Tag', 'noindex');
+  if (!takeRate('demo-inbox', keyHash('ip', ip(req)), 120, 60 * 1000)) { res.setHeader('Retry-After', '30'); err(res, 429, 'RATE_LIMITED', 'Too many requests.'); return; }
+  const {publicId, secret} = challengeFrom(req);
+  const row = findChallenge(publicId, secret);
+  if (!row || !['pending', 'verified'].includes(row.status) || Date.now() >= row.expires_ms + (row.status === 'verified' ? GRANT_MS : 0)) { err(res, 404, 'NO_CHALLENGE', 'There is no verification in progress.'); return; }
+  const list = row.status === 'pending' && row.phone !== DUMMY_PHONE ? provider.listForChallenge(row.public_id) : [];
+  res.json({
+    notice: 'Demo mode — no real SMS was sent.',
+    messages: list.map((m) => ({id: m.id, to: maskPhone(m.to), message: m.message, purpose: m.purpose, createdAt: m.createdAt})),
+  });
+});
+
+// =================================================================== development-only simulated inbox (operator)
 function inboxGuard(req: Request, res: Response, next: NextFunction): void {
   const cfg = getAuthConfig();
   const provider = getSmsProvider();

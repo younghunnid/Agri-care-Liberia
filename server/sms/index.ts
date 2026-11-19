@@ -7,7 +7,7 @@ export {SimulatedSmsProvider} from './SimulatedSmsProvider.ts';
 
 class UnavailableProvider implements SmsProvider {
   readonly name = 'none' as const;
-  async send(_to: string, _message: string, _purpose: SmsPurpose): Promise<SmsResult> {
+  async send(_to: string, _message: string, _purpose: SmsPurpose, _meta?: {challengeId?: string}): Promise<SmsResult> {
     throw new SmsUnavailableError('No SMS provider is configured.');
   }
 }
