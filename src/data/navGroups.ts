@@ -1,0 +1,54 @@
+import type {StatusKind} from '../lib/statusLabels';
+
+export interface NavItem {
+  label: string;
+  /** Route for a working item; omitted for a future feature (shown, but not a link). */
+  to?: string;
+  kinds: StatusKind[];
+  note?: string;
+}
+export interface NavGroup {
+  id: 'advice' | 'expert' | 'learn' | 'tools';
+  title: string;
+  blurb: string;
+  items: NavItem[];
+}
+
+/** The four farmer-facing groups shown on Home (H1). Every `to` must be an existing route (checked by tests/h1.test.ts). */
+export const NAV_GROUPS: NavGroup[] = [
+  {
+    id: 'advice', title: 'Get Advice', blurb: 'Find out what is wrong and what to do first.',
+    items: [
+      {label: 'Crop problems (cassava)', to: '/advice/crop-problems', kinds: ['working', 'draft']},
+      {label: 'Advice you can read offline', to: '/offline', kinds: ['working']},
+      {label: 'Weather and planting', to: '/weather', kinds: ['simulated'], note: 'Sample weather only. Not live.'},
+      {label: 'Soil and seeds', to: '/soil', kinds: ['working']},
+      {label: 'Harvest and storage', to: '/guides', kinds: ['working']},
+      {label: 'Farm emergencies', kinds: ['future']},
+    ],
+  },
+  {
+    id: 'expert', title: 'Ask an Expert', blurb: 'Send your question with a photo. Works offline too.',
+    items: [
+      {label: 'Ask an expert', to: '/experts', kinds: ['working', 'simulated'], note: 'Expert replies in this demo are simulated.'},
+      {label: 'My questions', to: '/farmer/questions', kinds: ['working']},
+      {label: 'Farmer community', kinds: ['future']},
+    ],
+  },
+  {
+    id: 'learn', title: 'Learn Farming', blurb: 'Short guides you can read or listen to.',
+    items: [
+      {label: 'Farming guides', to: '/guides', kinds: ['working']},
+      {label: 'Listen to guidance', to: '/guides?listen=1', kinds: ['working']},
+      {label: 'Quizzes and lessons', kinds: ['future']},
+    ],
+  },
+  {
+    id: 'tools', title: 'Farm Tools', blurb: 'Simple tools for your farm.',
+    items: [
+      {label: 'Farm cost and profit calculator', to: '/tools/calculator', kinds: ['working']},
+      {label: 'Sample market information', to: '/marketplace', kinds: ['simulated'], note: 'Demonstration listings, not real prices.'},
+      {label: 'Agricultural support directory', kinds: ['future']},
+    ],
+  },
+];

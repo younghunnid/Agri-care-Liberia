@@ -56,8 +56,14 @@ export const ExpertSupportPage: React.FC = () => {
   );
 
   const [farmerName, setFarmerName] = useState(user?.displayName || 'Demo Farmer');
-  const [category, setCategory] = useState(KNOWLEDGE_CATEGORIES[0].name);
-  const [county, setCounty] = useState(user?.county || 'Bong');
+  const [category, setCategory] = useState(() => {
+    const c = searchParams.get('category');
+    return KNOWLEDGE_CATEGORIES.some((k) => k.name === c) ? (c as string) : KNOWLEDGE_CATEGORIES[0].name;
+  });
+  const [county, setCounty] = useState(() => {
+    const c = searchParams.get('county');
+    return c && (COUNTIES as readonly string[]).includes(c) ? c : user?.county || 'Bong';
+  });
   const [title, setTitle] = useState(searchParams.get('title') || '');
   const [description, setDescription] = useState(searchParams.get('desc') || '');
   const [photoDataUrl, setPhotoDataUrl] = useState('');
@@ -97,7 +103,7 @@ export const ExpertSupportPage: React.FC = () => {
 
   useEffect(() => {
     if (user?.displayName) setFarmerName(user.displayName);
-    if (user?.county) setCounty(user.county);
+    if (user?.county && !searchParams.get('county')) setCounty(user.county);
   }, [user]);
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

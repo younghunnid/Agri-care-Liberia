@@ -121,6 +121,11 @@ export const DemoModePage: React.FC = () => {
         </div>
       )}
 
+      <div className="rounded-2xl bg-[#DDEFE0] border border-[#16803C]/30 p-4 flex flex-wrap items-center justify-between gap-3" data-testid="cassava-demo-link">
+        <p className="text-sm font-bold text-[#183B2B]">New: the 11-step Bong County cassava farmer demonstration (crop problems, offline saving, expert question, calculator).</p>
+        <Link to="/demo/cassava" className="inline-flex items-center min-h-[44px] rounded-xl bg-[#16803C] text-white text-sm font-bold px-4">Open the cassava demo</Link>
+      </div>
+
       {/* 4 COMPLETE DEMONSTRATION JOURNEYS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* JOURNEY 1 */}

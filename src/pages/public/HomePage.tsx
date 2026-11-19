@@ -34,6 +34,7 @@ import {useApp} from '../../context/AppContext';
 import {SafeImage} from '../../components/SafeImage';
 import {SpeakButton} from '../../components/SpeakButton';
 import {getOfflineGuides} from '../../lib/offlineStorage';
+import {HomeGroups} from '../../components/HomeGroups';
 import {PWAInstallButton} from '../../components/PWAInstallButton';
 import {LANGUAGE_OPTIONS, type LanguageCode} from '../../lib/i18n';
 import {
@@ -198,6 +199,8 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <HomeGroups />
 
       {/* HACKATHON JUDGE DEMO BANNER + BASIC PHONE CALL SIMULATOR */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-5">

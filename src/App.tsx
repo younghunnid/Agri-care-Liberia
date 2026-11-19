@@ -5,6 +5,9 @@ import {ProtectedRoute} from './components/ProtectedRoute';
 
 // Public & Prototype Pages
 import {HomePage} from './pages/public/HomePage';
+import {CropProblemsPage} from './pages/public/CropProblemsPage';
+import {FarmCalculatorPage} from './pages/public/FarmCalculatorPage';
+import {CassavaDemoPage} from './pages/public/CassavaDemoPage';
 import {AdvisorPage} from './pages/public/AdvisorPage';
 import {GuidesLibraryPage} from './pages/public/GuidesLibraryPage';
 import {GuideDetailPage} from './pages/public/GuideDetailPage';
@@ -85,6 +88,9 @@ export default function App() {
             <Route path="/management" element={<PrototypeManagementPage />} />
             <Route path="/coming-soon" element={<ComingSoonPage />} />
             <Route path="/demo" element={<DemoModePage />} />
+            <Route path="/demo/cassava" element={<CassavaDemoPage />} />
+            <Route path="/advice/crop-problems" element={<CropProblemsPage />} />
+            <Route path="/tools/calculator" element={<FarmCalculatorPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactFeedbackPage />} />
             <Route path="/login" element={<LoginPage />} />
