@@ -24,7 +24,7 @@ export const GuidanceView: React.FC<{g: SavedGuidance; children?: React.ReactNod
         <p className="text-sm font-bold text-[#183B2B]">Cassava in {g.county} County. You told us:</p>
         <ul className="list-disc pl-5 text-sm text-[#183B2B]/85">{g.symptomLabels.map((s) => <li key={s}>{s}</li>)}</ul>
       </div>
-      <SpeakButton id={`guidance-${g.id}`} label="Listen to this advice" text={spoken} />
+      <SpeakButton id={`guidance-${g.id}`} label="this advice" text={spoken} />
       {g.causes.length === 0 && <p className="rounded-2xl bg-white border border-[#183B2B]/12 p-4 text-sm">No possible cause matched what you chose. Ask an expert below.</p>}
       {g.causes.map((c, i) => (
         <section key={c.id} className="rounded-2xl bg-white border border-[#183B2B]/12 p-4 space-y-3" data-cause={c.id}>

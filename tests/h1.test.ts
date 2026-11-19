@@ -15,6 +15,7 @@ import {NAV_GROUPS} from '../src/data/navGroups.ts';
 import {STATUS_KINDS, STATUS_LABELS} from '../src/lib/statusLabels.ts';
 import {KNOWLEDGE_CATEGORIES} from '../src/data/knowledgeCenter.ts';
 import {validateQuestion} from '../src/lib/offlineDrafts.ts';
+import {summariseSavedWork} from '../src/lib/offlineInventory.ts';
 import {DEMO_STEPS} from '../src/pages/public/CassavaDemoPage.tsx';
 
 const appSrc = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
@@ -197,4 +198,23 @@ test('demo: eleven steps, links are routes, the expert reply is labelled simulat
   for (const s of DEMO_STEPS) if (s.to) assert.ok(routes.has(s.to.split('?')[0]), `${s.to} is not a route`);
   assert.ok(DEMO_STEPS[8].kinds.includes('simulated'));
   assert.ok(DEMO_STEPS[3].kinds.includes('draft'));
+});
+
+// ------------------------------------------------------------ H1.1: offline-downloads inventory
+test('inventory: saved crop advice and calculations are counted, sized and dated; empty is zero', async () => {
+  const kv = memoryKv();
+  const empty = summariseSavedWork([], []);
+  assert.deepEqual([empty.advice.items.length, empty.advice.bytes, empty.advice.newestSavedAt, empty.calculations.bytes], [0, 0, null, 0]);
+  const a = buildSavedGuidance('Bong', ['yellow-patchy-curled'], new Date('2026-02-01T08:00:00Z'), 'a')!;
+  const b = buildSavedGuidance('Nimba', ['yellow-lower-leaves'], new Date('2026-02-03T08:00:00Z'), 'b')!;
+  await saveGuidance(a, kv); await saveGuidance(b, kv);
+  await saveCalc('Cassava', input({quantity: '2', price: {LRD: '10', USD: ''}}), new Date('2026-02-02T00:00:00Z'), kv);
+  const sum = summariseSavedWork(await listSavedGuidance(kv), await listSavedCalcs(kv));
+  assert.equal(sum.advice.items.length, 2);
+  assert.equal(sum.advice.newestSavedAt, '2026-02-03T08:00:00.000Z');
+  assert.equal(sum.advice.bytes, Buffer.byteLength(JSON.stringify(sum.advice.items)));
+  assert.equal(sum.calculations.items.length, 1);
+  assert.ok(sum.calculations.bytes > 0);
+  await deleteSavedGuidance('a', kv);
+  assert.equal(summariseSavedWork(await listSavedGuidance(kv), []).advice.items.length, 1, 'removal must be reflected in the inventory');
 });

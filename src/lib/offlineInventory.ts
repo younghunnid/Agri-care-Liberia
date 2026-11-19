@@ -13,6 +13,8 @@ import {getCatalog, getLibraryEntries, hasNewerVersion} from './offlineLibrary';
 import {getStoredImageStats} from './offlineImages';
 import {getOfflineGuides} from './offlineStorage';
 import {getDownloadedAudio, type AudioMeta} from './audioStore';
+import {listSavedGuidance, type SavedGuidance} from './cropProblem';
+import {listSavedCalcs, type SavedCalc} from './farmCalculator';
 import {cacheGet, MINISTRY_SUMMARY_KEY, loadWeatherSnapshot, type CachedSnapshot, type LiveWeatherData} from './dataCache';
 
 /** Everything the app keeps on this device, with sizes measured rather than guessed. */
@@ -51,6 +53,20 @@ export async function cacheBytes(name: string): Promise<{count: number; bytes: n
   }
 }
 
+/** Sizes and counts of the H1 items kept in the IndexedDB `kv` store (saved crop advice, saved calculations). */
+export interface SavedWorkSummary {
+  advice: {items: SavedGuidance[]; bytes: number; newestSavedAt: string | null};
+  calculations: {items: SavedCalc[]; bytes: number; newestSavedAt: string | null};
+}
+
+export function summariseSavedWork(advice: SavedGuidance[], calcs: SavedCalc[]): SavedWorkSummary {
+  const newest = (xs: {savedAt: string}[]) => xs.map((x) => x.savedAt).filter(Boolean).sort().pop() ?? null;
+  return {
+    advice: {items: advice, bytes: advice.length ? jsonBytes(advice) : 0, newestSavedAt: newest(advice)},
+    calculations: {items: calcs, bytes: calcs.length ? jsonBytes(calcs) : 0, newestSavedAt: newest(calcs)},
+  };
+}
+
 export interface Inventory {
   takenAt: string;
   storage: StorageSummary;
@@ -69,6 +85,7 @@ export interface Inventory {
   listings: {records: ListingRecord[]; counts: StatusCounts; bytes: number};
   questions: {records: QuestionRecord[]; counts: StatusCounts; bytes: number};
   queue: SyncOp[];
+  savedWork: SavedWorkSummary;
   weather: CachedSnapshot<LiveWeatherData>[];
   ministry: CachedSnapshot<Record<string, number>> | null;
   /** Total of everything above that this app measured. */
@@ -82,12 +99,15 @@ export async function takeInventory(): Promise<Inventory> {
   const listings = getListingRecords();
   const questions = getQuestionRecords();
 
-  const [storage, images, ministry, weatherAll] = await Promise.all([
+  const [storage, images, ministry, weatherAll, savedAdvice, savedCalcs] = await Promise.all([
     getStorageSummary(),
     getStoredImageStats(),
     cacheGet<Record<string, number>>(MINISTRY_SUMMARY_KEY),
     Promise.all(LIBERIA_COUNTIES.map((c) => loadWeatherSnapshot(c))),
+    listSavedGuidance().catch(() => [] as SavedGuidance[]),
+    listSavedCalcs().catch(() => [] as SavedCalc[]),
   ]);
+  const savedWork = summariseSavedWork(savedAdvice, savedCalcs);
 
   const bundledBytes = library.reduce((n, e) => n + e.sizeBytes, 0);
   const serverBytes = serverGuides.length ? jsonBytes(serverGuides) : 0;
@@ -116,9 +136,10 @@ export async function takeInventory(): Promise<Inventory> {
     listings: {records: listings, counts: countByStatus(listings), bytes: listingBytes},
     questions: {records: questions, counts: countByStatus(questions), bytes: questionBytes},
     queue: getSyncOps(),
+    savedWork,
     weather,
     ministry,
-    measuredBytes: bundledBytes + serverBytes + images.bytes + audioBytes + listingBytes + questionBytes + cacheRecordBytes,
+    measuredBytes: bundledBytes + serverBytes + images.bytes + audioBytes + listingBytes + questionBytes + cacheRecordBytes + savedWork.advice.bytes + savedWork.calculations.bytes,
   };
 }
 

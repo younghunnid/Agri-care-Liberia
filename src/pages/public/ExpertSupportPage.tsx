@@ -87,13 +87,28 @@ export const ExpertSupportPage: React.FC = () => {
   // Only verified expert or administrator accounts can answer; everyone else just reads.
   const canRespond = Boolean(user?.roles.some((r) => r === 'expert' || r === 'admin'));
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+
+  /**
+   * Loads the request list. The server answer is checked before it is used: a reply that is not the expected list (for example an HTML
+   * page from a proxy, or an empty body) used to leave `requests` undefined and crash the whole page on `requests.length` (H1.1 root cause).
+   */
   const loadRequests = useCallback(async () => {
-    if (!isOnline) return;
+    if (!isOnline) { setLoadError(null); return; }
+    setLoadingRequests(true);
     try {
-      const res = await apiFetch<{requests: DemoExpertRequest[]}>('/expert-requests/demo', {headers: requesterHeaders()});
-      setRequests(res.requests);
-    } catch {
-      // ignore fetch errors when offline
+      const res = await apiFetch<{requests?: unknown}>('/expert-requests/demo', {headers: requesterHeaders()});
+      if (!Array.isArray(res?.requests)) throw new Error('unexpected-response');
+      setRequests(res.requests as DemoExpertRequest[]);
+      setLoadError(null);
+    } catch (err) {
+      const unexpected = err instanceof Error && err.message === 'unexpected-response';
+      setLoadError(unexpected
+        ? 'The server sent an answer this page could not read.'
+        : 'The expert request list could not be loaded. The server may be offline or busy.');
+    } finally {
+      setLoadingRequests(false);
     }
   }, [isOnline, user]);
 
@@ -275,6 +290,17 @@ export const ExpertSupportPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {loadError && (
+        <div role="alert" data-testid="experts-load-error" className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-amber-950 space-y-3">
+          <p className="text-sm font-bold">{loadError}</p>
+          <p className="text-sm">You can still write a request below. It is saved on this phone and sent when the connection works.</p>
+          <button type="button" onClick={() => void loadRequests()} disabled={loadingRequests} data-testid="experts-retry"
+            className="min-h-[48px] rounded-xl bg-[#183B2B] disabled:opacity-60 text-white text-sm font-bold px-5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#183B2B]">
+            {loadingRequests ? 'Trying again…' : 'Try again'}
+          </button>
+        </div>
+      )}
 
       {/* Mode Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-3">

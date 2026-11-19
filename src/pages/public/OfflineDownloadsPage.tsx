@@ -29,6 +29,8 @@ import {
   type QuestionRecord,
 } from '../../lib/offlineDrafts';
 import {takeInventory, unsentCount, type Inventory} from '../../lib/offlineInventory';
+import {deleteSavedGuidance} from '../../lib/cropProblem';
+import {deleteCalc} from '../../lib/farmCalculator';
 import {clearStoredImages} from '../../lib/offlineImages';
 import {clearLibrary, formatDate, pruneUnusedImages, subscribeLibrary} from '../../lib/offlineLibrary';
 import {clearAllOfflineGuides, formatBytes, subscribeOfflineGuides} from '../../lib/offlineStorage';
@@ -261,6 +263,8 @@ export const OfflineDownloadsPage: React.FC = () => {
                   ['Audio lessons', inv.audio.bytes],
                   ['Marketplace drafts', inv.listings.bytes],
                   ['Question drafts', inv.questions.bytes],
+                  ['Saved crop advice', inv.savedWork.advice.bytes],
+                  ['Saved calculations', inv.savedWork.calculations.bytes],
                 ].map(([label, bytes]) => (
                   <tr key={label as string}>
                     <th scope="row" className="py-2 text-left font-medium text-[#183B2B]/85">{label}</th>
@@ -301,6 +305,36 @@ export const OfflineDownloadsPage: React.FC = () => {
                 <Trash2 className="w-4 h-4" aria-hidden="true" /> Remove saved guides and pictures…
               </button>
             )}
+          </Section>
+
+          {/* SAVED CROP ADVICE + CALCULATIONS (H1) */}
+          <Section id="dl-saved-work" title="Saved crop advice and calculations" badge={<><KindBadge kind="saved" /> <KindBadge kind="mine" /></>}>
+            <p className="text-sm text-[#183B2B]/80">
+              Cassava crop-problem advice you saved is <strong>Team 8 draft advice</strong> (not reviewed by an expert). It and your farm calculations stay on this phone only.
+            </p>
+            <ul className="text-sm space-y-1" data-testid="inv-saved-work">
+              <li>Saved crop advice: <strong>{inv.savedWork.advice.items.length}</strong> · {mb(inv.savedWork.advice.bytes)}</li>
+              <li>Saved calculations: <strong>{inv.savedWork.calculations.items.length}</strong> · {mb(inv.savedWork.calculations.bytes)}</li>
+              <li>Last saved: <strong>{(() => { const d = [inv.savedWork.advice.newestSavedAt, inv.savedWork.calculations.newestSavedAt].filter(Boolean).sort().pop(); return d ? formatExact(d) : 'nothing saved yet'; })()}</strong></li>
+            </ul>
+            {inv.savedWork.advice.items.length > 0 && (
+              <ul className="space-y-2">
+                {inv.savedWork.advice.items.map((g) => (
+                  <li key={g.id} className="rounded-2xl border border-[#183B2B]/12 p-3 flex items-center justify-between gap-3">
+                    <span className="text-sm"><strong>Cassava in {g.county}</strong>: {g.symptomLabels[0]}<span className="block text-xs text-[#183B2B]/65">{formatExact(g.savedAt)}</span></span>
+                    <button type="button" aria-label={`Remove saved advice: ${g.symptomLabels[0]}`} onClick={() => void run('Saved crop advice removed.', () => deleteSavedGuidance(g.id))} className={`${btn} border-red-200 bg-white text-red-700`}>
+                      <Trash2 className="w-4 h-4" aria-hidden="true" /> Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {inv.savedWork.calculations.items.length > 0 && (
+              <button type="button" onClick={() => void run('Saved calculations removed.', async () => { for (const c of inv.savedWork.calculations.items) await deleteCalc(c.id); })} className={`${btn} border-red-200 bg-white text-red-700`}>
+                <Trash2 className="w-4 h-4" aria-hidden="true" /> Remove saved calculations
+              </button>
+            )}
+            <Link to="/advice/crop-problems" className="inline-flex items-center min-h-[44px] text-sm font-bold text-[#16803C] underline">Open crop problems</Link>
           </Section>
 
           {/* AUDIO */}

@@ -465,7 +465,7 @@ export const HomePage: React.FC = () => {
                 className="rounded-2xl bg-white border border-[#183B2B]/10 p-4 hover:border-[#16803C] transition-colors flex flex-col justify-between gap-3"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <Link to={`/guides?topic=${cat.id}`} className="flex items-center gap-2.5 group flex-1">
+                  <Link to={`/guides?topic=${cat.id}`} className="flex items-center gap-2.5 group flex-1 min-h-[44px]">
                     <span className="w-10 h-10 rounded-xl bg-[#DDEFE0] text-[#16803C] flex items-center justify-center shrink-0">
                       <Icon className="w-5 h-5" aria-hidden="true" />
                     </span>
