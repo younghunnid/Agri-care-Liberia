@@ -2,7 +2,11 @@ import {getDb} from './db.ts';
 import {hashPassword} from './security.ts';
 import {seedPrototypeData} from './seedPrototype.ts';
 
-export function seedInitialData(): void {
+/**
+ * `demoAccounts`: also create the synthetic demo farmer and approved demo expert, whose passwords are PUBLISHED in project documents. Off by default;
+ * production refuses to start with it on (server/runtime.ts) and refuses to start if such accounts already exist (server/demoGuard.ts).
+ */
+export function seedInitialData(opts: {demoAccounts?: boolean} = {}): void {
   const db = getDb();
 
   // 1. Seed Roles
@@ -393,7 +397,7 @@ If plenty plant (more than 1 out of 10) get twist-twist yellow leaf on the new t
 
   // 5. Seed Synthetic Hackathon Demo Farmer & Approved Demo Expert (no admin password seeded!)
   const userCount = (db.prepare('SELECT COUNT(*) as cnt FROM users').get() as {cnt: number}).cnt;
-  if (userCount === 0) {
+  if (userCount === 0 && opts.demoAccounts) {
     const farmerRole = db.prepare("SELECT id FROM roles WHERE name = 'farmer'").get() as {id: number};
     const expertRole = db.prepare("SELECT id FROM roles WHERE name = 'expert'").get() as {id: number};
 

@@ -581,13 +581,18 @@ test('16a. config: production refuses the simulated provider, the inbox and the 
 async function freePort(): Promise<number> { return new Promise((r) => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = (s.address() as net.AddressInfo).port; s.close(() => r(p)); }); }); }
 async function bootServer(env: Record<string, string>): Promise<{proc: ChildProcess; base: string; dir: string; out: () => string; exited: Promise<number | null>}> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agri-prod-'));
-  const port = await freePort();
-  const proc = spawn(process.execPath, ['--import', 'tsx', 'server.ts'], {cwd: process.cwd(), env: {PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', DB_PATH: path.join(dir, 'p.db'), PORT: String(port), HOST: '127.0.0.1', ...Object.fromEntries(Object.entries(env).filter(([, v]) => v !== ''))}, stdio: ['ignore', 'pipe', 'pipe']});
-  let out = ''; proc.stdout?.on('data', (d) => (out += d)); proc.stderr?.on('data', (d) => (out += d));
-  const exited = new Promise<number | null>((r) => proc.on('exit', (c) => r(c)));
-  const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 80; i++) { try { await fetch(`${base}/api/v1/health`); break; } catch { if (proc.exitCode !== null) break; await new Promise((r) => setTimeout(r, 250)); } }
-  return {proc, base, dir, out: () => out, exited};
+  // freePort() releases the port before the child binds it, so on a busy machine something else can take it in between (EADDRINUSE, or the readiness
+  // probe answering from the WRONG process). Retry on a new port, and always keep the child's output so a failure explains itself.
+  for (let attempt = 1; ; attempt++) {
+    const port = await freePort();
+    const proc = spawn(process.execPath, ['--import', 'tsx', 'server.ts'], {cwd: process.cwd(), env: {PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', DB_PATH: path.join(dir, 'p.db'), PORT: String(port), HOST: '127.0.0.1', ...Object.fromEntries(Object.entries(env).filter(([, v]) => v !== ''))}, stdio: ['ignore', 'pipe', 'pipe']});
+    let out = ''; proc.stdout?.on('data', (d) => (out += d)); proc.stderr?.on('data', (d) => (out += d));
+    const exited = new Promise<number | null>((r) => proc.on('exit', (c) => r(c)));
+    const base = `http://127.0.0.1:${port}`;
+    for (let i = 0; i < 120; i++) { try { await fetch(`${base}/api/v1/health`, {signal: AbortSignal.timeout(3000)}); break; } catch { if (proc.exitCode !== null) break; await new Promise((r) => setTimeout(r, 250)); } }
+    if (proc.exitCode !== null && /EADDRINUSE/.test(out) && attempt < 4) continue;
+    return {proc, base, dir, out: () => out, exited};
+  }
 }
 test('16b. a real production-mode server: refuses to start with the simulated provider; with none, the inbox does not exist and new-device sign-in fails closed', async () => {
   const secret = crypto.randomBytes(32).toString('hex');
@@ -603,7 +608,8 @@ test('16b. a real production-mode server: refuses to start with the simulated pr
     setBaseUrl(s.base);
     const inboxRes = await fetch(`${s.base}/api/v1/dev/simulated-sms`, {headers: {'X-Demo-Operator-Token': 'x'.repeat(40)}});
     const inboxText = await inboxRes.text();
-    assert.ok(!(inboxRes.headers.get('content-type') ?? '').includes('json') && !inboxText.includes('messages') && !inboxText.includes('Operator token'), 'the inbox must not exist in production (it falls through to the static fallback like any unknown path)');
+    assert.equal(inboxRes.status, 404, 'the inbox must not exist in production (unknown API paths are a JSON 404)');
+    assert.ok(!inboxText.includes('messages') && !inboxText.includes('Operator token'), 'no inbox content in production');
     const jar = new CookieJar();
     const p = '+231770777001';
     const reg = await req(jar, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Prod Check', phone: p, password: PW, county: 'Bong'}});
@@ -861,7 +867,8 @@ test('26b. a real APP_ENV=demo server: protections stay on, only synthetic numbe
     const rl = await req(new CookieJar(), '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231886123499', password: PW}});
     assert.equal(rl.status, 422); assert.equal(rl.data.error.code, 'PHONE_NOT_ALLOWED');
     const op = await fetch(`${d.base}/api/v1/dev/simulated-sms`, {headers: {'X-Demo-Operator-Token': 'x'.repeat(40)}});
-    assert.ok(!(op.headers.get('content-type') ?? '').includes('json') && !(await op.text()).includes('messages'), 'operator inbox is off unless SIMULATED_INBOX is set');
+    assert.equal(op.status, 404, 'operator inbox is off unless SIMULATED_INBOX is set');
+    assert.ok(!(await op.text()).includes('messages'), 'no inbox content');
     assert.ok(!d.out().includes(code) && !d.out().includes(c2), 'server log must not contain codes');
     assert.ok(!d.out().includes(demoEnv.OTP_HMAC_SECRET));
   } finally { setBaseUrl(prev); d.proc.kill(); await d.exited; fs.rmSync(d.dir, {recursive: true, force: true}); }

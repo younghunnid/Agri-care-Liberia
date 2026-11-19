@@ -1,5 +1,6 @@
 import {PwaUpdatePrompt} from './PwaUpdatePrompt';
 import {SyncBanner} from './SyncStatus';
+import {DemoEnvironmentBanner} from './DemoEnvironmentBanner';
 import React, {useState} from 'react';
 import {Link, NavLink, useLocation, useNavigate} from 'react-router-dom';
 import {
@@ -101,6 +102,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
       >
         Skip to main content
       </a>
+      <DemoEnvironmentBanner />
 
       {/* Clean 3-Zone Top Navigation Bar */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#183B2B]/10 pt-[env(safe-area-inset-top)]">

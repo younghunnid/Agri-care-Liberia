@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import type {CookieOptions, NextFunction, Request, Response} from 'express';
 import {getDb} from './db.ts';
 import type {UserRole} from './constants.ts';
+import {getRuntimeConfig} from './runtime.ts';
 
 const EPHEMERAL_SECRET = crypto.randomBytes(32).toString('hex');
 
@@ -135,16 +136,23 @@ export function verifySessionToken(token: string | undefined): SessionPayload | 
 
 export type PreviewCookieOptions = CookieOptions & {partitioned?: boolean};
 
+/**
+ * Is this request HTTPS? Only what Express itself determined: `req.secure` is true for a TLS connection, or, when `trust proxy` covers the sender,
+ * for X-Forwarded-Proto: https. The client-supplied Origin header is NOT consulted (it is attacker-controlled).
+ */
 export function isHttpsRequest(req: Request): boolean {
-  const forwardedProto = String(req.headers['x-forwarded-proto'] || '')
-    .split(',')[0]
-    .trim()
-    .toLowerCase();
-  const originHeader = String(req.headers.origin || '').toLowerCase();
-  return req.secure || forwardedProto === 'https' || originHeader.startsWith('https://');
+  return req.secure;
 }
 
+/**
+ * first_party (default in production and the protected demo environment): SameSite=Lax, Secure always. cross_site (development, tests, embedded previews):
+ * SameSite=None; Secure; Partitioned over HTTPS, Lax over HTTP.
+ */
 export function cookieOptions(req: Request, httpOnly = true): PreviewCookieOptions {
+  const rt = getRuntimeConfig();
+  if (rt.cookieMode === 'first_party') {
+    return {httpOnly, sameSite: 'lax', secure: rt.strict ? true : isHttpsRequest(req), path: '/', maxAge: 1000 * 60 * 60 * 24 * 7};
+  }
   const isHttps = isHttpsRequest(req);
   return {
     httpOnly,
@@ -157,14 +165,8 @@ export function cookieOptions(req: Request, httpOnly = true): PreviewCookieOptio
 }
 
 export function clearCookieOptions(req: Request, httpOnly = true): PreviewCookieOptions {
-  const isHttps = isHttpsRequest(req);
-  return {
-    httpOnly,
-    sameSite: isHttps ? 'none' : 'lax',
-    secure: isHttps,
-    ...(isHttps ? {partitioned: true} : {}),
-    path: '/',
-  };
+  const {maxAge: _maxAge, ...rest} = cookieOptions(req, httpOnly);
+  return rest;
 }
 
 export function loadUserById(userId: number): SessionUser | null {

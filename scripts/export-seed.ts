@@ -11,7 +11,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'agri-seed-export-'));
 process.env.DB_PATH = path.join(tmp, 'export.db');
 const {getDb} = await import('../server/db.ts');
 const {seedInitialData} = await import('../server/seed.ts');
-seedInitialData();
+seedInitialData({demoAccounts: true});
 const db = getDb();
 
 const dump = (table: string, drop: string[] = []) =>

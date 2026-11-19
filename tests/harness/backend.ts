@@ -45,6 +45,7 @@ export async function startBackend(): Promise<Backend> {
   process.env.SMS_PROVIDER = 'simulated';
   process.env.SIMULATED_INBOX = '1';
   process.env.DEMO_INLINE_INBOX = '1';
+  process.env.ENABLE_DEMO_SEED = '1'; // the contract and API suites sign in as the synthetic demo expert
   process.env.DEMO_OPERATOR_TOKEN = operatorToken;
   process.env.OTP_HMAC_SECRET = crypto.randomBytes(32).toString('hex');
 

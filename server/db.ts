@@ -4,9 +4,14 @@ import {DatabaseSync} from 'node:sqlite';
 
 let dbInstance: DatabaseSync | null = null;
 
+/** Application root: where `server/migrations` and `dist` live. The server entry sets APP_ROOT from its own location; otherwise the working directory. */
+export function appRoot(): string {
+  return path.resolve(process.env.APP_ROOT || process.cwd());
+}
+
 export function getDbPath(): string {
   const configured = process.env.DB_PATH || './data/agri_advisory.db';
-  return path.isAbsolute(configured) ? configured : path.resolve(process.cwd(), configured);
+  return path.isAbsolute(configured) ? configured : path.resolve(appRoot(), configured);
 }
 
 export function getDb(): DatabaseSync {
@@ -19,7 +24,8 @@ export function getDb(): DatabaseSync {
 
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA foreign_keys = ON;');
-  db.exec('PRAGMA journal_mode = WAL;');
+  // WAL is the default. SQLITE_JOURNAL_MODE=delete is the fallback for file systems where WAL's shared-memory file is unreliable (decided at staging).
+  db.exec(process.env.SQLITE_JOURNAL_MODE === 'delete' ? 'PRAGMA journal_mode = DELETE;' : 'PRAGMA journal_mode = WAL;');
   db.exec('PRAGMA busy_timeout = 5000;');
 
   runMigrations(db);
@@ -35,9 +41,9 @@ export function runMigrations(db: DatabaseSync): string[] {
     );
   `);
 
-  const migrationsDir = path.resolve(process.cwd(), 'server/migrations');
+  const migrationsDir = path.resolve(appRoot(), 'server/migrations');
   if (!fs.existsSync(migrationsDir)) {
-    return [];
+    throw new Error(`Migration folder not found: ${migrationsDir}. The application folder must contain server/migrations.`);
   }
 
   const files = fs

@@ -1,0 +1,87 @@
+# Hostinger staging deployment: Node.js (instructions, not yet executed)
+
+Status: **prepared, not deployed.** Nothing in this document has been run on Hostinger. Every "expected" result is a hypothesis to confirm on the real account. Choose the subdomain later (below: `<sub>.<yourdomain>`). Context: `docs/HOSTINGER_NODE_DEPLOYMENT_ASSESSMENT.md`.
+
+## 1. What changed to make the app deployable
+| Need | Now |
+|---|---|
+| JS entry file | `npm run build` produces `dist/` (frontend) **and `server.js`** (esbuild bundle of `server.ts`, packages external). `npm start` = `node server.js`. `server.js` defaults `NODE_ENV=production` and finds `dist/` and `server/migrations` from its own location, whatever the working directory. |
+| Node version | `engines.node >= 22.13.0` (needed for `node:sqlite` without flags), `.nvmrc` = 22. Choose **Node 22** (or 24 after the probe in 4.3). |
+| Reproducible install | `package-lock.json` committed. `esbuild` is `^0.28.2` (the old `^0.25` pin made `npm ci` fail against Vite 8's peer range). Build tools (`vite`, `tailwindcss`, `esbuild`, plugins) are regular dependencies so a host that skips devDependencies can still build. `tsx` stays development-only. Keep **only** `package-lock.json` (delete `bun.lock` from the upload so the package manager is unambiguous). |
+| Demo accounts | Not created unless `ENABLE_DEMO_SEED=1`; production refuses that flag and refuses to start on a database that contains the published demo passwords. `npm run dev` sets it. |
+| Secrets | Production and the demo environment refuse to start without `SESSION_SECRET` (32+ random chars) and a valid `DB_PATH`. |
+| Database location | `DB_PATH` must be absolute and **outside the application folder**; start-up writes, fsyncs and reads back a probe file there. |
+| Cookies | First-party `SameSite=Lax; Secure` in production/demo; `Origin` header no longer influences them. |
+| Proxy | `TRUST_PROXY` (hop count, default 1) is configurable; measured with the staging diagnostics. |
+| API errors | Unknown `/api/*` is a JSON 404; malformed JSON 400; oversized 413; 500s hide internals. |
+| Caching | Hashed `/assets/*` cached one year (immutable); `index.html`, `sw.js`, manifest always revalidated. |
+| Operator tools | `backup-db.js`, `restore-db.js`, `bootstrap-admin.js`, `recover-account.js` are built as plain JS next to `server.js`. |
+| Demo label | In the demo environment every page shows "Demonstration environment: simulated SMS, synthetic accounts only." |
+
+## 2. Preparation on your computer
+1. `git checkout feature/offline-first` (this commit). Do not push anything you did not intend to.
+2. `npm ci && npm run build && npm run test:deploy` must be green.
+3. Generate three secrets (never reuse, never paste into chat or commits):
+   `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` for `SESSION_SECRET`, `OTP_HMAC_SECRET`, and (staging only) `STAGING_DIAG_TOKEN`.
+4. Deployment package: Hostinger deploys from GitHub or an uploaded archive. For an archive include `package.json`, `package-lock.json`, `server.ts`, `server/`, `src/`, `public/`, `index.html`, `vite.config.ts`, `tsconfig.json`, `scripts/build-server.mjs` and the files it needs (`scripts/*.ts`); exclude `node_modules`, `dist`, `data`, `.env`, `.dev-certs`, `*.db`, `backend-php`, the teammate HTML, `docs` (optional). Hostinger will run the install and `npm run build` itself.
+
+## 3. hPanel configuration (when you approve deployment)
+1. Create the subdomain and enable its free SSL certificate; confirm `https://<sub>.<yourdomain>` shows a valid certificate (a blocker if it does not).
+2. Websites > Add website > **Node.js Apps** > the subdomain. Framework: **Express** (or "Other"), Node **22.x**, build command `npm run build`, **entry file `server.js`**, output directory empty.
+3. Environment variables (hPanel; saving them redeploys):
+
+| Variable | Value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `SESSION_SECRET` | generated, 32+ chars |
+| `OTP_HMAC_SECRET` | generated, 32+ chars, different |
+| `DB_PATH` | absolute, outside the app folder, e.g. `/home/<account>/agri-data/agri.db` (find the account home from the file manager; **decide using probe 4.1**) |
+| `APP_ENV` | `demo` |
+| `SMS_PROVIDER` | `simulated` |
+| `DEMO_INLINE_INBOX` | `1` |
+| `DEMO_ENV_ACK` | `synthetic-accounts-only` |
+| `ENABLE_DEMO_SEED` | `1` (creates the two documented synthetic demo accounts; ONLY in the demo environment) |
+| `TRUST_PROXY` | `1` until probe 4.4 says otherwise |
+| `STAGING_DIAG_TOKEN` | generated; **remove after staging** |
+
+   Leave `GEMINI_API_KEY` unset (the model id in `server/ai.ts` is wrong; see remaining blockers). Do not set `SIMULATED_INBOX`/`DEMO_OPERATOR_TOKEN` unless you want the presenter inbox.
+4. **Production-like variant** (real farmers, no demo labels): `APP_ENV` unset, `SMS_PROVIDER=none`, no `ENABLE_DEMO_SEED`, no `DEMO_*`. New-device sign-in and SMS recovery then fail closed (503) until a real provider is approved; **do not use this variant for real farmers until that exists.**
+5. Deploy. In the logs expect one line `Agri-Advisory Liberia server running on http://…:<port>` and `[auth] …`. A line starting `Invalid deployment configuration:` names the setting to fix (never a value).
+
+## 4. Staging test procedure (all with the diagnostics token; use `curl`, replace `<host>` and `$TOKEN`)
+Header for every call: `-H "X-Staging-Token: $TOKEN"`. Responses contain no secrets or account data (only a user count).
+
+### 4.1 Persistence across restart and redeployment (the key unknown)
+1. `curl -s https://<host>/api/v1/__staging/storage -H … ` -> note `dbInsideAppRoot` (must be `false`), `journalMode`, `quickCheck: "ok"`, `node`, `startedAt`, `userCount`.
+2. `curl -s -X POST https://<host>/api/v1/__staging/marker -H …` -> `created: true`, remember the `id`. (The marker is a small file next to the database.)
+3. Register one synthetic account in the app (`+23177000xxxx`).
+4. **Restart** the app from hPanel. Call `/storage` again: same marker `id`, `userCount` unchanged, `startedAt` newer. The session cookie must still work (stable `SESSION_SECRET`).
+5. **Redeploy** (change nothing or add a harmless env var). Call `/storage`: same marker `id`, same `userCount`. If the marker or accounts are gone, `DB_PATH` is not persistent: **stop**, choose another folder (e.g. a path in `/home/<account>/` that is not under `hbuilds`/`public_html`), repeat. If no persistent writable folder exists, deployment of SQLite is **blocked** (fall back to the paused PHP/MySQL plan).
+6. Remove the marker when finished: `curl -s -X DELETE …/marker`.
+
+### 4.2 SQLite concurrency (WAL)
+`curl -s -X POST "https://<host>/api/v1/__staging/wal-test?rounds=500" -H …` -> `ok: true`, `errors: 0`, `integrity: "ok"` (runs on a scratch file in the database folder, never the real database; deleted afterwards). If it fails or the storage call shows an error, set `SQLITE_JOURNAL_MODE=delete` and repeat; if both fail, stop.
+
+### 4.3 Node version
+`/storage` shows `node: v22.x.y`. App starts without flags -> pass. Repeat on Node 24 only if you want it; run the suites on whichever you keep.
+
+### 4.4 Proxy and client address
+`curl -s https://<host>/api/v1/__staging/proxy -H … -H "X-Forwarded-For: 198.51.100.9"` (a forged value) -> expect `secure: true`, `protocol: https`, and `ip` **not** equal to `198.51.100.9` (it should be your real address or the proxy-added one; if it echoes the forged value with `TRUST_PROXY=1`, the proxy does not append and the setting is wrong). Compare `remoteAddress`, `ips` and `xForwardedFor`: the number of entries Hostinger adds is the right `TRUST_PROXY`. Call it from two different networks (e.g. phone data and Wi-Fi): `ip` must differ. Set `TRUST_PROXY` accordingly (hop count); `0` if the app sees clients directly. Then re-check.
+
+### 4.5 HTTPS, cookies, offline
+Open the site on an Android phone over HTTPS: banner visible; register/sign in with a **synthetic** number; in browser dev tools (or `curl -I`) confirm cookies are `Secure; HttpOnly; SameSite=Lax`; install the app; open a lesson; airplane mode; reload: shell and lessons open; reconnect: queued items sync once.
+
+### 4.6 Idle stop and cold start
+Leave the site idle for the host's idle period, then load it: first load slower but works, still signed in, data intact, new verification codes still work (the simulated inbox is in memory only: an idle restart between "send code" and "enter code" loses the pending message; request a new code).
+
+### 4.7 Backup and restore (see `docs/BACKUP_AND_RECOVERY.md`)
+Run `backup-db.js` once through SSH or hPanel cron, check the output, run `restore-db.js --dry-run`. Download one backup and open it locally to confirm it is readable.
+
+### 4.8 Clean up
+Remove `STAGING_DIAG_TOKEN` (the diagnostics disappear on the next deploy: `/api/v1/__staging/*` answers 404), keep `ENABLE_DEMO_SEED` only for the demo environment.
+
+## 5. Rollback
+Hostinger redeploys from the previous source. Keep the previous archive/tag. The database is **not** part of a deployment (that is why `DB_PATH` is outside the app folder): a code rollback leaves data untouched. The schema only moves forward (additive migrations); roll back data with `restore-db.js` from a backup taken before the upgrade. **Take a backup before every deployment.**
+
+## 6. Remaining open items
+See the final report and `docs/DEPLOYMENT_SECURITY_REVIEW.md` section 5.

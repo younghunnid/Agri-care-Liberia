@@ -2,26 +2,40 @@ import {assertSafeTestEnvironment} from './server/testGuard.ts';
 import 'dotenv/config';
 import fs from 'node:fs';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import {createServer as createViteServer} from 'vite';
 import {getDb} from './server/db.ts';
 import {seedInitialData} from './server/seed.ts';
 import {sessionMiddleware} from './server/security.ts';
 import {getAuthConfig} from './server/authConfig.ts';
+import {checkStorage, getRuntimeConfig} from './server/runtime.ts';
+import {findKnownDemoCredentials} from './server/demoGuard.ts';
+import {stagingRouter} from './server/routes/staging.ts';
 import {v1Router} from './server/routes/v1.ts';
+
+// The application folder is where this file lives (works for `tsx server.ts` and for the built `server.js`, whatever the working directory is).
+process.env.APP_ROOT ??= path.dirname(fileURLToPath(import.meta.url));
 
 export async function createApp() {
   // Initialize isolated database, run migrations, and seed sample demonstration dataset
   assertSafeTestEnvironment(); // refuses APP_ENV=test on the default database BEFORE anything is opened
+  const rt = getRuntimeConfig(); // fails fast on an unsafe deployment (secrets, database location, cookies, demo accounts)
   const authCfg = getAuthConfig(); // fails fast on unsafe SMS/OTP settings (e.g. the simulated provider in production)
   if (authCfg.smsProvider === 'none') console.warn('[auth] SMS_PROVIDER=none: sign-in from a NEW device and SMS password recovery are unavailable (fail closed). Trusted devices still work.');
   else console.warn(`[auth] SMS_PROVIDER=simulated: DEMO MODE${authCfg.demoEnvironment ? ' (APP_ENV=demo, protected hackathon environment)' : ''}. Verification messages are simulated and nothing is sent.${authCfg.demoInlineInbox ? ' The in-website Demo SMS Inbox is ON.' : ''}`);
+  if (rt.strict) checkStorage(rt.dbPath); // production/demo: the database folder must be writable and persistent
   getDb();
-  seedInitialData();
+  if (rt.strict && !rt.enableDemoSeed) {
+    // Never serve a real deployment that contains accounts with published passwords.
+    const known = findKnownDemoCredentials();
+    if (known.length) throw new Error(`Refusing to start: this database contains demo accounts with published passwords (${known.join(', ')}). Use a fresh database or remove those accounts.`);
+  }
+  seedInitialData({demoAccounts: rt.enableDemoSeed});
 
   const app = express();
-  app.set('trust proxy', 1);
+  app.set('trust proxy', rt.trustProxy);
+  app.disable('x-powered-by');
 
   // Security headers (preserve iframe compatibility in preview environments)
   app.use((_req, res, next) => {
@@ -57,6 +71,15 @@ export async function createApp() {
   app.use(cookieParser());
   app.use(sessionMiddleware);
 
+  // Which kind of server is this? (lets the interface label a demonstration environment). No secrets, no account data.
+  app.get('/api/v1/environment', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({demoEnvironment: rt.demoEnvironment, simulatedSms: authCfg.smsProvider === 'simulated', syntheticAccountsOnly: rt.demoEnvironment});
+  });
+
+  // Staging diagnostics: exist ONLY when STAGING_DIAG_TOKEN is set (remove it after the staging tests).
+  if (rt.stagingDiagToken) app.use('/api/v1/__staging', stagingRouter(rt));
+
   // Versioned API routes
   app.use('/api/v1', v1Router);
 
@@ -66,8 +89,14 @@ export async function createApp() {
     mountTestFixtures(app);
   }
 
+  // Unknown API paths are a JSON 404, never the single-page app.
+  app.use('/api', (_req, res) => {
+    res.status(404).json({error: {code: 'NOT_FOUND', message: 'Unknown API endpoint.'}});
+  });
+
   // Vite dev middleware or production static build
   if (process.env.NODE_ENV !== 'production') {
+    const {createServer: createViteServer} = await import('vite'); // development only: not loaded in production
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
@@ -78,7 +107,9 @@ export async function createApp() {
     });
     app.use(vite.middlewares);
   } else {
-    const distDir = path.resolve(process.cwd(), 'dist');
+    const distDir = path.resolve(rt.appRoot, 'dist');
+    // Hashed build files never change: cache them for a year. Everything else (index.html, sw.js, manifest) is revalidated so updates are picked up.
+    app.use('/assets', express.static(path.join(distDir, 'assets'), {maxAge: '365d', immutable: true, fallthrough: false}));
     app.use(express.static(distDir));
     app.get('*', (_req, res) => {
       const indexFile = path.join(distDir, 'index.html');
@@ -90,11 +121,24 @@ export async function createApp() {
     });
   }
 
+  // Errors: JSON for the API (no stack, no internals), plain text elsewhere.
+  app.use((err: Error & {status?: number; statusCode?: number; type?: string}, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (res.headersSent) { next(err); return; }
+    const status = err.status ?? err.statusCode ?? 500;
+    const tooLarge = err.type === 'entity.too.large';
+    const badJson = err.type === 'entity.parse.failed';
+    const code = tooLarge ? 'PAYLOAD_TOO_LARGE' : badJson ? 'INVALID_JSON' : status === 404 ? 'NOT_FOUND' : status >= 500 ? 'INTERNAL_ERROR' : 'BAD_REQUEST';
+    const message = tooLarge ? 'Request body is too large.' : badJson ? 'Request body is not valid JSON.' : status === 404 ? 'Not found.' : status >= 500 ? 'An unexpected error occurred.' : 'Bad request.';
+    if (status >= 500) console.error(`[error] ${req.method} ${req.path}: ${err.name}: ${err.message}`);
+    if (req.path.startsWith('/api')) res.status(status >= 400 && status < 600 ? status : 500).json({error: {code, message}});
+    else res.status(status >= 400 && status < 600 ? status : 500).type('text/plain').send(message);
+  });
+
   return app;
 }
 
 const isDirectEntry =
-  process.argv[1] && (process.argv[1].endsWith('server.ts') || process.argv[1].endsWith('server.js'));
+  process.argv[1] && /server\.(ts|js|mjs|cjs)$/.test(process.argv[1]);
 
 if (isDirectEntry) {
   const port = Number(process.env.PORT || 3000);
