@@ -24,7 +24,7 @@ final class Request
     ) {}
 
     /** Builds a Request from PHP globals. Body size is enforced BEFORE any body byte is read. */
-    public static function fromGlobals(int $maxBody, bool $trustProxy, ?string $input = null): self
+    public static function fromGlobals(int $maxBody, ?TrustedProxies $proxies = null, ?string $input = null): self
     {
         $s = $_SERVER;
         $headers = [];
@@ -52,12 +52,13 @@ final class Request
         }
         if (strlen($body) > $maxBody) throw new HttpException(413, 'PAYLOAD_TOO_LARGE', 'Request body is too large.');
 
-        $https = (!empty($s['HTTPS']) && strtolower((string)$s['HTTPS']) !== 'off')
-            || ($trustProxy && strtolower(trim(explode(',', $headers['x-forwarded-proto'] ?? '')[0])) === 'https');
-        $ip = (string)($s['REMOTE_ADDR'] ?? '');
-        if ($trustProxy && !empty($headers['x-forwarded-for'])) {
-            $cand = trim(explode(',', $headers['x-forwarded-for'])[0]);
-            if (filter_var($cand, FILTER_VALIDATE_IP)) $ip = $cand;
+        $peer = (string)($s['REMOTE_ADDR'] ?? '');
+        if (TrustedProxies::pack($peer) === null) $peer = '0.0.0.0';       // never carry an unparsable peer value into rate-limit keys or logs
+        $https = !empty($s['HTTPS']) && strtolower((string)$s['HTTPS']) !== 'off';
+        $ip = $peer;
+        if ($proxies !== null) {                                            // default: no proxy trust; forwarded headers are ignored
+            $ip = $proxies->clientIp($peer, $headers['x-forwarded-for'] ?? null);
+            $https = $https || $proxies->isHttps($peer, $headers['x-forwarded-proto'] ?? null);
         }
         return new self($method, $path, $query, $headers, self::parseCookies($headers['cookie'] ?? ''), $body, $ip, $https, $headers['host'] ?? null);
     }

@@ -1,5 +1,7 @@
 # M4 readiness review — authentication, sessions, audit, RBAC (PHP)
 
+> **Update:** pre-M4 items P1–P4 and A1′ were implemented in M3.1 (see `docs/M3_1_REPORT.md`). `TRUSTED_PROXY_HOPS` was replaced by an explicit `TRUSTED_PROXY_CIDRS` list; deep health is token-only (no loopback exemption). All other decisions below remain open.
+
 Status: **review only — M4 is NOT authorised and nothing was implemented.** No code, database, SMTP, telecom or deployment action was taken; the only edits are documentation. Evidence (second pass, this revision adds §12–§18): Node reference auth code (`server/routes/v1.ts` 287–600, `server/security.ts`), the React client (`src/lib/api.ts`, `LoginPage`, `RegisterPage`, `AppContext`, `syncEngine`, `usePWA`), the M1 harness/golden snapshot, and the M3 PHP code at commit **`580218d`**.
 Git state at the start of this revision: clean tree (only the two untracked archives), HEAD `b3521fc` (docs only) on top of M3 `580218d`; no code differs between them.
 Note on the commit reference: the M3 commit you cited (`8c9927f`) was amended after the M3 review pass (hardening + report); the current local commit is `580218d` and is what was reviewed. Both are unpushed.

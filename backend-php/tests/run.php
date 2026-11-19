@@ -54,6 +54,28 @@ foreach ($lite->query("SELECT name, sql FROM sqlite_master WHERE type='table' AN
 unset($liteSql['schema_migrations']);
 ksort($liteSql);
 
+/** Parity helpers: PHP-only tables are subtracted ONLY when explicitly allow-listed in tests/php_only.php. */
+function loadPhpOnly(): array { return require __DIR__ . '/php_only.php'; }
+/** @return list<string> problems with the allow-list itself */
+function phpOnlyProblems(array $allow, array $liteTables): array
+{
+    $bad = [];
+    foreach ($allow as $t => $meta) {
+        if ($t !== strtolower((string)$t) || !preg_match('/^[a-z][a-z0-9_]*$/', (string)$t)) $bad[] = "$t: name must be lower-case snake_case";
+        if (in_array($t, $liteTables, true) || $t === 'schema_migrations') $bad[] = "$t: exists in the Node schema / is the ledger, cannot be PHP-only";
+        if (!is_array($meta) || !preg_match('/^(\d{3})_[a-z0-9_]+$/', (string)($meta['migration'] ?? ''), $m) || (int)$m[1] < 2) $bad[] = "$t: 'migration' must name 002_* or later";
+        if (!is_array($meta) || trim((string)($meta['reason'] ?? '')) === '') $bad[] = "$t: 'reason' is required";
+    }
+    return $bad;
+}
+/** @return array{missing:list<string>,unexpected:list<string>} table-set difference after subtracting the allow-list */
+function tableParity(array $mysqlTables, array $liteTables, array $allow): array
+{
+    $m = array_values(array_diff(array_map('strtolower', $mysqlTables), array_keys($allow)));
+    sort($m); $l = array_values($liteTables); sort($l);
+    return ['missing' => array_values(array_diff($l, $m)), 'unexpected' => array_values(array_diff($m, $l))];
+}
+
 $cfgBase = Connection::configFromEnv();
 foreach ($targets as $t) {
     [$host, $port] = explode(':', $t) + [1 => '3306'];
@@ -138,7 +160,31 @@ foreach ($targets as $t) {
     [, $sp] = $fresh();
     check($engine, '12 same tables as SQLite reference', function () use ($sp, $liteSql) {
         $mysql = array_column($sp->query("SELECT table_name AS n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name <> 'schema_migrations' ORDER BY 1")->fetchAll(), 'n');
-        $mysql = array_map('strtolower', $mysql); sort($mysql); eq($mysql, array_keys($liteSql), 'table set'); eq(count($mysql), 26, 'data table count');
+        $allow = loadPhpOnly(); eq(phpOnlyProblems($allow, array_keys($liteSql)), [], 'allow-list invalid');
+        $d = tableParity($mysql, array_keys($liteSql), $allow); eq($d, ['missing' => [], 'unexpected' => []], 'table set');
+        eq(count($mysql) - count(array_intersect(array_map('strtolower', $mysql), array_keys($allow))), 26, 'data table count (excluding allow-listed PHP-only tables)');
+    });
+    check($engine, '12b allow-list: unlisted extra table still fails; listed one is accepted', function () use ($sp, $liteSql) {
+        $mysql = array_column($sp->query("SELECT table_name AS n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name <> 'schema_migrations'")->fetchAll(), 'n');
+        $lt = array_keys($liteSql);
+        $d = tableParity(array_merge($mysql, ['user_sessions']), $lt, []);
+        eq($d['unexpected'], ['user_sessions'], 'an unlisted PHP-only table must be reported');
+        $d = tableParity(array_merge($mysql, ['user_sessions']), $lt, ['user_sessions' => ['migration' => '002_auth', 'reason' => 'x']]);
+        eq($d, ['missing' => [], 'unexpected' => []], 'a listed PHP-only table must be accepted');
+        $d = tableParity(array_diff($mysql, ['crops']), $lt, ['crops' => ['migration' => '002_x', 'reason' => 'x']]);
+        eq($d['missing'], ['crops'], 'an Node table can never be allow-listed away');
+    });
+    check($engine, '12c allow-list validation rejects bad entries', function () use ($liteSql) {
+        $lt = array_keys($liteSql);
+        $cases = ['Upper_Case' => ['migration' => '002_a', 'reason' => 'r'], 'crops' => ['migration' => '002_a', 'reason' => 'r'],
+            'x_one' => ['migration' => '001_schema', 'reason' => 'r'], 'x_two' => ['migration' => '002_a', 'reason' => ' '], 'x_three' => ['reason' => 'r'], 'schema_migrations' => ['migration' => '002_a', 'reason' => 'r']];
+        foreach ($cases as $t => $meta) ok(count(phpOnlyProblems([$t => $meta], $lt)) > 0, "$t accepted");
+        eq(phpOnlyProblems(['user_sessions' => ['migration' => '002_auth', 'reason' => 'r']], $lt), [], 'valid entry rejected');
+    });
+    check($engine, '12d migration 001 contains no allow-listed table and is unchanged in structure', function () use ($migDir) {
+        $sql = strtolower((string)file_get_contents("$migDir/001_schema.sql"));
+        foreach (array_keys(loadPhpOnly()) as $t) ok(!preg_match('/create\s+table\s+`?' . preg_quote((string)$t, '/') . '`?\s*\(/', $sql), "001_schema.sql defines $t");
+        eq(hash('sha256', (string)file_get_contents("$migDir/001_schema.sql")), trim((string)file_get_contents($migDir . '/../tests/001_schema.sha256')), '001_schema.sql was modified');
     });
     check($engine, '13 same columns and nullability', function () use ($sp, $lite, $liteSql) {
         foreach (array_keys($liteSql) as $tbl) {
@@ -162,6 +208,7 @@ foreach ($targets as $t) {
     check($engine, '14 foreign keys: 30, same delete rules', function () use ($sp, $lite, $liteSql) {
         $m = [];
         foreach ($sp->query("SELECT table_name t, column_name c, referenced_table_name rt, referenced_column_name rc, constraint_name n FROM information_schema.key_column_usage WHERE table_schema = DATABASE() AND referenced_table_name IS NOT NULL")->fetchAll() as $r) {
+            if (isset(loadPhpOnly()[strtolower($r['t'])]) || isset(loadPhpOnly()[strtolower($r['rt'])])) continue; // PHP-only tables are outside the Node parity
             $rule = one($sp, 'SELECT delete_rule FROM information_schema.referential_constraints WHERE constraint_schema = DATABASE() AND constraint_name = ? AND table_name = ?', [$r['n'], $r['t']]);
             $m[strtolower("{$r['t']}.{$r['c']}->{$r['rt']}.{$r['rc']}")] = strtoupper((string)$rule);
         }
@@ -176,7 +223,7 @@ foreach ($targets as $t) {
     });
     check($engine, '16 same UNIQUE constraints (7)', function () use ($sp, $lite, $liteSql) {
         $m = [];
-        foreach ($sp->query("SELECT table_name t, GROUP_CONCAT(column_name ORDER BY seq_in_index) cols FROM information_schema.statistics WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name <> 'PRIMARY' AND table_name <> 'schema_migrations' GROUP BY table_name, index_name")->fetchAll() as $r) $m[] = strtolower($r['t'] . '(' . $r['cols'] . ')');
+        foreach ($sp->query("SELECT table_name t, GROUP_CONCAT(column_name ORDER BY seq_in_index) cols FROM information_schema.statistics WHERE table_schema = DATABASE() AND non_unique = 0 AND index_name <> 'PRIMARY' AND table_name <> 'schema_migrations' GROUP BY table_name, index_name")->fetchAll() as $r) { if (!isset(loadPhpOnly()[strtolower($r['t'])])) $m[] = strtolower($r['t'] . '(' . $r['cols'] . ')'); }
         $l = [];
         foreach (array_keys($liteSql) as $tbl) foreach ($lite->query("PRAGMA index_list('$tbl')") as $ix) {
             if (!$ix['unique'] || $ix['origin'] === 'pk') continue;

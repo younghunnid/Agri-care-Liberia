@@ -61,7 +61,7 @@ Unknown routes, 405, 413, 415 and malformed JSON return JSON errors (Node return
 4. `agri_session` is not read yet (`user` is always null) — authentication is M4; no user/role data is exposed by M3.
 5. Rate limiting, audit logging and Idempotency are not part of M3 (M4/M6).
 6. Logs write to `LOG_DIR`; on shared hosting it must be outside the web root (documented in `.env.example`), and log rotation/retention is not implemented.
-7. `X-Forwarded-*` are trusted only with `TRUST_PROXY=1`; a wrong setting behind a proxy would mis-detect HTTPS (production still forces `Secure` cookies).
+7. *(Superseded by M3.1, see `docs/M3_1_REPORT.md`.)* `X-Forwarded-*` are trusted only with `TRUST_PROXY=1` **and** an explicit `TRUSTED_PROXY_CIDRS` list, verified from the right; the original first-entry logic was a spoofing defect.
 
 ## Recommended M4 scope and decisions
 > **Superseded by `docs/M4_READINESS.md`** (M4 is not yet authorised). In particular: sessions will be server-side (the Node cookie format is not reproduced, fresh login being already approved), the KPAA separation-of-duties/role items are **not** part of M4, and a client-IP defect found in M3 (`X-Forwarded-For` first entry) must be fixed first (pre-M4 change P1).

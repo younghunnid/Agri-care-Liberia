@@ -62,7 +62,7 @@ function unprovision(d: Db): void {
   execFileSync(PHP, [path.join(ROOT, 'backend-php/tests/m3/provision.php'), 'drop', d.hostPort, d.db, d.user], {env: {...cleanBase, AGRI_DISPOSABLE_DB_OK: '1', DB_USER: 'root', DB_PASS: ''}});
 }
 const dbEnv = (d: Db): Record<string, string> => ({DB_HOST: '127.0.0.1', DB_PORT: d.hostPort.split(':')[1], DB_NAME: d.db, DB_USER: d.user, DB_PASS: d.pass});
-const devEnv = (extra: Record<string, string> = {}): Record<string, string> => ({APP_ENV: 'test', SESSION_SECRET: rnd(), OWNER_KEY_HMAC_SECRET: rnd(), ...extra});
+const devEnv = (extra: Record<string, string> = {}): Record<string, string> => ({APP_ENV: 'test', SESSION_SECRET: rnd(), OWNER_KEY_HMAC_SECRET: rnd(), HEALTH_CACHE_TTL_SECONDS: '0', ...extra});
 
 // ---------- fixtures ----------
 let node: Backend;
@@ -70,6 +70,7 @@ let mysql: Db; let maria: Db;
 const servers: Php[] = [];
 let phpDev: Php; let phpMaria: Php; let phpCross: Php; let phpSmall: Php; let phpProd: Php; let phpBadDb: Php;
 let prodEnvBase: Record<string, string>;
+let prodCache = '';
 
 before(async () => {
   node = await startBackend();
@@ -78,10 +79,11 @@ before(async () => {
   const add = async (env: Record<string, string>) => { const s = await startPhp(env); servers.push(s); return s; };
   phpDev = await add({...devEnv(), ...dbEnv(mysql), CORS_ALLOWED_ORIGINS: 'https://app.example.test'});
   phpMaria = await add({...devEnv(), ...dbEnv(maria)});
-  phpCross = await add({...devEnv({COOKIE_MODE: 'cross_site', TRUST_PROXY: '1'}), ...dbEnv(mysql)});
+  phpCross = await add({...devEnv({COOKIE_MODE: 'cross_site', TRUST_PROXY: '1', TRUSTED_PROXY_CIDRS: '127.0.0.0/8'}), ...dbEnv(mysql)});
   phpSmall = await add({...devEnv({MAX_BODY_BYTES: '2048'}), ...dbEnv(mysql)});
   phpBadDb = await add({...devEnv(), DB_HOST: '127.0.0.1', DB_PORT: '1', DB_NAME: 'nope', DB_USER: 'nobody', DB_PASS: 'wrong-password-sentinel-9f3a'});
-  prodEnvBase = {APP_ENV: 'production', SESSION_SECRET: rnd(), OWNER_KEY_HMAC_SECRET: rnd(), APP_URL: 'https://agri.example.test', CORS_ALLOWED_ORIGINS: 'https://staging.example.test', TRUST_PROXY: '1', HSTS_MAX_AGE: '31536000', ...dbEnv(mysql)};
+  prodCache = fs.mkdtempSync(path.join(os.tmpdir(), 'agri-m3-prodcache-'));
+  prodEnvBase = {APP_ENV: 'production', CACHE_DIR: prodCache, SESSION_SECRET: rnd(), OWNER_KEY_HMAC_SECRET: rnd(), APP_URL: 'https://agri.example.test', CORS_ALLOWED_ORIGINS: 'https://staging.example.test', TRUST_PROXY: '1', TRUSTED_PROXY_CIDRS: '127.0.0.1', IP_HASH_SECRET: rnd(), PASSWORD_HASH_SCHEME: 'bcrypt', PASSWORD_REHASH_ENABLED: '0', HSTS_MAX_AGE: '31536000', ...dbEnv(mysql)};
   phpProd = await add(prodEnvBase);
 });
 
@@ -89,6 +91,7 @@ after(async () => {
   for (const s of servers) await s.stop();
   for (const d of [mysql, maria]) if (d) try { unprovision(d); } catch { /* best effort */ }
   if (node) await node.stop();
+  if (prodCache) fs.rmSync(prodCache, {recursive: true, force: true});
 });
 
 // ---------- static checks ----------
@@ -410,7 +413,98 @@ describe('Production configuration fails closed', () => {
       assert.equal(r.headers.get('access-control-allow-origin'), ok ? o : null, o);
     }
   });
+  test('M3.1 settings are required/validated in production (IP hash, password policy, mail, sessions, proxies, health)', async () => {
+    for (const k of ['IP_HASH_SECRET', 'PASSWORD_HASH_SCHEME', 'PASSWORD_REHASH_ENABLED']) await expectBlocked(`missing ${k}`, without(k));
+    await expectBlocked('IP hash = session secret', {...prodEnvBase, IP_HASH_SECRET: prodEnvBase.SESSION_SECRET});
+    await expectBlocked('hash scheme typo', {...prodEnvBase, PASSWORD_HASH_SCHEME: 'argon'});
+    await expectBlocked('rehash with legacy', {...prodEnvBase, PASSWORD_HASH_SCHEME: 'legacy', PASSWORD_REHASH_ENABLED: '1'});
+    await expectBlocked('session window typo', {...prodEnvBase, SESSION_IDLE_MINUTES: '12h'});
+    await expectBlocked('admin window longer than user window', {...prodEnvBase, SESSION_IDLE_MINUTES: '20'});
+    await expectBlocked('capture mail transport', {...prodEnvBase, MAIL_TRANSPORT: 'capture'});
+    await expectBlocked('incomplete smtp', {...prodEnvBase, MAIL_TRANSPORT: 'smtp', MAIL_HOST: 'smtp.example.test'});
+    await expectBlocked('trust proxy without list', (() => { const e = {...prodEnvBase}; delete e.TRUSTED_PROXY_CIDRS; return e; })());
+    await expectBlocked('trust everyone', {...prodEnvBase, TRUSTED_PROXY_CIDRS: '0.0.0.0/0'});
+    await expectBlocked('health cache off in production', {...prodEnvBase, HEALTH_CACHE_TTL_SECONDS: '0'});
+    await expectBlocked('short deep token', {...prodEnvBase, HEALTH_DEEP_TOKEN: 'short'});
+  });
+  test('a complete smtp block validates but sends nothing (no sender exists)', async () => {
+    const s = await startPhp({...prodEnvBase, MAIL_TRANSPORT: 'smtp', MAIL_HOST: 'smtp.example.test', MAIL_PORT: '587', MAIL_ENCRYPTION: 'starttls', MAIL_USERNAME: 'u', MAIL_PASSWORD: rnd(8), MAIL_FROM_ADDRESS: 'no-reply@example.test'});
+    try { assert.equal((await call(s.base, '/api/v1/health')).status, 200); assert.match(fs.readdirSync(s.logDir).map((f) => fs.readFileSync(path.join(s.logDir, f), 'utf8')).join(''), /no mail sender exists/); } finally { await s.stop(); }
+  });
   test('production never shows debug details, even for forced errors', async () => {
     const r = await call(phpProd.base, '/api/v1/health', {headers: {'X-Debug': '1'}}); assert.ok(!('debug' in (r.json ?? {})));
+  });
+});
+
+describe('M3.1: forwarded headers, health cache and deep health over HTTP', () => {
+  const cache = () => fs.mkdtempSync(path.join(os.tmpdir(), 'agri-m3-cache-'));
+  const dirs: string[] = [];
+  const mk = async (extra: Record<string, string>) => { const c = cache(); dirs.push(c); const s = await startPhp({...devEnv({HEALTH_CACHE_TTL_SECONDS: '15'}), ...dbEnv(mysql), CACHE_DIR: c, ...extra}); servers.push(s); return s; };
+  after(() => { for (const d of dirs) fs.rmSync(d, {recursive: true, force: true}); });
+  const TOKEN = rnd(20);
+  let noTrust: Php; let trusted: Php; let wrongList: Php; let plain: Php;
+  before(async () => {
+    noTrust = await mk({HEALTH_DEEP_TOKEN: TOKEN, HEALTH_DEEP_RATE_PER_MINUTE: '3'});
+    trusted = await mk({HEALTH_DEEP_TOKEN: TOKEN, HEALTH_DEEP_RATE_PER_MINUTE: '3', TRUST_PROXY: '1', TRUSTED_PROXY_CIDRS: '127.0.0.1'});
+    wrongList = await mk({HEALTH_DEEP_TOKEN: TOKEN, HEALTH_DEEP_RATE_PER_MINUTE: '3', TRUST_PROXY: '1', TRUSTED_PROXY_CIDRS: '10.9.0.0/16'});
+    plain = await mk({});
+  });
+  const deep = (s: Php, xff?: string, extra: Record<string, string> = {}) => call(s.base, '/api/v1/health?deep=1', {headers: {'X-Health-Token': TOKEN, ...(xff ? {'X-Forwarded-For': xff} : {}), ...extra}});
+
+  test('X-Forwarded-Proto is ignored by default and from an untrusted peer; honoured from a trusted proxy', async () => {
+    for (const s of [noTrust, wrongList]) { const r = await call(s.base, '/api/v1/csrf-token', {headers: {'X-Forwarded-Proto': 'https'}}); assert.ok(!cookieOf(r, 'agri_csrf')!.flags.includes('secure'), 'Secure must not follow a forged header'); }
+    const t = await call(trusted.base, '/api/v1/csrf-token', {headers: {'X-Forwarded-Proto': 'https'}}); assert.ok(cookieOf(t, 'agri_csrf')!.flags.includes('secure'));
+    const g = await call(trusted.base, '/api/v1/csrf-token', {headers: {'X-Forwarded-Proto': 'javascript'}}); assert.ok(!cookieOf(g, 'agri_csrf')!.flags.includes('secure'));
+  });
+  test('forged X-Forwarded-For cannot dodge the (IP-keyed) deep-health limiter when trust is off', async () => {
+    const codes: number[] = []; for (let i = 0; i < 5; i++) codes.push((await deep(noTrust, `203.0.113.${i + 10}`)).status);
+    assert.deepEqual(codes, [200, 200, 200, 429, 429]);
+  });
+  test('forged X-Forwarded-For is ignored when the peer is not a listed proxy', async () => {
+    const codes: number[] = []; for (let i = 0; i < 5; i++) codes.push((await deep(wrongList, `203.0.113.${i + 10}`)).status);
+    assert.deepEqual(codes, [200, 200, 200, 429, 429]);
+  });
+  test('behind a listed proxy the rightmost address is the client: a forged left side does not help, a different real client has its own bucket', async () => {
+    const codes: number[] = []; for (let i = 0; i < 5; i++) codes.push((await deep(trusted, `${i + 1}.${i + 1}.${i + 1}.${i + 1}, 198.51.100.7`)).status);
+    assert.deepEqual(codes, [200, 200, 200, 429, 429]);
+    assert.equal((await deep(trusted, '9.9.9.9, 198.51.100.8')).status, 200);
+  });
+  test('deep health: 404 when no token configured; 403 for missing/wrong/URL token; no cookies-for-secrets; generic bodies', async () => {
+    assert.equal((await call(plain.base, '/api/v1/health?deep=1', {headers: {'X-Health-Token': TOKEN}})).status, 404);
+    const s = await mk({HEALTH_DEEP_TOKEN: TOKEN});
+    for (const [u, h] of [['/api/v1/health?deep=1', {}], ['/api/v1/health?deep=1', {'X-Health-Token': 'x'.repeat(40)}], [`/api/v1/health?deep=1&token=${TOKEN}`, {}], [`/api/v1/health?deep=${TOKEN}`, {}]] as const) {
+      const r = await call(s.base, u, {headers: h as Record<string, string>}); assert.equal(r.status, 403, u); assert.deepEqual(Object.keys(r.json), ['error']); assert.ok(!r.text.includes(TOKEN));
+    }
+    const ok = await call(s.base, '/api/v1/health?deep=1', {headers: {'X-Health-Token': TOKEN}});
+    assert.equal(ok.status, 200); assert.equal(ok.json.deep, true); assert.equal(ok.headers.get('cache-control'), 'no-store');
+    assert.ok(!ok.text.includes(TOKEN) && !/\/tmp|\/var\/|\/Users|\.php|PHP\//.test(ok.text), 'deep body discloses paths or versions');
+  });
+  test('public health: contract identical to Node, served from cache (HIT) after the first call, cache-buster ignored', async () => {
+    const s = await mk({}); const n = await call(node.baseUrl, '/api/v1/health');
+    const a = await call(s.base, '/api/v1/health?_=1'); const b = await call(s.base, '/api/v1/health?_=2'); const c = await call(s.base, '/api/v1/health');
+    assert.deepEqual([a.headers.get('x-health-cache'), b.headers.get('x-health-cache'), c.headers.get('x-health-cache')], ['MISS', 'HIT', 'HIT']);
+    for (const r of [a, b, c]) { assert.equal(r.status, 200); assert.deepEqual(Object.keys(r.json), Object.keys(n.json)); for (const k of ['status', 'service', 'apiVersion', 'database', 'aiConfigured']) assert.equal(r.json[k], n.json[k], k); assert.equal(r.json.publishedGuides, 7); }
+    assert.notEqual(b.json.timestamp, c.json.timestamp === b.json.timestamp ? '' : c.json.timestamp);
+  });
+  test('200 parallel pollers cause at most a handful of database checks and never an error', async () => {
+    const s = await mk({}); const rs = await Promise.all(Array.from({length: 200}, () => call(s.base, '/api/v1/health')));
+    assert.ok(rs.every((r) => r.status === 200 && r.json.database === 'connected'), 'some pollers failed');
+    const misses = rs.filter((r) => r.headers.get('x-health-cache') === 'MISS').length;
+    assert.ok(misses <= 8, `${misses} live checks for 200 parallel polls`);
+  });
+  test('a database outage is cached for only a few seconds and never leaks details', async () => {
+    const c = cache(); dirs.push(c); const bad = await startPhp({...devEnv({HEALTH_CACHE_TTL_SECONDS: '15', HEALTH_FAIL_CACHE_TTL_SECONDS: '1'}), DB_HOST: '127.0.0.1', DB_PORT: '1', DB_NAME: 'nope', DB_USER: 'nobody', DB_PASS: 'wrong-password-sentinel-9f3a', CACHE_DIR: c}); servers.push(bad);
+    const a = await call(bad.base, '/api/v1/health'); const b = await call(bad.base, '/api/v1/health');
+    assert.equal(a.status, 500); assert.equal(a.headers.get('x-health-cache'), 'MISS'); assert.equal(b.headers.get('x-health-cache'), 'HIT');
+    assert.deepEqual(a.json, {status: 'error', error: {code: 'HEALTH_CHECK_FAILED', message: 'Database error'}});
+    assert.ok(!/wrong-password|nobody|nope|SQLSTATE|127\.0\.0\.1/.test(a.text + b.text));
+    await new Promise((r) => setTimeout(r, 2100));
+    assert.equal((await call(bad.base, '/api/v1/health')).headers.get('x-health-cache'), 'MISS', 'failure cached longer than the fail TTL');
+  });
+  test('cache files are private (0600 in a 0700 directory) and contain no secrets', async () => {
+    const s = await mk({HEALTH_DEEP_TOKEN: TOKEN}); await call(s.base, '/api/v1/health'); await deep(s);
+    const dir = dirs[dirs.length - 1]; const files = fs.readdirSync(dir).filter((f) => !f.endsWith('.lock'));
+    assert.ok(files.length >= 2, files.join());
+    for (const f of files) { assert.equal(fs.statSync(path.join(dir, f)).mode & 0o077, 0, `${f} is group/world accessible`); const t = fs.readFileSync(path.join(dir, f), 'utf8'); assert.ok(!t.includes(TOKEN) && !t.includes('203.0.113') && !t.includes('127.0.0.1'), `${f} contains secrets or raw IPs`); }
   });
 });

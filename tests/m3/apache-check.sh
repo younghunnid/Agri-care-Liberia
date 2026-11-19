@@ -58,6 +58,8 @@ ScriptAlias /cgi-bin/ "$T/cgi/"
 AddHandler php-cgi .php
 Action php-cgi /cgi-bin/php
 SetEnv APP_ENV test
+SetEnv CACHE_DIR $T/cache
+SetEnv HEALTH_CACHE_TTL_SECONDS 0
 SetEnv SESSION_SECRET $SECRET1
 SetEnv OWNER_KEY_HMAC_SECRET $SECRET2
 SetEnv DB_HOST 127.0.0.1

@@ -18,7 +18,7 @@ use Agri\Support\Logger;
 $root = dirname(__DIR__);
 // Remove every scratch directory these tests create (only directories matching these exact prefixes in the system temp dir).
 register_shutdown_function(static function (): void {
-    foreach (glob(sys_get_temp_dir() . '/agri_{m3k,m3u,m3p,hyg,log}_*', GLOB_BRACE) ?: [] as $d) {
+    foreach (glob(sys_get_temp_dir() . '/agri_{m3k,m3u,m3p,hyg,log}_*{,-logs}', GLOB_BRACE) ?: [] as $d) {
         if (!is_dir($d) || is_link($d)) continue;
         $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($d, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
         foreach ($it as $f) { $f->isDir() && !$f->isLink() ? @rmdir($f->getPathname()) : @unlink($f->getPathname()); }
@@ -40,7 +40,7 @@ function throws(callable $f, string $needle, string $class = Throwable::class): 
 }
 
 $strong = fn() => bin2hex(random_bytes(24));
-$prod = fn(array $o = []) => $o + ['APP_ENV' => 'production', 'SESSION_SECRET' => $strong(), 'OWNER_KEY_HMAC_SECRET' => $strong(), 'DB_HOST' => 'db.internal', 'DB_NAME' => 'agri', 'DB_USER' => 'agri_app', 'DB_PASS' => $strong(), 'APP_URL' => 'https://agri.example.org'];
+$prod = fn(array $o = []) => $o + ['APP_ENV' => 'production', 'SESSION_SECRET' => $strong(), 'OWNER_KEY_HMAC_SECRET' => $strong(), 'DB_HOST' => 'db.internal', 'DB_NAME' => 'agri', 'DB_USER' => 'agri_app', 'DB_PASS' => $strong(), 'APP_URL' => 'https://agri.example.org', 'IP_HASH_SECRET' => $strong(), 'PASSWORD_HASH_SCHEME' => 'bcrypt', 'PASSWORD_REHASH_ENABLED' => '0'];
 $load = fn(array $env) => Config::load(new Env(null, $env), '/srv/agri');
 
 echo "Config / environment\n";
@@ -95,10 +95,10 @@ t('malformed JSON -> 400 INVALID_JSON', function () use ($mkReq) { try { $mkReq(
 t('scalar JSON -> 400', function () use ($mkReq) { try { $mkReq('POST', ['content-type' => 'application/json'], '"x"')->json(); } catch (HttpException $e) { eq($e->status, 400); return; } throw new RuntimeException('no exception'); });
 t('wrong media type -> 415', function () use ($mkReq) { try { $mkReq('POST', ['content-type' => 'text/plain'], '{}')->json(); } catch (HttpException $e) { eq($e->status, 415); return; } throw new RuntimeException('no exception'); });
 t('excessive JSON depth rejected', function () use ($mkReq) { try { $mkReq('POST', ['content-type' => 'application/json'], str_repeat('[', 100) . str_repeat(']', 100))->json(); } catch (HttpException $e) { eq($e->status, 400); return; } throw new RuntimeException('no exception'); });
-t('Content-Length above the limit -> 413 before the body is read', function () { $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/api/v1/x', 'CONTENT_LENGTH' => '5000', 'CONTENT_TYPE' => 'application/json']; try { Request::fromGlobals(1024, false, ''); } catch (HttpException $e) { eq($e->status, 413); return; } throw new RuntimeException('no exception'); });
-t('actual body above the limit -> 413 (no Content-Length)', function () { $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/api/v1/x']; try { Request::fromGlobals(1024, false, str_repeat('a', 2000)); } catch (HttpException $e) { eq($e->status, 413); return; } throw new RuntimeException('no exception'); });
-t('invalid Content-Length / control chars in path rejected', function () { $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/api/v1/x', 'CONTENT_LENGTH' => '-1']; try { Request::fromGlobals(1024, false, ''); throw new RuntimeException('cl accepted'); } catch (HttpException) {} $_SERVER = ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/api/%00x']; try { Request::fromGlobals(1024, false, ''); throw new RuntimeException('nul accepted'); } catch (HttpException) {} });
-t('X-Forwarded-* are ignored unless TRUST_PROXY', function () { $_SERVER = ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/', 'REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_PROTO' => 'https', 'HTTP_X_FORWARDED_FOR' => '203.0.113.9']; $a = Request::fromGlobals(1024, false); ok(!$a->isHttps && $a->clientIp === '10.0.0.1'); $b = Request::fromGlobals(1024, true); ok($b->isHttps && $b->clientIp === '203.0.113.9'); });
+t('Content-Length above the limit -> 413 before the body is read', function () { $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/api/v1/x', 'CONTENT_LENGTH' => '5000', 'CONTENT_TYPE' => 'application/json']; try { Request::fromGlobals(1024, null, ''); } catch (HttpException $e) { eq($e->status, 413); return; } throw new RuntimeException('no exception'); });
+t('actual body above the limit -> 413 (no Content-Length)', function () { $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/api/v1/x']; try { Request::fromGlobals(1024, null, str_repeat('a', 2000)); } catch (HttpException $e) { eq($e->status, 413); return; } throw new RuntimeException('no exception'); });
+t('invalid Content-Length / control chars in path rejected', function () { $_SERVER = ['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/api/v1/x', 'CONTENT_LENGTH' => '-1']; try { Request::fromGlobals(1024, null, ''); throw new RuntimeException('cl accepted'); } catch (HttpException) {} $_SERVER = ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/api/%00x']; try { Request::fromGlobals(1024, null, ''); throw new RuntimeException('nul accepted'); } catch (HttpException) {} });
+// (forwarded-header behaviour is covered by the M3.1 section below)
 
 echo "Router\n";
 $r = new Router();
@@ -181,7 +181,7 @@ t('paths outside /api and traversal-looking paths -> 404 JSON', function () use 
 t('HEAD returns no body', function () use ($kernelFor, $req) { [$k] = $kernelFor(); $r = $k->handle($req('HEAD', '/api/v1/none'), 'r'); ok($r->body === null); });
 t('production kernel always marks cookies Secure', function () use ($root, $req) {
     $logDir = sys_get_temp_dir() . '/agri_m3p_' . bin2hex(random_bytes(3)); $s = fn() => bin2hex(random_bytes(24));
-    $cfg = Config::load(new Env(null, ['APP_ENV' => 'production', 'SESSION_SECRET' => $s(), 'OWNER_KEY_HMAC_SECRET' => $s(), 'DB_HOST' => 'h', 'DB_NAME' => 'd', 'DB_USER' => 'app', 'DB_PASS' => $s(), 'APP_URL' => 'https://agri.example.org', 'LOG_DIR' => $logDir]), $root);
+    $cfg = Config::load(new Env(null, ['APP_ENV' => 'production', 'SESSION_SECRET' => $s(), 'OWNER_KEY_HMAC_SECRET' => $s(), 'DB_HOST' => 'h', 'DB_NAME' => 'd', 'DB_USER' => 'app', 'DB_PASS' => $s(), 'APP_URL' => 'https://agri.example.org', 'LOG_DIR' => $logDir, 'IP_HASH_SECRET' => $s(), 'PASSWORD_HASH_SCHEME' => 'bcrypt', 'PASSWORD_REHASH_ENABLED' => '0']), $root);
     $k = Kernel::make($cfg, new Router(), new Logger($logDir)); $res = $k->handle($req('GET', '/api/v1/none'), 'r'); eq(count($res->cookies), 2); foreach ($res->cookies as $c) ok(str_contains($c, 'Secure') && str_contains($c, 'SameSite=Lax'), $c);
 });
 
@@ -203,6 +203,176 @@ t('hygiene flags a world-readable .env, a log dir and an app dir inside the web 
 });
 t('front controller refuses PHP < 8.2 with a clean JSON error', function () use ($root) { $src = (string)file_get_contents($root . '/public/index.php'); ok(str_contains($src, 'PHP_VERSION_ID < 80200') && strpos($src, 'PHP_VERSION_ID') < strpos($src, 'autoload.php')); });
 t('httpoxy variable is removed at boot', function () use ($root) { $src = (string)file_get_contents($root . '/app/Bootstrap.php'); ok(str_contains($src, "putenv('HTTP_PROXY')")); $ht = (string)file_get_contents($root . '/public/.htaccess'); ok(preg_match('/^\s*RequestHeader\s+unset\s+Proxy\s*$/m', $ht) === 1 && !preg_match('/unset\s+Proxy\s+early/', $ht), 'the early flag is ineffective in .htaccess and must not be used'); });
+
+echo "\nM3.1: trusted proxies and forwarded headers\n";
+use Agri\Http\TrustedProxies;
+use Agri\Http\App;
+use Agri\Controllers\HealthController;
+use Agri\Support\FileStore;
+$tp = function (string $list): TrustedProxies { $out = null; $pr = TrustedProxies::parse($list, $out); if ($pr) throw new RuntimeException(implode(';', $pr)); return $out; };
+$reqFor = function (array $server, ?TrustedProxies $px) { $_SERVER = $server + ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/']; return Request::fromGlobals(1024, $px, ''); };
+t('default (no proxy list): X-Forwarded-For and -Proto are ignored', function () use ($reqFor) { $r = $reqFor(['REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '203.0.113.9', 'HTTP_X_FORWARDED_PROTO' => 'https'], null); eq($r->clientIp, '10.0.0.1'); ok(!$r->isHttps); });
+t('trusted proxy: client is the address the proxy appended', function () use ($reqFor, $tp) { $r = $reqFor(['REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '198.51.100.7'], $tp('10.0.0.1')); eq($r->clientIp, '198.51.100.7'); });
+t('FORGED leftmost entry is ignored: rightmost untrusted hop wins', function () use ($reqFor, $tp) { $r = $reqFor(['REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4, 198.51.100.7'], $tp('10.0.0.1')); eq($r->clientIp, '198.51.100.7'); });
+t('forged header from an UNTRUSTED peer is ignored', function () use ($reqFor, $tp) { $r = $reqFor(['REMOTE_ADDR' => '192.0.2.50', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4', 'HTTP_X_FORWARDED_PROTO' => 'https'], $tp('10.0.0.0/24')); eq($r->clientIp, '192.0.2.50'); ok(!$r->isHttps); });
+t('verified chain: trusted hops are skipped from the right', function () use ($reqFor, $tp) { $r = $reqFor(['REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '9.9.9.9, 198.51.100.7, 10.0.0.2'], $tp('10.0.0.0/24')); eq($r->clientIp, '198.51.100.7'); });
+t('every hop trusted -> peer address (no client to believe)', function () use ($reqFor, $tp) { $r = $reqFor(['REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '10.0.0.2, 10.0.0.3'], $tp('10.0.0.0/24')); eq($r->clientIp, '10.0.0.1'); });
+t('malformed / oversized / too long chains are ignored whole', function () use ($reqFor, $tp) {
+    $px = $tp('10.0.0.1');
+    foreach (['198.51.100.7, unknown', '198.51.100.7, <script>', '198.51.100.7,,', 'for=198.51.100.7', str_repeat('1.1.1.1, ', 11) . '1.1.1.1', str_repeat('a', 600), "198.51.100.7\r\nX-Evil: 1"] as $bad)
+        eq($reqFor(['REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => $bad], $px)->clientIp, '10.0.0.1', substr($bad, 0, 20));
+});
+t('IPv6 clients, IPv6 proxies and IPv4-mapped peers', function () use ($reqFor, $tp) {
+    $px = $tp('10.0.0.1, 2001:db8:aa::/48');
+    eq($reqFor(['REMOTE_ADDR' => '2001:db8:aa::5', 'HTTP_X_FORWARDED_FOR' => '2001:db8:ffff::9'], $px)->clientIp, '2001:db8:ffff::9');
+    eq($reqFor(['REMOTE_ADDR' => '::ffff:10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '198.51.100.7'], $px)->clientIp, '198.51.100.7');
+    eq($reqFor(['REMOTE_ADDR' => '2001:db8:ab::5', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4'], $px)->clientIp, '2001:db8:ab::5');
+});
+t('CIDR boundaries are exact', function () use ($tp) { $px = $tp('10.0.0.0/30'); ok($px->contains('10.0.0.3')); ok(!$px->contains('10.0.0.4')); $p2 = $tp('172.16.0.0/12'); ok($p2->contains('172.31.255.255')); ok(!$p2->contains('172.32.0.0')); ok(!$p2->contains('not-an-ip')); });
+t('X-Forwarded-Proto: only a trusted peer, only http/https, rightmost value decides', function () use ($reqFor, $tp) {
+    $px = $tp('10.0.0.1');
+    $h = fn(string $v, string $peer = '10.0.0.1') => $reqFor(['REMOTE_ADDR' => $peer, 'HTTP_X_FORWARDED_PROTO' => $v], $px)->isHttps;
+    ok($h('https')); ok($h('HTTPS')); ok($h('http, https')); ok(!$h('https, http')); ok(!$h('http')); ok(!$h('javascript')); ok(!$h('https, javascript')); ok(!$h('https', '192.0.2.9')); ok(!$h(str_repeat('https,', 20)));
+});
+t('direct TLS (HTTPS server variable) still counts without any proxy', function () use ($reqFor) { ok($reqFor(['REMOTE_ADDR' => '203.0.113.1', 'HTTPS' => 'on'], null)->isHttps); ok(!$reqFor(['REMOTE_ADDR' => '203.0.113.1', 'HTTPS' => 'off'], null)->isHttps); });
+t('unparsable REMOTE_ADDR never reaches rate-limit keys', function () use ($reqFor) { eq($reqFor(['REMOTE_ADDR' => 'garbage'], null)->clientIp, '0.0.0.0'); eq($reqFor([], null)->clientIp, '0.0.0.0'); });
+t('proxy list parser refuses too-wide, malformed and empty lists', function () {
+    foreach (['0.0.0.0/0', '::/0', '10.0.0.0/7', '2001:db8::/31', '10.0.0.0/33', '10.0.0.0/x', '10.0.0/24', 'abc', '10.0.0.1/24/1', ',', ' '] as $bad) { $o = null; ok(count(TrustedProxies::parse($bad, $o)) > 0 && $o === null, "accepted '$bad'"); }
+});
+
+echo "\nM3.1: authentication, mail, session and IP-hash configuration (fail closed)\n";
+$must = fn(array $over, string $needle) => throws(fn() => $load($prod($over)), $needle, ConfigException::class);
+$mailOk = fn(array $o = []) => $o + ['MAIL_TRANSPORT' => 'smtp', 'MAIL_HOST' => 'smtp.example.org', 'MAIL_PORT' => '587', 'MAIL_ENCRYPTION' => 'starttls', 'MAIL_USERNAME' => 'mailer', 'MAIL_PASSWORD' => 'pw-' . bin2hex(random_bytes(6)), 'MAIL_FROM_ADDRESS' => 'no-reply@example.org', 'MAIL_FROM_NAME' => 'Agri Advisory'];
+t('proxy flags: TRUST_PROXY without list, list without flag and flag typos are errors', function () use ($must, $prod, $load) {
+    $must(['TRUST_PROXY' => '1'], 'TRUSTED_PROXY_CIDRS'); $must(['TRUSTED_PROXY_CIDRS' => '10.0.0.1'], 'TRUST_PROXY'); $must(['TRUST_PROXY' => 'ye', 'TRUSTED_PROXY_CIDRS' => '10.0.0.1'], 'TRUST_PROXY must be');
+    $must(['TRUST_PROXY' => '1', 'TRUSTED_PROXY_CIDRS' => '0.0.0.0/0'], 'too wide');
+    $c = $load($prod(['TRUST_PROXY' => '1', 'TRUSTED_PROXY_CIDRS' => '10.0.0.0/24'])); ok($c->trustedProxies !== null); ok($load($prod())->trustedProxies === null, 'default must be no trust');
+});
+t('IP_HASH_SECRET: required in production, strong, distinct', function () use ($must, $prod, $load, $strong) {
+    $e = $prod(); unset($e['IP_HASH_SECRET']); throws(fn() => $load($e), 'IP_HASH_SECRET', ConfigException::class);
+    $must(['IP_HASH_SECRET' => 'short'], 'IP_HASH_SECRET'); $must(['IP_HASH_SECRET' => 'change-me-change-me-change-me-12345'], 'IP_HASH_SECRET');
+    $x = $strong(); $must(['SESSION_SECRET' => $x, 'IP_HASH_SECRET' => $x], 'must differ');
+    $d = $load(['APP_ENV' => 'development', 'SESSION_SECRET' => $strong(), 'OWNER_KEY_HMAC_SECRET' => $strong(), 'DB_HOST' => 'h', 'DB_NAME' => 'd', 'DB_USER' => 'u']); ok($d->ipHashSecret === null, 'optional outside production');
+});
+t('session windows: defaults, bounds, ordering, typos', function () use ($must, $prod, $load) {
+    $c = $load($prod()); eq($c->session, ['idleMinutes' => 720, 'absoluteHours' => 168, 'adminIdleMinutes' => 30, 'adminAbsoluteHours' => 8]);
+    foreach ([['SESSION_IDLE_MINUTES', '0'], ['SESSION_IDLE_MINUTES', '99999'], ['SESSION_IDLE_MINUTES', '12h'], ['SESSION_IDLE_MINUTES', '-5'], ['SESSION_ABSOLUTE_HOURS', '0'], ['SESSION_ABSOLUTE_HOURS', '721'], ['SESSION_IDLE_MINUTES_ADMIN', '121'], ['SESSION_ABSOLUTE_HOURS_ADMIN', '25']] as [$k, $v]) $must([$k => $v], $k);
+    $must(['SESSION_IDLE_MINUTES' => '1000', 'SESSION_ABSOLUTE_HOURS' => '10'], 'must not exceed');
+    $must(['SESSION_IDLE_MINUTES_ADMIN' => '60', 'SESSION_IDLE_MINUTES' => '30'], 'administrator session windows');
+    $must(['SESSION_ABSOLUTE_HOURS_ADMIN' => '12', 'SESSION_ABSOLUTE_HOURS' => '10'], 'administrator session windows');
+});
+t('password policy: explicit in production, typos, contradictions, cost bounds', function () use ($must, $prod, $load) {
+    foreach (['PASSWORD_HASH_SCHEME', 'PASSWORD_REHASH_ENABLED'] as $k) { $e = $prod(); unset($e[$k]); throws(fn() => $load($e), $k, ConfigException::class); }
+    $must(['PASSWORD_HASH_SCHEME' => 'argon2'], 'PASSWORD_HASH_SCHEME'); $must(['PASSWORD_HASH_SCHEME' => 'md5'], 'PASSWORD_HASH_SCHEME'); $must(['PASSWORD_REHASH_ENABLED' => 'maybe'], 'PASSWORD_REHASH_ENABLED');
+    $must(['PASSWORD_HASH_SCHEME' => 'legacy', 'PASSWORD_REHASH_ENABLED' => '1'], 'contradicts');
+    $must(['PASSWORD_BCRYPT_COST' => '4'], 'PASSWORD_BCRYPT_COST'); $must(['PASSWORD_ARGON2_MEMORY_KIB' => '1024'], 'PASSWORD_ARGON2_MEMORY_KIB'); $must(['PASSWORD_ARGON2_TIME' => '0'], 'PASSWORD_ARGON2_TIME');
+    ok($load($prod(['PASSWORD_HASH_SCHEME' => 'legacy']))->password['scheme'] === 'legacy'); ok($load($prod(['PASSWORD_HASH_SCHEME' => 'bcrypt', 'PASSWORD_REHASH_ENABLED' => '1']))->password['rehash'] === true);
+    if (defined('PASSWORD_ARGON2ID')) ok($load($prod(['PASSWORD_HASH_SCHEME' => 'argon2id']))->password['scheme'] === 'argon2id');
+});
+t('mail: default null and inactive; test transports only outside production; smtp must be complete', function () use ($must, $prod, $load, $mailOk) {
+    $c = $load($prod()); eq($c->mail['transport'], 'null'); ok($c->mailActive() === false);
+    $must(['MAIL_TRANSPORT' => 'capture'], 'test-only'); $must(['MAIL_TRANSPORT' => 'log'], 'test-only'); $must(['MAIL_TRANSPORT' => 'sendmail'], 'MAIL_TRANSPORT must be');
+    $d = $load($prod(['APP_ENV' => 'development', 'MAIL_TRANSPORT' => 'capture', 'APP_URL' => 'http://localhost:3000'])); eq($d->mail['transport'], 'capture');
+    foreach (['MAIL_HOST', 'MAIL_PORT', 'MAIL_ENCRYPTION', 'MAIL_USERNAME', 'MAIL_PASSWORD', 'MAIL_FROM_ADDRESS'] as $k) { $m = $mailOk(); unset($m[$k]); throws(fn() => $load($prod($m)), 'MAIL_', ConfigException::class); }
+    foreach ([['MAIL_ENCRYPTION', 'none'], ['MAIL_ENCRYPTION', ''], ['MAIL_PORT', '0'], ['MAIL_PORT', '99999'], ['MAIL_PORT', 'smtp'], ['MAIL_HOST', 'bad host'], ['MAIL_HOST', 'localhost'], ['MAIL_HOST', '10.0.0.5'], ['MAIL_FROM_ADDRESS', 'not-an-email'], ['MAIL_FROM_ADDRESS', "a@b.org\r\nBcc: x@y.z"], ['MAIL_FROM_NAME', "Evil\r\nBcc: x"], ['MAIL_FROM_NAME', 'A<b>'], ['MAIL_VERIFY_PEER', '0'], ['MAIL_VERIFY_PEER', 'false']] as [$k, $v]) throws(fn() => $load($prod($mailOk([$k => $v]))), 'MAIL_', ConfigException::class);
+    $ok = $load($prod($mailOk())); eq($ok->mail['transport'], 'smtp'); ok($ok->mailActive() === false, 'SMTP must stay inactive'); ok($load($prod($mailOk(['MAIL_VERIFY_PEER' => '1']))) instanceof Config);
+});
+t('mail credentials and other secrets never appear in errors or the summary', function () use ($prod, $load, $mailOk) {
+    $pw = 'MailPw' . bin2hex(random_bytes(8)); $tok = 'Tok' . bin2hex(random_bytes(16));
+    try { $load($prod($mailOk(['MAIL_PASSWORD' => $pw, 'MAIL_PORT' => 'x', 'HEALTH_DEEP_TOKEN' => $tok, 'SESSION_IDLE_MINUTES' => 'q']))); throw new RuntimeException('should fail'); }
+    catch (ConfigException $e) { $m = $e->getMessage() . json_encode($e->problems); ok(!str_contains($m, $pw) && !str_contains($m, $tok), 'secret value leaked'); }
+    $s = json_encode($load($prod($mailOk(['MAIL_PASSWORD' => $pw, 'HEALTH_DEEP_TOKEN' => $tok])))->summary()); ok(!str_contains($s, $pw) && !str_contains($s, $tok) && !str_contains($s, 'smtp.example.org'), 'summary leaks');
+});
+t('health settings: cache must stay on in production, token strength and distinctness', function () use ($must, $prod, $load, $strong) {
+    $must(['HEALTH_CACHE_TTL_SECONDS' => '0'], 'HEALTH_CACHE_TTL_SECONDS'); $must(['HEALTH_CACHE_TTL_SECONDS' => '61'], 'HEALTH_CACHE_TTL_SECONDS'); $must(['HEALTH_DEEP_TOKEN' => 'short'], 'HEALTH_DEEP_TOKEN');
+    $x = $strong(); $must(['SESSION_SECRET' => $x, 'HEALTH_DEEP_TOKEN' => $x], 'must differ'); $must(['HEALTH_DEEP_RATE_PER_MINUTE' => '0'], 'HEALTH_DEEP_RATE_PER_MINUTE');
+    $c = $load($prod()); eq($c->health['ttl'], 15); eq($c->health['failTtl'], 3); ok($c->health['deepToken'] === null);
+});
+
+echo "\nM3.1: health cache, deep check, file rate limiter\n";
+$cdir = fn() => sys_get_temp_dir() . '/agri_m3u_' . bin2hex(random_bytes(4));
+$mkApp = function (array $extra, int &$dbCalls, bool $dbDown = false) use ($load, $prod, $cdir) {
+    $cache = $extra['CACHE_DIR'] ?? $cdir();
+    $cfg = Config::load(new Env(null, $extra + ['APP_ENV' => 'development', 'SESSION_SECRET' => bin2hex(random_bytes(16)), 'OWNER_KEY_HMAC_SECRET' => bin2hex(random_bytes(16)), 'DB_HOST' => 'h', 'DB_NAME' => 'd', 'DB_USER' => 'u', 'CACHE_DIR' => $cache, 'LOG_DIR' => $cache . '-logs']), '/srv/agri');
+    $factory = function () use (&$dbCalls, &$dbDown): PDO {
+        $dbCalls++;
+        if ($dbDown) throw new PDOException('SQLSTATE[HY000] [1045] Access denied for user \'secretuser\'@\'secret-host\' (using password: YES)');
+        $p = new PDO('sqlite::memory:'); $p->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $p->exec("CREATE TABLE schema_migrations (version TEXT, applied_at TEXT); INSERT INTO schema_migrations VALUES ('001_schema','2026-01-01'); CREATE TABLE agricultural_guides (is_published INT, review_status TEXT); INSERT INTO agricultural_guides VALUES (1,'approved'),(1,'approved'),(0,'approved')");
+        return $p;
+    };
+    // like production, every request gets a fresh App (and therefore a fresh database connection attempt)
+    $fresh = fn() => new HealthController(new App($cfg, new Logger($cache . '-logs', 'rid'), $factory));
+    return [$fresh, $cache];
+};
+$get = function (Closure $h, string $qs = '', array $headers = [], string $ip = '127.0.0.1') {
+    try { return $h()(new Request('GET', '/api/v1/health', $qs, $headers, [], '', $ip, false, null)); }
+    catch (HttpException $e) { return Response::error($e->status, $e->errorCode, $e->getMessage(), $e->headers); }
+};
+$contractKeys = ['status', 'service', 'apiVersion', 'database', 'latestMigration', 'publishedGuides', 'aiConfigured', 'timestamp'];
+t('public health: contract fields/order unchanged; 50 polls cost one database check', function () use ($mkApp, $get, $contractKeys) {
+    $calls = 0; [$h] = $mkApp(['HEALTH_CACHE_TTL_SECONDS' => '15'], $calls);
+    for ($i = 0; $i < 50; $i++) { $r = $get($h, '_=' . $i); eq($r->status, 200); $j = json_decode((string)$r->body, true); eq(array_keys($j), $contractKeys); eq($j['publishedGuides'], 2); eq($j['database'], 'connected'); eq($j['latestMigration'], '001_schema'); }
+    eq($calls, 1, 'database connections');
+});
+t('cached responses carry a fresh timestamp and the cache-buster is ignored', function () use ($mkApp, $get) {
+    $calls = 0; [$h] = $mkApp(['HEALTH_CACHE_TTL_SECONDS' => '15'], $calls); $a = json_decode((string)$get($h, '_=1')->body, true)['timestamp']; usleep(30000); $b = json_decode((string)$get($h, '_=2')->body, true)['timestamp'];
+    ok($a !== $b && preg_match('/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/', $b) === 1, "$a vs $b");
+});
+t('cache expires: a second check happens after the TTL', function () use ($mkApp, $get) {
+    $calls = 0; [$h] = $mkApp(['HEALTH_CACHE_TTL_SECONDS' => '1'], $calls); $get($h); sleep(2); $get($h); eq($calls, 2);
+});
+t('failures: generic body, never any database text, cached briefly, recover after the fail TTL', function () use ($mkApp, $get) {
+    $calls = 0; $down = true; $cache = sys_get_temp_dir() . '/agri_m3u_' . bin2hex(random_bytes(4));
+    [$h] = $mkApp(['HEALTH_CACHE_TTL_SECONDS' => '15', 'HEALTH_FAIL_CACHE_TTL_SECONDS' => '1', 'CACHE_DIR' => $cache], $calls, true);
+    for ($i = 0; $i < 5; $i++) { $r = $get($h); eq($r->status, 500); eq(json_decode((string)$r->body, true), ['status' => 'error', 'error' => ['code' => 'HEALTH_CHECK_FAILED', 'message' => 'Database error']]); ok(!preg_match('/secret|SQLSTATE|Access denied|password/i', (string)$r->body)); }
+    eq($calls, 1, 'failure was not cached'); sleep(2);
+    $calls2 = 0; [$h2] = $mkApp(['HEALTH_CACHE_TTL_SECONDS' => '15', 'HEALTH_FAIL_CACHE_TTL_SECONDS' => '1', 'CACHE_DIR' => $cache], $calls2, false);
+    eq($get($h2)->status, 200, 'did not recover after the fail TTL'); eq($calls2, 1);
+});
+t('corrupt, forged-future and tampered cache files are not trusted', function () use ($mkApp, $get, $contractKeys) {
+    $calls = 0; [$h, $cache] = $mkApp(['HEALTH_CACHE_TTL_SECONDS' => '15'], $calls); $get($h); $f = glob($cache . '/health-*.json')[0];
+    file_put_contents($f, '{not json'); $get($h); eq($calls, 2, 'corrupt');
+    file_put_contents($f, json_encode(['t' => time() + 3600, 'ok' => true, 'data' => ['status' => 'ok']])); $get($h); eq($calls, 3, 'future');
+    file_put_contents($f, json_encode(['t' => time(), 'ok' => true, 'data' => ['status' => 'ok', 'service' => 'agri-advisory-liberia-api', 'apiVersion' => 'v1', 'database' => 'connected', 'latestMigration' => 'x', 'publishedGuides' => 5, 'aiConfigured' => false, 'secret' => 'LEAK', 'path' => '/etc']]));
+    $r = $get($h); $j = json_decode((string)$r->body, true); eq(array_keys($j), $contractKeys); ok(!str_contains((string)$r->body, 'LEAK'));
+});
+t('unwritable cache directory falls back to live checks (no failure)', function () use ($mkApp, $get) {
+    $file = sys_get_temp_dir() . '/agri_m3u_' . bin2hex(random_bytes(4)); file_put_contents($file, 'x'); $calls = 0; [$h] = $mkApp(['HEALTH_CACHE_TTL_SECONDS' => '15', 'CACHE_DIR' => $file . '/sub'], $calls);
+    eq($get($h)->status, 200); eq($get($h)->status, 200); eq($calls, 2); unlink($file);
+});
+t('deep check: does not exist without a configured token (404, no hint)', function () use ($mkApp, $get) { $calls = 0; [$h] = $mkApp([], $calls); $r = $get($h, 'deep=1', ['x-health-token' => 'anything']); eq($r->status, 404); eq($calls, 0); });
+t('deep check: token required, header only, constant-time compare, never in the URL', function () use ($mkApp, $get) {
+    $tok = bin2hex(random_bytes(20)); $calls = 0; [$h] = $mkApp(['HEALTH_DEEP_TOKEN' => $tok], $calls);
+    eq($get($h, 'deep=1')->status, 403); eq($get($h, 'deep=1', ['x-health-token' => 'wrong'])->status, 403); eq($get($h, 'deep=1&token=' . $tok)->status, 403); eq($get($h, 'deep=1&x-health-token=' . $tok)->status, 403); eq($calls, 0, 'database touched before authorisation');
+    $r = $get($h, 'deep=1', ['x-health-token' => $tok]); eq($r->status, 200); $j = json_decode((string)$r->body, true);
+    ok($j['deep'] === true && isset($j['dbLatencyMs'], $j['appliedMigrations']) && $j['cacheDirWritable'] === true); ok(!str_contains((string)$r->body, $tok)); eq($r->getHeader('Cache-Control'), 'no-store');
+    ok(!preg_match('#/tmp|/var|/srv|\.php|localhost|PHP/|sqlite#i', (string)$r->body), 'deep body discloses paths or versions');
+});
+t('deep check bypasses the cache and public health stays cached', function () use ($mkApp, $get) {
+    $tok = bin2hex(random_bytes(20)); $calls = 0; [$h] = $mkApp(['HEALTH_DEEP_TOKEN' => $tok, 'HEALTH_CACHE_TTL_SECONDS' => '15'], $calls); $get($h); $get($h); eq($calls, 1);
+    $get($h, 'deep=1', ['x-health-token' => $tok]); $get($h, 'deep=1', ['x-health-token' => $tok]); eq($calls, 3);
+});
+t('deep check is rate limited per client, bad tokens count too, other clients unaffected', function () use ($mkApp, $get) {
+    $tok = bin2hex(random_bytes(20)); $calls = 0; [$h] = $mkApp(['HEALTH_DEEP_TOKEN' => $tok, 'HEALTH_DEEP_RATE_PER_MINUTE' => '5'], $calls);
+    for ($i = 0; $i < 5; $i++) eq($get($h, 'deep=1', ['x-health-token' => 'guess' . $i], '198.51.100.1')->status, 403);
+    $r = $get($h, 'deep=1', ['x-health-token' => $tok], '198.51.100.1');
+    ok($r->status === 429 && $r->getHeader('Retry-After') === '60', 'correct token must not bypass the limiter');
+    eq($get($h, 'deep=1', ['x-health-token' => $tok], '198.51.100.2')->status, 200);
+    eq($calls, 1, 'rate-limited and refused requests must not touch the database');
+});
+t('deep failure body is generic too', function () use ($mkApp, $get) {
+    $tok = bin2hex(random_bytes(20)); $calls = 0; [$h] = $mkApp(['HEALTH_DEEP_TOKEN' => $tok], $calls, true); $r = $get($h, 'deep=1', ['x-health-token' => $tok]); eq($r->status, 500); ok(!preg_match('/secret|SQLSTATE|Access denied/i', (string)$r->body));
+});
+t('file rate limiter: window, limit, expiry, key cap and fail-closed behaviour', function () use ($cdir) {
+    $d = $cdir(); $now = 1000;
+    for ($i = 0; $i < 3; $i++) ok(FileStore::rateHit($d, 'x', 'k', 3, 60, $now), "hit $i"); ok(!FileStore::rateHit($d, 'x', 'k', 3, 60, $now + 1), 'over limit'); ok(FileStore::rateHit($d, 'x', 'other', 3, 60, $now), 'other key');
+    ok(FileStore::rateHit($d, 'x', 'k', 3, 60, $now + 61), 'window expired');
+    for ($i = 0; $i < 4; $i++) FileStore::rateHit($d, 'cap', "k$i", 5, 60, $now, 4); ok(!FileStore::rateHit($d, 'cap', 'k-new', 5, 60, $now, 4), 'table full -> deny');
+    ok(!FileStore::rateHit('/proc/nonexistent/x', 'x', 'k', 3, 60, $now), 'unwritable -> deny');
+    ok(((fileperms(glob($d . '/rl-x.json')[0]) & 0777) === 0600), 'file mode');
+});
+t('FileStore atomic write leaves no temp files and reads back', function () use ($cdir) { $d = $cdir(); FileStore::ensureDir($d); ok(FileStore::writeAtomic("$d/a.json", '{"a":1}')); eq(FileStore::readJson("$d/a.json"), ['a' => 1]); eq(glob("$d/*.tmp"), []); eq(FileStore::readJson("$d/missing.json"), null); });
 
 echo "\nM3 unit tests: $pass passed, $fail failed\n";
 exit($fail ? 1 : 0);

@@ -48,7 +48,7 @@ final class Bootstrap
         self::installHandlers($logger, $requestId);
         foreach (self::hygiene($config, $root, (string)($_SERVER['DOCUMENT_ROOT'] ?? '')) as $w) $logger->warning($w);
         try {
-            $request = Request::fromGlobals($config->maxBodyBytes, $config->trustProxy);
+            $request = Request::fromGlobals($config->maxBodyBytes, $config->trustedProxies);
         } catch (HttpException $e) {
             $res = Response::error($e->status, $e->errorCode, $e->getMessage(), $e->headers + ['X-Request-Id' => $requestId]);
             foreach (Kernel::securityHeaders($config, false) as $k => $v) $res->headers[$k] = $v;
@@ -75,6 +75,9 @@ final class Bootstrap
         $log = @realpath($config->logDir);
         $doc = $docRoot !== '' ? @realpath($docRoot) : false;
         if ($log !== false && $doc !== false && ($log === $doc || str_starts_with($log . '/', rtrim($doc, '/') . '/'))) $w[] = 'LOG_DIR is inside the web root; move it above public_html';
+        $cache = @realpath($config->cacheDir);
+        if ($cache !== false && $doc !== false && ($cache === $doc || str_starts_with($cache . '/', rtrim($doc, '/') . '/'))) $w[] = 'CACHE_DIR is inside the web root; move it above public_html';
+        if ($config->mail['transport'] === 'smtp') $w[] = 'MAIL_TRANSPORT=smtp is configured but no mail sender exists yet; nothing will be sent';
         $r = @realpath($root);
         if ($r !== false && $doc !== false && str_starts_with($r . '/', rtrim($doc, '/') . '/')) $w[] = 'application directory is inside the web root; only public/ may be web-accessible';
         return $w;
