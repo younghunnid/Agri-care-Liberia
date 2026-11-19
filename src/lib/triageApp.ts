@@ -1,11 +1,15 @@
 import {apiFetch, ApiRequestError} from './api';
 import {createAdviceClient} from './adviceCardsClient';
 import {getRequesterKey} from './listingKeys';
+import {createHarvestClient} from './harvestClient';
+import {createInsightsClient} from './insightsClient';
 import {createTriageStore} from './triageStore';
 import {createTriageSync} from './triageSync';
 
 /** The app's instances: IndexedDB storage and the real API. Tests build their own with in-memory storage and fakes. */
 export const triageStore = createTriageStore();
+export const harvestClient = createHarvestClient({get: (path) => apiFetch(path)});
+export const insightsClient = createInsightsClient({get: (path) => apiFetch(path)});
 export const adviceClient = createAdviceClient({get: (path) => apiFetch(path)});
 
 export const triageSync = createTriageSync({

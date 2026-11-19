@@ -9,6 +9,9 @@ import {CropProblemsPage} from './pages/public/CropProblemsPage';
 import {CropCheckPage} from './pages/public/CropCheckPage';
 import {AdviceCardsPage} from './pages/public/AdviceCardsPage';
 import {AdviceCardPage} from './pages/public/AdviceCardPage';
+import {SellHarvestPage} from './pages/public/SellHarvestPage';
+import {HarvestMarketPage} from './pages/public/HarvestMarketPage';
+import {FarmToMarketDemoPage} from './pages/public/FarmToMarketDemoPage';
 import {FarmCalculatorPage} from './pages/public/FarmCalculatorPage';
 import {VerifyCodePage} from './pages/public/VerifyCodePage';
 import {ForgotPasswordPage} from './pages/public/ForgotPasswordPage';
@@ -104,6 +107,9 @@ export default function App() {
             <Route path="/check-my-crop" element={<CropCheckPage />} />
             <Route path="/advice-cards" element={<AdviceCardsPage />} />
             <Route path="/advice-cards/:ref" element={<AdviceCardPage />} />
+            <Route path="/harvest" element={<HarvestMarketPage />} />
+            <Route path="/harvest/sell" element={<SellHarvestPage />} />
+            <Route path="/demo/farm-to-market" element={<FarmToMarketDemoPage />} />
             <Route path="/ministry-analytics" element={<MinistryAnalyticsPage />} />
             <Route path="/learn" element={<LearnPage />} />
             <Route path="/learn/:id" element={<LessonPage />} />

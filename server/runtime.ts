@@ -24,6 +24,8 @@ export interface RuntimeConfig {
   trustProxy: boolean | number | string[];
   trustProxyExplicit: boolean;
   enableDemoSeed: boolean;
+  /** Load the SYNTHETIC farm-to-market demonstration data at start-up (demo and development only). */
+  enableDemoMarketData: boolean;
   /** Private passwords for the two synthetic demo accounts in a strict environment (never the published ones); null when not seeding there. */
   demoSeedPasswords: {farmer: string; expert: string} | null;
   stagingDiagToken: string | null;
@@ -99,6 +101,8 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env, appRoot:
 
   // ---- demo accounts
   const enableDemoSeed = truthy(env.ENABLE_DEMO_SEED);
+  const enableDemoMarketData = truthy(env.ENABLE_DEMO_MARKET_DATA);
+  if (production && enableDemoMarketData) problems.push('ENABLE_DEMO_MARKET_DATA must not be set in production (it loads synthetic records into the live database)');
   if (production && enableDemoSeed) problems.push('ENABLE_DEMO_SEED must not be set in production (it creates accounts with published passwords)');
   if (env.ENABLE_DEMO_SEED && !['0', '1', 'true', 'false', 'yes', 'no', 'on', 'off'].includes(env.ENABLE_DEMO_SEED.toLowerCase())) problems.push('ENABLE_DEMO_SEED must be 1 or 0');
 
@@ -132,7 +136,7 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env, appRoot:
   }
 
   if (problems.length) throw new RuntimeConfigError(problems);
-  return {production, demoEnvironment, strict, appRoot, dbPath, journalMode: jm === 'delete' ? 'delete' : 'wal', cookieMode, trustProxy: tp.value, trustProxyExplicit: tp.explicit, enableDemoSeed, demoSeedPasswords, stagingDiagToken};
+  return {production, demoEnvironment, strict, appRoot, dbPath, journalMode: jm === 'delete' ? 'delete' : 'wal', cookieMode, trustProxy: tp.value, trustProxyExplicit: tp.explicit, enableDemoSeed, enableDemoMarketData, demoSeedPasswords, stagingDiagToken};
 }
 
 let cached: RuntimeConfig | null = null;

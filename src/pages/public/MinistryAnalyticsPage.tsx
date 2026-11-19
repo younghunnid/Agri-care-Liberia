@@ -1,3 +1,4 @@
+import {LiveInsightsPanel} from '../../components/ministry/LiveInsightsPanel';
 import React, {useEffect, useMemo, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, CloudRain, Droplets, MessageSquareText, ShieldCheck, Smartphone, Thermometer} from 'lucide-react';
@@ -161,6 +162,8 @@ export const MinistryAnalyticsPage: React.FC = () => {
       </section>
 
       {/* ============================ B. COUNTY PRODUCTION */}
+      <LiveInsightsPanel />
+
       <section id="sec-production" aria-labelledby="h-production" className="space-y-3 scroll-mt-20">
         <h2 id="h-production" className="font-display text-2xl font-extrabold text-[#183B2B]">County production <SourceBadge kind="synthetic" /></h2>
         <p className="text-sm text-[#183B2B]/80" data-testid="prod-summary">Showing <strong>{sum.rows}</strong> of {PRODUCTION.length} rows · planted {nf.format(sum.plantedHa)} ha · expected {nf.format(sum.expectedMt)} MT · actual {nf.format(sum.actualMt)} MT · actual is <strong>{sum.achievementPct}%</strong> of expected{sum.meanFsi !== null ? ` · mean demo index ${sum.meanFsi}` : ''}.</p>
@@ -198,7 +201,7 @@ export const MinistryAnalyticsPage: React.FC = () => {
           <div className={`${card} space-y-3`} data-testid="fsi-panel" data-fsi={fsi.score}>
             <p className="text-lg font-extrabold text-[#183B2B]">{selected.county} · {selected.crop}: <span data-testid="fsi-score">{fsi.score}</span> / 100 <Pill cls={BAND_STYLE[fsiBand(fsi.score)]}>{fsiBand(fsi.score)}</Pill></p>
             <p className="text-sm text-[#183B2B]/85">Formula: <strong>{Math.round(FSI_WEIGHTS.availability * 100)}% availability + {Math.round(FSI_WEIGHTS.weather * 100)}% weather + {Math.round(FSI_WEIGHTS.cropHealth * 100)}% crop health</strong>. Each input is a 0 to 100 demo value.</p>
-            <table className="w-full text-sm" data-testid="fsi-table">
+            <div className="overflow-x-auto"><table className="w-full text-sm" data-testid="fsi-table">
               <caption className="sr-only">How the illustrative index for the selected row is calculated</caption>
               <thead className="bg-[#F3F8F0]"><tr><th scope="col" className="py-2 px-2 text-left">Input</th><th scope="col" className="py-2 px-2 text-right">Value (0 to 100)</th><th scope="col" className="py-2 px-2 text-right">Weight</th><th scope="col" className="py-2 px-2 text-right">Points</th></tr></thead>
               <tbody className="divide-y divide-[#183B2B]/10">
@@ -207,7 +210,7 @@ export const MinistryAnalyticsPage: React.FC = () => {
                 ))}
               </tbody>
               <tfoot><tr><th scope="row" colSpan={3} className="py-2 px-2 text-left">Total (rounded)</th><td className="py-2 px-2 text-right font-extrabold tabular-nums">{fsi.raw.toFixed(1)} → {fsi.score}</td></tr></tfoot>
-            </table>
+            </table></div>
             <p className="text-xs text-[#183B2B]/75" data-testid="fsi-formula">{fsi.formula}</p>
             <div className="space-y-1" aria-hidden>{fsi.parts.map((p) => <div key={p.key} className="h-2 rounded bg-slate-200"><div className="h-2 rounded bg-[#16803C]" style={{width: `${p.input}%`}} /></div>)}</div>
             <p className="text-xs text-[#183B2B]/75">Bands for this demo only: 70 and above Secure, 60 to 69 Caution, below 60 Critical. They are not an official classification.</p>
@@ -357,7 +360,7 @@ export const MinistryAnalyticsPage: React.FC = () => {
           <li><strong>Campaigns are simulated.</strong> Nothing is sent, so nothing is audited. A real campaign feature would need consent records, sender approval and an audit trail.</li>
           <li><strong>Not an official source.</strong> Nothing here is a Ministry statistic, assessment or endorsement.</li>
         </ul>
-        <p className="text-sm"><Link to="/demo" className="font-bold underline text-[#0F5C2A]">Back to Demo Mode</Link> · <Link to="/ministry" className="font-bold underline text-[#0F5C2A]">Existing food security demo view</Link></p>
+        <p className="text-sm"><Link to="/demo" className="font-bold underline text-[#0F5C2A] inline-flex items-center min-h-[44px]">Back to Demo Mode</Link> · <Link to="/ministry" className="font-bold underline text-[#0F5C2A] inline-flex items-center min-h-[44px]">Existing food security demo view</Link></p>
       </section>
     </div>
   );

@@ -359,4 +359,8 @@ export function seedPrototypeData(forceResetDemo = false): void {
       '',
     );
   }
+  // Every listing carries a SELL reference (lookup number). Rows seeded here are created after migration 010 ran, so they get theirs now.
+  db.prepare(
+    "UPDATE marketplace_listings SET listing_code = 'SELL-' || substr(created_at, 1, 4) || '-' || printf('%06d', id) WHERE listing_code IS NULL"
+  ).run();
 }

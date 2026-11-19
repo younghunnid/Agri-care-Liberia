@@ -12,6 +12,7 @@ import {getAuthConfig} from './server/authConfig.ts';
 import {checkStorage, getRuntimeConfig} from './server/runtime.ts';
 import {findKnownDemoCredentials} from './server/demoGuard.ts';
 import {markSharedDemoAccounts} from './server/security.ts';
+import {seedDemoMarketData} from './server/demoMarket.ts';
 import {stagingRouter} from './server/routes/staging.ts';
 import {v1Router} from './server/routes/v1.ts';
 
@@ -33,7 +34,8 @@ export async function createApp() {
     if (known.length) throw new Error(`Refusing to start: this database contains demo accounts with published passwords (${known.join(', ')}). Use a fresh database or remove those accounts.`);
   }
   seedInitialData({demoAccounts: rt.enableDemoSeed, demoPasswords: rt.demoSeedPasswords ?? undefined});
-  markSharedDemoAccounts(); // databases seeded before the flag existed: permanently flag accounts that still have the published passwords
+  markSharedDemoAccounts();
+  if (rt.enableDemoMarketData) seedDemoMarketData(); // SYNTHETIC farm-to-market demonstration data (never in production) // databases seeded before the flag existed: permanently flag accounts that still have the published passwords
 
   const app = express();
   app.set('trust proxy', rt.trustProxy);

@@ -48,6 +48,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'tools', title: 'Farm Tools', blurb: 'Simple tools for your farm.',
     items: [
+      {label: 'Sell my harvest', to: '/harvest/sell', kinds: ['working', 'simulated'], note: 'Save offline, sent when online. No payments.'},
+      {label: 'Find harvest (buyers)', to: '/harvest', kinds: ['simulated'], note: 'Demonstration listings. No payments.'},
       {label: 'Farm cost and profit calculator', to: '/tools/calculator', kinds: ['working']},
       {label: 'Sample market information', to: '/marketplace', kinds: ['simulated'], note: 'Demonstration listings, not real prices.'},
       {label: 'Agricultural support directory', kinds: ['future']},

@@ -18,6 +18,7 @@ import {
 } from '../security.ts';
 import {idempotent} from '../idempotency.ts';
 import {demoPhoneProblem} from '../demoPolicy.ts';
+import {formatSellCode, validateHarvestFields} from '../../src/lib/harvestRules.ts';
 import {maxAudioChars, maxImageChars, mediaAdmission, type MediaRefusal} from '../mediaQuota.ts';
 import {seedPrototypeData} from '../seedPrototype.ts';
 import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
@@ -52,6 +53,12 @@ interface RawListingRow {
   is_demo_listing: number;
   moderation_status: string;
   inquiry_count?: number;
+  /** Phase 1B columns (migration 010). */
+  listing_code?: string | null;
+  crop_slug?: string;
+  quantity_kg?: number | null;
+  harvest_date?: string | null;
+  is_harvest_listing?: number;
   created_at: string;
   updated_at: string;
 }
@@ -63,7 +70,7 @@ type OwnerFields = Pick<RawListingRow, 'seller_user_id' | 'owner_key_hash'>;
  * `X-Listing-Key` header (never in the URL or body, so it does not end up in logs). Nothing a visitor can read from the API
  * is sufficient: the key is only ever hashed on the server and never returned.
  */
-function canManageListing(req: AuthedRequest, row: OwnerFields): boolean {
+export function canManageListing(req: AuthedRequest, row: OwnerFields): boolean {
   if (req.user?.roles.includes('admin')) return true;
   if (req.user && row.seller_user_id !== null && row.seller_user_id === req.user.id) return true;
   return verifyOwnerKey(req.get('X-Listing-Key'), row.owner_key_hash);
@@ -100,6 +107,8 @@ function toPublicListing(row: RawListingRow, canSeePhoneAlways: boolean, canMana
     updated_at: row.updated_at,
     /** True only for an administrator or the signed-in seller. Anonymous owners know their own key locally. */
     can_manage: canManage,
+    // Present ONLY for structured harvest listings, so every existing response keeps its exact shape.
+    ...(row.is_harvest_listing === 1 ? {harvest: {code: row.listing_code ?? null, cropSlug: row.crop_slug ?? '', quantityKg: row.quantity_kg ?? null, harvestDate: row.harvest_date ?? null}} : {}),
   };
 }
 
@@ -182,6 +191,18 @@ prototypeRouter.post('/marketplace/listings/:id/view', (req, res) => {
 
 prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.create'), writeLimit('marketplace.listing'), (req: AuthedRequest, res) => {
   const db = getDb();
+  // Harvest listing (crop, kilograms, harvest date): validated here and the generic fields are DERIVED from it, so a client cannot send a crop that
+  // disagrees with the category or a quantity that disagrees with the kilograms. Plain listings (no cropSlug) behave exactly as before.
+  let harvest: {cropSlug: string; quantityKg: number; harvestDate: string} | null = null;
+  if (req.body?.cropSlug !== undefined) {
+    const h = validateHarvestFields(req.body);
+    if (!h.ok) {
+      res.status(400).json({error: {code: 'VALIDATION_ERROR', message: h.error}});
+      return;
+    }
+    harvest = {cropSlug: h.crop.slug, quantityKg: h.quantityKg, harvestDate: h.harvestDate};
+    req.body = {...req.body, category: h.crop.category, productName: h.crop.label, quantity: String(h.quantityKg), unit: 'kg'};
+  }
   const {
     ownerKey,
     sellerName,
@@ -312,6 +333,12 @@ prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.cr
     );
 
   const listingId = Number(ins.lastInsertRowid);
+  // The SELL reference is issued HERE, by the server, from the unique row id (never by the client, never reused).
+  const created = db.prepare('SELECT created_at FROM marketplace_listings WHERE id = ?').get(listingId) as {created_at: string};
+  db.prepare('UPDATE marketplace_listings SET listing_code = ? WHERE id = ?').run(formatSellCode(listingId, created.created_at), listingId);
+  if (harvest) {
+    db.prepare('UPDATE marketplace_listings SET is_harvest_listing = 1, crop_slug = ?, quantity_kg = ?, harvest_date = ? WHERE id = ?').run(harvest.cropSlug, harvest.quantityKg, harvest.harvestDate, listingId);
+  }
   const listing = db.prepare('SELECT * FROM marketplace_listings WHERE id = ?').get(listingId) as unknown as RawListingRow;
   res.status(201).json({listing: publicListingFor(req, listing)});
 });
@@ -359,6 +386,17 @@ prototypeRouter.patch('/marketplace/listings/:id', (req: AuthedRequest, res) => 
     phoneConsent,
     moderationStatus,
   } = req.body ?? {};
+
+  // Harvest listings: kilograms and harvest date stay validated (the crop itself cannot be changed: create a new listing for another crop).
+  let harvestPatch: {quantityKg: number | null; harvestDate: string | null} | null = null;
+  if (existing.is_harvest_listing === 1 && (req.body?.quantityKg !== undefined || req.body?.harvestDate !== undefined)) {
+    const h = validateHarvestFields({cropSlug: existing.crop_slug, quantityKg: req.body?.quantityKg ?? existing.quantity_kg, harvestDate: req.body?.harvestDate ?? existing.harvest_date});
+    if (!h.ok) {
+      res.status(400).json({error: {code: 'VALIDATION_ERROR', message: h.error}});
+      return;
+    }
+    harvestPatch = {quantityKg: req.body?.quantityKg !== undefined ? h.quantityKg : null, harvestDate: req.body?.harvestDate !== undefined ? h.harvestDate : null};
+  }
 
   let nextPhone: string | null = null;
   if (sellerPhone !== undefined) {
@@ -430,6 +468,11 @@ prototypeRouter.patch('/marketplace/listings/:id', (req: AuthedRequest, res) => 
     id
   );
 
+  if (existing.is_harvest_listing === 1) {
+    // For a harvest listing the generic text fields always follow the structured ones.
+    if (harvestPatch) db.prepare('UPDATE marketplace_listings SET quantity_kg = COALESCE(?, quantity_kg), harvest_date = COALESCE(?, harvest_date) WHERE id = ?').run(harvestPatch.quantityKg, harvestPatch.harvestDate, id);
+    db.prepare("UPDATE marketplace_listings SET quantity = CAST(quantity_kg AS TEXT), unit = 'kg' WHERE id = ?").run(id);
+  }
   const updated = db.prepare('SELECT * FROM marketplace_listings WHERE id = ?').get(id) as unknown as RawListingRow;
   res.json({listing: publicListingFor(req, updated)});
 });
@@ -499,10 +542,11 @@ prototypeRouter.get('/marketplace/inquiries', (req: AuthedRequest, res) => {
   res.json({inquiries: rows});
 });
 
-prototypeRouter.post('/marketplace/listings/:id/inquiries', writeLimit('marketplace.inquiry'), (req: AuthedRequest, res) => {
+prototypeRouter.post('/marketplace/listings/:id/inquiries', idempotent('marketplace.inquiry.create'), writeLimit('marketplace.inquiry'), (req: AuthedRequest, res) => {
   const db = getDb();
   const listingId = Number(req.params.id);
-  const listing = db.prepare('SELECT id FROM marketplace_listings WHERE id = ?').get(listingId);
+  // A hidden or flagged listing does not exist for a buyer (moderation is not revealed).
+  const listing = db.prepare("SELECT id FROM marketplace_listings WHERE id = ? AND moderation_status = 'approved'").get(listingId);
   if (!listing) {
     res.status(404).json({error: {code: 'NOT_FOUND', message: 'Marketplace listing not found.'}});
     return;
@@ -527,8 +571,8 @@ prototypeRouter.post('/marketplace/listings/:id/inquiries', writeLimit('marketpl
     .prepare(
       `INSERT INTO marketplace_inquiries (
         listing_id, buyer_user_id, buyer_token, buyer_name, buyer_phone, buyer_county,
-        message, status, is_demo_inquiry
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'New', ?)`
+        message, status, is_demo_inquiry, buyer_key_hash, buyer_phone_consent
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'New', ?, ?, ?)`
     )
     .run(
       listingId,
@@ -538,7 +582,10 @@ prototypeRouter.post('/marketplace/listings/:id/inquiries', writeLimit('marketpl
       typeof buyerPhone === 'string' ? buyerPhone.trim().slice(0, 30) : '',
       LIBERIA_COUNTIES.includes(cleanCounty as (typeof LIBERIA_COUNTIES)[number]) ? cleanCounty : 'Montserrado',
       cleanMsg.slice(0, 1000),
-      isSimulated === false ? 0 : 1
+      isSimulated === false ? 0 : 1,
+      // The buyer's private device key is stored only as a keyed hash; it lets the buyer (and nobody else) read their own conversation later.
+      isValidOwnerKey(req.body?.requesterKey) ? hashRequesterKey(req.body.requesterKey) : '',
+      req.body?.buyerPhoneConsent === true && typeof buyerPhone === 'string' && buyerPhone.trim() ? 1 : 0
     );
 
   const inquiry = db

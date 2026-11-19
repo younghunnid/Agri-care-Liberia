@@ -1,6 +1,7 @@
 import {dbDelete, dbGetAll, dbPut, kvGet, kvSet} from './offlineDb';
 import {normalizeLiberianPhone} from './phone';
 import {generateOwnerKey} from './listingKeys';
+import {validateHarvestFields} from './harvestRules';
 
 /**
  * Local records for things a farmer prepared on the phone (marketplace listings, expert
@@ -33,6 +34,11 @@ export interface ListingData {
   /** Kept only when phoneConsent is true. */
   sellerPhone: string;
   phoneConsent: boolean;
+  /** Harvest listing (Phase 1B): when cropSlug is set the server validates crop, whole kilograms and harvest date and issues the SELL reference. */
+  cropSlug?: string;
+  quantityKg?: number | string;
+  /** Calendar date, YYYY-MM-DD. */
+  harvestDate?: string;
 }
 
 export interface QuestionData {
@@ -66,6 +72,8 @@ interface BaseRecord {
 
 export interface ListingRecord extends BaseRecord {
   type: 'listing';
+  /** SELL reference, issued by the server after the first successful sync (a lookup number, not blockchain or proof of origin). */
+  listingCode?: string;
   /** Secret proving ownership of the listing; sent to the server on create (it stores only a hash) and as a header on edits. */
   ownerKey?: string;
   data: ListingData;
@@ -193,6 +201,10 @@ export class DraftError extends Error {}
 // ---------------------------------------------------------------- validation
 
 export function validateListing(d: ListingData): string | null {
+  if (d.cropSlug !== undefined) {
+    const h = validateHarvestFields({cropSlug: d.cropSlug, quantityKg: d.quantityKg, harvestDate: d.harvestDate});
+    if (!h.ok) return h.error;
+  }
   if (d.productName.trim().length < 2) return 'Enter the product name.';
   if (!d.category) return 'Choose a category.';
   if (!d.quantity.trim()) return 'Enter the quantity.';

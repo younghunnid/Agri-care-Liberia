@@ -1,6 +1,7 @@
 import {useSyncExternalStore} from 'react';
 import {ApiRequestError, apiFetch} from './api';
 import {planRetry} from './retryPolicy';
+import {listingBody} from './listingPayload';
 import {kvGet, kvSet} from './offlineDb';
 import {generateOwnerKey, getListingKey, getRequesterKey, saveListingKey} from './listingKeys';
 import {
@@ -84,32 +85,6 @@ function setRunning(value: boolean, message?: string | null): void {
 
 // ---------------------------------------------------------------- request bodies
 
-function listingBody(rec: ListingRecord, includeImage: boolean, ownerKey?: string): Record<string, unknown> {
-  const d = rec.data;
-  const phone = d.phoneConsent ? d.sellerPhone : '';
-  const baseSeller = (d.sellerName || 'Liberia Farmer').trim();
-  const seller = d.sellerType === 'supplier' && !baseSeller.toLowerCase().includes('supplier') ? `${baseSeller} (Supplier)` : baseSeller;
-  return {
-    // The secret is sent only when creating; the server stores a hash and never returns it.
-    ...(ownerKey ? {ownerKey} : {}),
-    sellerName: seller,
-    farmName: d.farmName,
-    category: d.category,
-    productName: d.productName,
-    quantity: d.quantity,
-    unit: d.unit,
-    priceLrd: Number(d.priceLrd),
-    availabilityStatus: d.availabilityStatus,
-    county: d.county,
-    town: d.town,
-    description: d.description,
-    // Never send a number without the farmer's consent.
-    sellerPhone: phone,
-    phoneConsent: Boolean(d.phoneConsent && phone),
-    ...(includeImage && d.photoDataUrl ? {imageUrl: d.photoDataUrl} : {}),
-  };
-}
-
 function questionBody(rec: QuestionRecord): Record<string, unknown> {
   const d = rec.data;
   return {
@@ -168,7 +143,7 @@ async function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>): Promise
 // ---------------------------------------------------------------- sending
 
 interface ListingResponse {
-  listing: {id: number; updated_at: string};
+  listing: {id: number; updated_at: string; harvest?: {code: string | null}};
   replayed?: boolean;
 }
 
@@ -202,6 +177,7 @@ async function sendListingCreate(op: SyncOp, recIn: ListingRecord): Promise<void
     ownerKey: rec.ownerKey,
     serverId: res.listing.id,
     serverUpdatedAt: res.listing.updated_at,
+    listingCode: res.listing.harvest?.code ?? latest.listingCode,
     syncedAt: new Date().toISOString(),
     lastError: undefined,
     conflict: false,
