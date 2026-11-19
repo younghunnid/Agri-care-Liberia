@@ -1,6 +1,7 @@
 import {getDb} from './db.ts';
 import {hashPassword} from './security.ts';
 import {seedPrototypeData} from './seedPrototype.ts';
+import {seedAdviceCards} from './adviceCards.ts';
 
 /**
  * `demoAccounts`: also create the synthetic demo farmer and approved demo expert. Without `demoPasswords` they get the passwords PUBLISHED in project documents
@@ -525,4 +526,5 @@ If plenty plant (more than 1 out of 10) get twist-twist yellow leaf on the new t
 
   // 7. Seed Hackathon Prototype Modules (Marketplace, Local Language AI Lab, Simulated Expert Queue)
   seedPrototypeData(false);
+  seedAdviceCards(); // six demonstration advice cards (never verified)
 }

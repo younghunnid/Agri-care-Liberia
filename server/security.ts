@@ -415,11 +415,11 @@ export const clientAddress = (req: Request): string => limiterAddress(req.ip);
 
 /**
  * Rate rows older than the longest window (24 h for the anonymous AI quota) are useless and would grow the database without bound. They are removed in
- * small batches through an index on created_at, so no single call can hold the (synchronous) SQLite connection for long. While a backlog exists the
- * batch repeats every 5 seconds, otherwise once a minute, and only while the limiter is actually in use.
+ * small batches (1000 rows) through an index on created_at, so no single call can hold the (synchronous) SQLite connection for long. While a backlog
+ * exists a batch runs at most once a second, otherwise once a minute, and only while the limiter is actually in use.
  */
 const RATE_ROW_RETENTION_HOURS = 25;
-const PRUNE_BATCH = 5000;
+const PRUNE_BATCH = 1000; // deleting rows through two indexes costs about 60 microseconds each: 1000 rows is tens of milliseconds, 5000 was about 300 ms
 let lastPrune = 0;
 let pruneBacklog = false;
 /** Test hook: allow the next rate-limit call to prune immediately. */
@@ -435,7 +435,7 @@ export function pruneRateLimitBatch(): number {
 }
 function pruneRateLimitRows(): void {
   const now = Date.now();
-  if (now - lastPrune < (pruneBacklog ? 5_000 : 60_000)) return;
+  if (now - lastPrune < (pruneBacklog ? 1_000 : 60_000)) return;
   lastPrune = now;
   try {
     pruneRateLimitBatch();

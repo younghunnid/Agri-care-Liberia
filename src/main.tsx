@@ -1,3 +1,4 @@
+import {startTriageAutoSync} from './lib/triageApp';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
@@ -20,3 +21,4 @@ Promise.all([initOfflineStorage(), initOfflineLibrary(), initDrafts(), initAudio
 // Service worker registration (no-op in the dev server; active in production builds).
 initPwa();
 startAutoSync();
+startTriageAutoSync();

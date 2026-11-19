@@ -48,3 +48,36 @@ export function reviewLine(g: ReviewFields): ReviewLine {
   }
   return {badge: 'Not reviewed', text: 'This advice has not been reviewed by a named, qualified reviewer. Ask an agricultural extension officer before acting on it.', reviewed: false};
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Advice CARDS (Phase 1A): each version carries a verification level. Only `verified` (named reviewer, organisation and date, enforced by the server
+// and by a database constraint) is ever shown as reviewed. Seeded and team-written cards are always shown as NOT reviewed.
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+export type CardLevel = 'demo_sample' | 'team_draft' | 'pending_review' | 'verified';
+
+export interface CardVerificationInput {
+  level: string;
+  reviewerName?: string | null;
+  reviewerOrg?: string | null;
+  reviewedAt?: string | null;
+}
+export interface CardVerification {
+  level: CardLevel;
+  reviewed: boolean;
+  badge: string;
+  text: string;
+}
+
+export function cardVerification(v: CardVerificationInput): CardVerification {
+  const level = (['demo_sample', 'team_draft', 'pending_review', 'verified'] as const).find((l) => l === v.level) ?? 'team_draft';
+  if (level === 'verified' && v.reviewerName && v.reviewerOrg && v.reviewedAt && !isPlaceholderReviewer(v.reviewerName) && !isPlaceholderReviewer(v.reviewerOrg)) {
+    return {level, reviewed: true, badge: `Reviewed by ${v.reviewerName}, ${v.reviewerOrg}, on ${v.reviewedAt}`, text: `A named reviewer recorded this review on ${v.reviewedAt}. Still ask an extension officer about your own field or flock.`};
+  }
+  if (level === 'pending_review') {
+    return {level, reviewed: false, badge: 'Waiting for review: NOT yet reviewed', text: 'This card has been sent for review but no qualified reviewer has approved it yet. Treat it as a team draft.'};
+  }
+  if (level === 'team_draft') {
+    return {level, reviewed: false, badge: 'Team draft: NOT reviewed', text: 'Written by the project team. No qualified agronomist or veterinary officer has reviewed it. Ask an agricultural extension officer before acting on it.'};
+  }
+  return {level: level === 'verified' ? 'team_draft' : level, reviewed: false, badge: DEMO_ADVICE_LABEL, text: DEMO_ADVICE_DETAIL};
+}

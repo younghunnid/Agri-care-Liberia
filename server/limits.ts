@@ -26,6 +26,7 @@ export const WRITE_LIMITS = {
   'marketplace.listing': {anonPerHour: 12, userPerHour: 30},
   'marketplace.inquiry': {anonPerHour: 20, userPerHour: 40},
   'language.recording': {anonPerHour: 10, userPerHour: 30},
+  'triage.report': {anonPerHour: 20, userPerHour: 60},
 } as const satisfies Record<string, WriteLimit>;
 export type WriteKind = keyof typeof WRITE_LIMITS;
 

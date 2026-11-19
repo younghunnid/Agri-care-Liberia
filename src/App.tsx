@@ -6,6 +6,9 @@ import {ProtectedRoute} from './components/ProtectedRoute';
 // Public & Prototype Pages
 import {HomePage} from './pages/public/HomePage';
 import {CropProblemsPage} from './pages/public/CropProblemsPage';
+import {CropCheckPage} from './pages/public/CropCheckPage';
+import {AdviceCardsPage} from './pages/public/AdviceCardsPage';
+import {AdviceCardPage} from './pages/public/AdviceCardPage';
 import {FarmCalculatorPage} from './pages/public/FarmCalculatorPage';
 import {VerifyCodePage} from './pages/public/VerifyCodePage';
 import {ForgotPasswordPage} from './pages/public/ForgotPasswordPage';
@@ -98,6 +101,9 @@ export default function App() {
             <Route path="/demo" element={<DemoModePage />} />
             <Route path="/demo/cassava" element={<CassavaDemoPage />} />
             <Route path="/advice/crop-problems" element={<CropProblemsPage />} />
+            <Route path="/check-my-crop" element={<CropCheckPage />} />
+            <Route path="/advice-cards" element={<AdviceCardsPage />} />
+            <Route path="/advice-cards/:ref" element={<AdviceCardPage />} />
             <Route path="/ministry-analytics" element={<MinistryAnalyticsPage />} />
             <Route path="/learn" element={<LearnPage />} />
             <Route path="/learn/:id" element={<LessonPage />} />

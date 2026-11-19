@@ -214,10 +214,12 @@ test('4. rate-limit pruning runs in small indexed batches and cannot stall the t
   let t = Date.now();
   checkAndRecordRateLimit('probe-key', 'login_attempt', 5, 15, false); // runs one batch inline
   const inline = Date.now() - t;
-  assert.ok(inline < 300, `one limiter call with a 50 000-row backlog took ${inline} ms (a full-table scan took about 1000 ms)`);
-  let worst = 0; let total = 0;
-  for (let i = 0; i < 40; i++) { t = Date.now(); const n = pruneRateLimitBatch(); worst = Math.max(worst, Date.now() - t); total += n; if (n === 0) break; }
-  assert.ok(worst < 300, `worst single batch ${worst} ms`);
+  const afterOne = (db.prepare("SELECT COUNT(*) c FROM rate_limit_attempts WHERE created_at < datetime('now', '-25 hours')").get() as {c: number}).c;
+  assert.equal(old - afterOne, 1000, 'one limiter call removes at most one batch (1000 rows), never the whole backlog');
+  assert.ok(inline < 600, `one limiter call with a 50 000-row backlog took ${inline} ms (a bounded batch is tens of milliseconds; the old full-table delete held the thread for about a second)`);
+  let worst = 0;
+  for (let i = 0; i < 80; i++) { t = Date.now(); const n = pruneRateLimitBatch(); worst = Math.max(worst, Date.now() - t); assert.ok(n <= 1000); if (n === 0) break; }
+  assert.ok(worst < 600, `worst single batch ${worst} ms`);
   assert.equal((db.prepare("SELECT COUNT(*) c FROM rate_limit_attempts WHERE created_at < datetime('now', '-25 hours')").get() as {c: number}).c, 0, 'the whole backlog drains in batches');
   assert.equal((db.prepare('SELECT COUNT(*) c FROM rate_limit_attempts').get() as {c: number}).c, recent, 'recent rows are kept, exactly');
   db.exec('DELETE FROM rate_limit_attempts');

@@ -19,6 +19,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'advice', title: 'Get Advice', blurb: 'Find out what is wrong and what to do first.',
     items: [
+      {label: 'Check my crop (cassava, rice, poultry)', to: '/check-my-crop', kinds: ['simulated', 'draft'], note: 'Simple questions, a colour and an advice card. Not a diagnosis.'},
+      {label: 'Advice cards with codes', to: '/advice-cards', kinds: ['draft'], note: 'Demonstration advice. Not reviewed by an agronomist.'},
       {label: 'Crop problems (cassava)', to: '/advice/crop-problems', kinds: ['working', 'draft']},
       {label: 'Advice you can read offline', to: '/offline', kinds: ['working']},
       {label: 'Weather and planting', to: '/weather', kinds: ['simulated'], note: 'Sample weather only. Not live.'},

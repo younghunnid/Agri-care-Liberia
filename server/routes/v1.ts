@@ -11,6 +11,7 @@ import {prototypeRouter} from './prototype.ts';
 import {idempotent} from '../idempotency.ts';
 import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
 import {authSecurityRouter} from './authSecurity.ts';
+import {adviceRouter} from './advice.ts';
 import {
   CHALLENGE_COOKIE, CLAIM_COOKIE, DEVICE_COOKIE, challengeCookieOptions, clearHold, findTrustedDevice, getSessionVersion, hasPhoneOnFile, passwordProblem, resolvePhoneForRegistration,
 } from '../authSecurity.ts';
@@ -52,6 +53,7 @@ v1Router.use(verifyCsrf);
 v1Router.use(prototypeRouter);
 // Verification, new-device sign-in, password recovery, phone ownership, trusted devices (registered BEFORE the routes below that they replace)
 v1Router.use(authSecurityRouter);
+v1Router.use(adviceRouter);
 
 // 1. Health & CSRF
 v1Router.get('/health', (_req, res) => {

@@ -29,7 +29,8 @@
     "test:m3:unit": "php backend-php/tests/m3_unit.php",
     "test:deploy": "tsx --test tests/deploy.test.ts",
     "test:phase0": "tsx --test tests/phase0.test.ts",
-    "test:phase0b": "tsx --test tests/phase0b.test.ts"
+    "test:phase0b": "tsx --test tests/phase0b.test.ts",
+    "test:triage": "tsx --test tests/triage.test.ts"
   },
   "dependencies": {
     "@google/genai": "^3.4.0",
