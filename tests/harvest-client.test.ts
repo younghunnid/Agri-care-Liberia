@@ -71,7 +71,7 @@ test('3. the buyer\'s list is saved with the time it was saved; offline it is sh
 });
 
 test('4. the Ministry numbers keep an honest saved copy; the panel is labelled simulated and says what is excluded', async () => {
-  const kv = memoryKv(); let up = true; const agg = {generatedAt: '2026-11-19T08:00:00Z', label: 'SIMULATED', privacy: {minGroup: 3, note: 'n'}, containsSyntheticRecords: true, harvest: {}, cropChecks: {}};
+  const kv = memoryKv(); let up = true; const agg = {generatedAt: '2026-11-19T08:00:00Z', label: 'SIMULATED', privacy: {minGroup: 3, note: 'n'}, containsSyntheticRecords: true, real: {note: 'r', asOf: 'x', harvest: {}, cropChecks: {}}, synthetic: {note: 's', asOf: 'x', harvest: {}, cropChecks: {}}};
   const client = createInsightsClient({get: async <T,>() => { if (!up) throw new TypeError('offline'); return agg as T; }, kv, now: () => 5});
   assert.equal((await client.load()).source, 'server'); up = false; const off = await client.load(); assert.equal(off.source, 'saved'); assert.ok(off.savedAt); assert.ok(await kv.get(INSIGHTS_KEY));
   assert.deepEqual(await createInsightsClient({get: async () => { throw new TypeError('x'); }, kv: memoryKv()}).load(), {data: null, source: 'none'});

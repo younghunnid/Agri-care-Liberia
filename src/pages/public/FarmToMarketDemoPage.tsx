@@ -19,16 +19,20 @@ export const FARM_TO_MARKET_STEPS: Step[] = [
   {n: 9, text: 'Back online: ask the seller a question', to: '/harvest', kinds: ['working'], note: 'The seller\'s phone number is shown only if the seller agreed; the buyer\'s only if the buyer agreed.'},
   {n: 10, text: 'As the farmer: read the question and reply', to: '/harvest/sell', kinds: ['working'], note: 'Only the listing\'s owner device (or account) can read and answer it.'},
   {n: 11, text: 'As the buyer: see the reply under "My questions"', to: '/harvest', kinds: ['working'], note: 'Only the buyer\'s own device can read it.'},
-  {n: 12, text: 'Open the Ministry & Extension view: harvest and crop-check counts', to: '/ministry-analytics#sec-live', kinds: ['simulated'], note: 'Counts only. Groups under 3 are combined. Labelled as not an official Ministry system.'},
+  {n: 12, text: 'Open the Ministry & Extension view: harvest and crop-check counts', to: '/ministry-analytics#sec-live', kinds: ['simulated'], note: 'Two separate sets: entries made through the app (shown only once a group has 3 farmers or devices) and invented demonstration statistics. Groups under 3 are combined. Not an official Ministry system.'},
 ];
 
 export const FarmToMarketDemoPage: React.FC = () => {
   const {user} = useApp();
   const [msg, setMsg] = useState<string | null>(null);
   const isAdmin = Boolean(user?.roles?.includes('admin'));
-  const load = async () => {
-    try { const r = await apiFetch<{listings: number; checks: number}>('/admin/demo/market-data', {method: 'POST', body: JSON.stringify({})}); setMsg(`Loaded ${r.listings} synthetic listings and ${r.checks} synthetic crop checks.`); }
-    catch (e) { setMsg(`Could not load: ${(e as Error).message}`); }
+  const [confirmReset, setConfirmReset] = useState(false);
+  const load = async (reset: boolean) => {
+    setConfirmReset(false);
+    try {
+      const r = await apiFetch<{listings: number; checks: number; added: {listings: number; checks: number}}>('/admin/demo/market-data', {method: 'POST', body: JSON.stringify(reset ? {reset: true} : {})});
+      setMsg(reset ? `Synthetic data reset: ${r.listings} listings and ${r.checks} crop checks are back to their starting state. Real entries were not touched.` : r.added.listings + r.added.checks === 0 ? `Nothing to add: all ${r.listings} synthetic listings and ${r.checks} synthetic crop checks are already there. Nothing was changed.` : `Added ${r.added.listings} missing synthetic listings and ${r.added.checks} crop checks. Nothing that already existed was changed.`);
+    } catch (e) { setMsg(`Could not load: ${(e as Error).message}`); }
   };
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6" data-testid="farm-to-market-demo">
@@ -41,10 +45,10 @@ export const FarmToMarketDemoPage: React.FC = () => {
         <h2 id="prep-h" className="text-xl font-extrabold text-[#183B2B]">Before you start</h2>
         <ul className="list-disc pl-6 space-y-1 text-base text-[#183B2B]">
           <li>Use the demonstration site with synthetic accounts and numbers only (+23177000xxxx). Please do not enter real personal information.</li>
-          <li>For a fuller Ministry view the operator loads the synthetic background data (start the server with <code>ENABLE_DEMO_MARKET_DATA=1</code>, or sign in as an administrator and press the button below).</li>
+          <li>For a fuller Ministry view the operator loads the synthetic background data (start the server with <code>ENABLE_DEMO_MARKET_DATA=1</code>, or sign in as an administrator and press the button below). Restarting never erases the questions, replies or status changes made while presenting; only the separate, confirmed reset does.</li>
           <li>Use two browsers or two profiles to play the farmer and the buyer: each keeps its own private device key.</li>
         </ul>
-        {isAdmin && <div className="space-y-2"><button type="button" onClick={() => void load()} className="min-h-[48px] rounded-xl bg-[#183B2B] text-white font-bold px-4" data-testid="load-demo-data">Load synthetic market data</button>{msg && <p role="status" className="text-base font-bold text-[#0F5C2A]">{msg}</p>}</div>}
+        {isAdmin && <div className="space-y-2"><div className="flex flex-wrap gap-3"><button type="button" onClick={() => void load(false)} className="min-h-[48px] rounded-xl bg-[#183B2B] text-white font-bold px-4" data-testid="load-demo-data">Add missing synthetic data</button>{!confirmReset ? <button type="button" onClick={() => setConfirmReset(true)} className="min-h-[48px] rounded-xl border-2 border-[#183B2B]/40 text-[#183B2B] font-bold px-4" data-testid="reset-demo-data">Reset synthetic data...</button> : <span className="inline-flex flex-wrap items-center gap-2 rounded-xl border-2 border-amber-400 bg-amber-50 p-2" data-testid="reset-confirm"><span className="text-sm font-bold text-amber-950">This deletes the synthetic listings, their questions and replies, and starts them again. Real entries stay.</span><button type="button" onClick={() => void load(true)} className="min-h-[44px] rounded-xl bg-amber-700 text-white font-bold px-4" data-testid="reset-demo-confirm">Yes, reset</button><button type="button" onClick={() => setConfirmReset(false)} className="min-h-[44px] rounded-xl border-2 border-[#183B2B]/30 px-4 font-bold">Cancel</button></span>}</div>{msg && <p role="status" className="text-base font-bold text-[#0F5C2A]">{msg}</p>}</div>}
       </section>
       <ol className="space-y-3">
         {FARM_TO_MARKET_STEPS.map((s) => (

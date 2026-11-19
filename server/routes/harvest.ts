@@ -1,11 +1,11 @@
 import {Router} from 'express';
 import {LIBERIA_COUNTIES} from '../constants.ts';
 import {getDb} from '../db.ts';
-import {computeAggregates} from '../insights.ts';
+import {publishedAggregates, resetInsightsSnapshots} from '../insights.ts';
 import {seedDemoMarketData} from '../demoMarket.ts';
 import {getRuntimeConfig} from '../runtime.ts';
 import {
-  type AuthedRequest, checkAndRecordRateLimit, clientAddress, hashIdentifier, hashRequesterKey, isValidOwnerKey, requireRole, writeAuditLog,
+  type AuthedRequest, checkAndRecordRateLimit, clientAddress, hashIdentifier, hashRequesterKey, isStrongDeviceKey, isValidOwnerKey, requireRole, writeAuditLog,
 } from '../security.ts';
 import {cropBySlug, HARVEST_STATUSES} from '../../src/data/harvestCrops.ts';
 import {SELL_CODE_PATTERN} from '../../src/lib/harvestRules.ts';
@@ -133,7 +133,7 @@ harvestRouter.get('/harvest/inquiries', (req: AuthedRequest, res) => {
     if (l && canManageListing(req, l)) for (const r of db.prepare(`${base} WHERE i.listing_id = ? ORDER BY i.id DESC LIMIT 60`).all(listingId) as unknown as InqRow[]) out.set(r.id, shape(r, 'seller'));
   }
   const key = req.get('X-Requester-Key');
-  if (isValidOwnerKey(key)) {
+  if (isStrongDeviceKey(key)) {
     for (const r of db.prepare(`${base} WHERE i.buyer_key_hash = ? ORDER BY i.id DESC LIMIT 60`).all(hashRequesterKey(key)) as unknown as InqRow[]) if (!out.has(r.id)) out.set(r.id, shape(r, 'buyer'));
   }
   res.json({inquiries: [...out.values()].sort((a, b) => b.id - a.id)});
@@ -143,13 +143,15 @@ harvestRouter.get('/harvest/inquiries', (req: AuthedRequest, res) => {
 harvestRouter.get('/insights/aggregates', (req, res) => {
   const rl = checkAndRecordRateLimit(hashIdentifier(`insights:${clientAddress(req)}`), 'insights_read', 120, 1, true);
   if (!rl.allowed) { res.setHeader('Retry-After', String(rl.retryAfterSeconds ?? 60)); err(res, 429, 'RATE_LIMITED', 'Too many requests. Please wait a little.'); return; }
-  res.json(computeAggregates());
+  res.json(publishedAggregates()); // filters, paging and any other query parameter are ignored on purpose: the only view is the suppressed one
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------- synthetic demo data
 harvestRouter.post('/admin/demo/market-data', requireRole('admin'), (req: AuthedRequest, res) => {
   if (getRuntimeConfig().production) { err(res, 403, 'NOT_AVAILABLE', 'Synthetic demonstration data is never loaded in production.'); return; }
-  const r = seedDemoMarketData();
-  writeAuditLog({actorUserId: req.user!.id, actorRole: 'admin', action: 'demo_market_data_loaded', targetType: 'demo', details: r, ip: req.ip});
-  res.json({ok: true, ...r, note: 'Synthetic harvest listings and crop-check reports were (re)loaded. They are marked as synthetic.'});
+  const reset = req.body?.reset === true; // an explicit, separate choice: without it nothing is ever deleted or overwritten
+  const r = seedDemoMarketData(getDb(), {reset});
+  resetInsightsSnapshots('synthetic');
+  writeAuditLog({actorUserId: req.user!.id, actorRole: 'admin', action: reset ? 'demo_market_data_reset' : 'demo_market_data_loaded', targetType: 'demo', details: {...r}, ip: req.ip});
+  res.json({ok: true, ...r, note: reset ? 'The synthetic records were reset to their starting state (synthetic inquiries were removed). Real records were not touched.' : 'Missing synthetic records were added. Nothing that already exists was changed.'});
 });

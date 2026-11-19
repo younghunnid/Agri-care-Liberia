@@ -217,7 +217,7 @@ const clearMarket = () => dbw((d) => { d.exec('DELETE FROM marketplace_listings 
 test('7. aggregates: groups under 3 records or 3 contributors are hidden and merged, tables add up, and no private field is ever present', async () => {
   clearMarket();
   const reader = new CookieJar();
-  assert.equal((await req(reader, '/api/v1/insights/aggregates')).data.harvest.byCounty.insufficient, true, 'no data: nothing published');
+  assert.equal((await req(reader, '/api/v1/insights/aggregates')).data.real.harvest.byCounty.insufficient, true, 'no data: nothing published');
   const add = (county: string, crop: string, seller: string, n = 1) => Promise.all(Array.from({length: n}, (_x, i) => create(harvest({ownerKey: KEY(`${seller}`) , county, cropSlug: crop, quantityKg: 100 + i, priceLrd: 100}))));
   // Bong: 3 records from 3 sellers (published). Nimba: 2 records. Lofa: 1 record. Margibi: 3 records from ONE seller (hidden: one contributor).
   for (const s of ['s1', 's2', 's3']) await create(harvest({ownerKey: KEY(s), county: 'Bong', cropSlug: 'rice', quantityKg: 200, priceLrd: 150}));
@@ -226,11 +226,12 @@ test('7. aggregates: groups under 3 records or 3 contributors are hidden and mer
   const sameSeller = KEY('m-one'); for (let i = 0; i < 3; i++) await create(harvest({ownerKey: sameSeller, county: 'Margibi', cropSlug: 'cassava', quantityKg: 40 + i, priceLrd: 80}));
   void add;
   const r = (await req(reader, '/api/v1/insights/aggregates')).data;
-  const county = r.harvest.byCounty; const rows = Object.fromEntries(county.rows.map((x: any) => [x.key, x]));
+  assert.equal(r.synthetic.harvest.byCounty.insufficient, true, 'the synthetic block is separate and empty');
+  const county = r.real.harvest.byCounty; const rows = Object.fromEntries(county.rows.map((x: any) => [x.key, x]));
   assert.deepEqual(Object.keys(rows).sort(), ['Bong'], 'only Bong has 3 records from 3 farmers'); assert.equal(rows.Bong.listings, 3); assert.equal(rows.Bong.farmers, 3); assert.equal(rows.Bong.totalKg, 600); assert.equal(rows.Bong.averagePriceLrdPerKg, 150);
-  assert.ok(county.other, 'the hidden counties are merged'); assert.equal(county.other.groupsCombined, 3); assert.equal(county.other.listings, 2 + 1 + 3); assert.equal(county.other.farmers, 2 + 1 + 1);
+  assert.ok(county.other, 'the hidden counties are merged'); assert.ok(!('groupsCombined' in county.other), 'the number of merged groups is not published'); assert.equal(county.other.listings, 2 + 1 + 3); assert.equal(county.other.farmers, 2 + 1 + 1);
   assert.equal(county.rows.reduce((s: number, x: any) => s + x.listings, 0) + county.other.listings, 9, 'every record is accounted for exactly once (no subtraction attack)');
-  const crop = r.harvest.byCrop; assert.equal(crop.rows.reduce((s: number, x: any) => s + x.listings, 0) + (crop.other?.listings ?? 0), 9);
+  const crop = r.real.harvest.byCrop; assert.equal(crop.rows.reduce((s: number, x: any) => s + x.listings, 0) + (crop.other?.listings ?? 0), 9);
   assert.ok(!county.rows.some((x: any) => ['Nimba', 'Lofa', 'Margibi'].includes(x.key)), 'no hidden county is named');
   const publicData = JSON.parse(JSON.stringify(r)); delete publicData.label; delete publicData.privacy; // the fixed explanatory texts name the things that are excluded
   const text = JSON.stringify(publicData); for (const forbidden of ['town', 'Gbarnga', 'seller', 'sellerName', 'phone', 'SELL-', 'TRG-', 'owner', 'requester', 'ownerKey', 'requesterKey', 'hash', 'description', 'harvestDate', 'createdAt', 'email', 'Synthetic Farmer']) assert.ok(!new RegExp(forbidden, 'i').test(text), `no ${forbidden} in the aggregates`);
@@ -239,15 +240,15 @@ test('7. aggregates: groups under 3 records or 3 contributors are hidden and mer
   const extra = (await create(harvest({ownerKey: KEY('s4'), county: 'Bong', cropSlug: 'rice', quantityKg: 999}))).data.listing;
   await req(await admin(), `/api/v1/admin/marketplace/${extra.id}/moderate`, {method: 'POST', body: {moderationStatus: 'hidden'}});
   await create({ownerKey: KEY('plain9'), sellerName: 'P', category: 'Vegetables', productName: 'Okra', quantity: '5', unit: 'kg', priceLrd: 100, county: 'Bong', town: 'Gbarnga', description: 'x'});
-  assert.equal((await req(reader, '/api/v1/insights/aggregates')).data.harvest.byCounty.rows.find((x: any) => x.key === 'Bong').listings, 3);
+  assert.equal((await req(reader, '/api/v1/insights/aggregates')).data.real.harvest.byCounty.rows.find((x: any) => x.key === 'Bong').listings, 3);
   // crop checks: devices, bands, the same suppression
   const check = (county: string, caseId: string, answers: Record<string, string>, key: string) => req(new CookieJar(), '/api/v1/triage/reports', {method: 'POST', body: {requesterKey: key, caseId, answers, county}});
   for (const k of ['d1', 'd2', 'd3']) await check('Bong', 'cassava-patchy-young-leaves', {extent: 'many', spread: 'fast', insects: 'yes'}, KEY(k));
   await check('Nimba', 'rice-water-too-deep', {extent: 'few', spread: 'same', submerged: 'lt1'}, KEY('d4')); await check('Nimba', 'rice-water-too-deep', {extent: 'few', spread: 'same', submerged: 'lt1'}, KEY('d5'));
   const sameDevice = KEY('d6'); for (let i = 0; i < 3; i++) await check('Lofa', 'cassava-yellow-old-leaves', {extent: 'few', spread: 'same', top: 'green'}, sameDevice);
-  const c = (await req(reader, '/api/v1/insights/aggregates')).data.cropChecks;
+  const c = (await req(reader, '/api/v1/insights/aggregates')).data.real.cropChecks;
   assert.equal(c.byCounty.rows.length, 1); assert.equal(c.byCounty.rows[0].key, 'Bong'); assert.equal(c.byCounty.rows[0].checks, 3); assert.equal(c.byCounty.rows[0].red, 3); assert.equal(c.byCounty.rows[0].devices, 3);
-  assert.equal(c.byCounty.rows[0].checks + c.byCounty.other.checks, 8, 'all 8 checks accounted for'); assert.equal(c.byCounty.other.groupsCombined, 2); assert.equal(c.byCounty.other.devices, 3, 'the one device that made three checks counts once');
+  assert.equal(c.byCounty.rows[0].checks + c.byCounty.other.checks, 8, 'all 8 checks accounted for'); assert.equal(c.byCounty.other.devices, 3, 'the one device that made three checks counts once');
   assert.ok(!JSON.stringify(c).includes('TRG-'));
   clearMarket();
 });
@@ -266,9 +267,10 @@ test('8. synthetic demonstration data: marked synthetic, shaped to show suppress
   assert.equal(one<{c: number}>("SELECT COUNT(*) c FROM marketplace_listings WHERE is_harvest_listing = 1 AND (seller_phone <> '' OR phone_consent <> 0)").c, 0, 'no phone numbers in the synthetic data');
   const r = (await req(reader, '/api/v1/insights/aggregates')).data;
   assert.equal(r.containsSyntheticRecords, true);
-  assert.deepEqual(r.harvest.byCounty.rows.map((x: any) => [x.key, x.listings]), [['Bong', 8], ['Montserrado', 3], ['Nimba', 7]], 'Lofa (2 farmers) and Margibi (1) are hidden');
-  assert.equal(r.harvest.byCounty.other.listings, 4); assert.equal(r.harvest.byCounty.other.groupsCombined, 2); assert.equal(r.harvest.byCounty.rows.reduce((s: number, x: any) => s + x.listings, 0) + r.harvest.byCounty.other.listings, 22);
-  assert.ok(r.cropChecks.byCrop.rows.length >= 2 && r.cropChecks.byCrop.rows.every((x: any) => x.checks >= 3 && x.devices >= 3));
+  assert.equal(r.real.harvest.byCounty.insufficient, true, 'synthetic records never appear in the real block'); assert.equal(r.real.harvest.byCounty.rows.length, 0);
+  assert.deepEqual(r.synthetic.harvest.byCounty.rows.map((x: any) => [x.key, x.listings]), [['Bong', 8], ['Montserrado', 3], ['Nimba', 7]], 'Lofa (2 farmers) and Margibi (1) are hidden');
+  assert.equal(r.synthetic.harvest.byCounty.other.listings, 4); assert.equal(r.synthetic.harvest.byCounty.rows.reduce((s: number, x: any) => s + x.listings, 0) + r.synthetic.harvest.byCounty.other.listings, 22);
+  assert.ok(r.synthetic.cropChecks.byCrop.rows.length >= 2 && r.synthetic.cropChecks.byCrop.rows.every((x: any) => x.checks >= 3 && x.devices >= 3));
   const listed = (await req(reader, '/api/v1/harvest/listings')).data.listings; assert.ok(listed.length >= 15 && listed.every((l: any) => l.synthetic === true && l.sellerPhone === ''), 'buyers see synthetic listings labelled as such');
   // never in production
   assert.throws(() => loadRuntimeConfig({NODE_ENV: 'production', SESSION_SECRET: rand(), OTP_HMAC_SECRET: rand(), DB_PATH: '/srv/data/a.db', ENABLE_DEMO_MARKET_DATA: '1'} as NodeJS.ProcessEnv, '/srv/app'), RuntimeConfigError);
@@ -297,8 +299,8 @@ test('9. the farm-to-market journey through the API: advice card, crop check, of
   await req(new CookieJar(), `/api/v1/marketplace/inquiries/${inq.data.inquiry.id}`, {method: 'PATCH', body: {farmerReply: 'Come on Friday morning.', status: 'Farmer Replied'}, headers: {'X-Listing-Key': farmerKey}});
   assert.equal((await req(new CookieJar(), '/api/v1/harvest/inquiries', {headers: {'X-Requester-Key': buyerKey}})).data.inquiries[0].farmerReply, 'Come on Friday morning.');
   const agg = (await req(new CookieJar(), '/api/v1/insights/aggregates')).data;
-  assert.equal(agg.harvest.byCounty.rows.find((x: any) => x.key === 'Bong').listings, 9, 'the new listing is counted with the 8 synthetic Bong listings');
-  assert.ok(agg.cropChecks.byCrop.rows.find((x: any) => x.key === 'cassava').checks >= 7, 'and the farmer\'s crop check with the synthetic ones');
+  assert.equal(agg.synthetic.harvest.byCounty.rows.find((x: any) => x.key === 'Bong').listings, 8, 'the synthetic Bong figure is unchanged by the farmer\'s listing: the two are never added together');
+  assert.equal(agg.real.harvest.byCounty.insufficient, true, 'one real listing from one farmer is too small to publish, and is not blended into the synthetic numbers');
   assert.ok(!JSON.stringify(agg).includes(code) && !JSON.stringify(agg).includes(farmerKey));
   clearMarket();
 });

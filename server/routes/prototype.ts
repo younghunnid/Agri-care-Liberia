@@ -1,3 +1,4 @@
+import {INQUIRY_SELECT, inquiryView, type InquiryRow} from '../inquiryView.ts';
 import {Router} from 'express';
 import {
   LIBERIA_COUNTIES,
@@ -9,6 +10,7 @@ import {
   type AuthedRequest,
   hashOwnerKey,
   hashRequesterKey,
+  isStrongDeviceKey,
   isValidOwnerKey,
   requireRole,
   verifyOwnerKey,
@@ -239,6 +241,10 @@ prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.cr
     res.status(400).json({
       error: {code: 'VALIDATION_ERROR', message: 'A listing owner key (32 to 128 letters, digits, - or _) is required to publish without signing in.'},
     });
+    return;
+  }
+  if (req.body?.cropSlug !== undefined && ownerKey !== undefined && ownerKey !== '' && !isStrongDeviceKey(ownerKey)) {
+    res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'The listing key must be a random key made by the app (at least 10 different characters), not a guessable one.'}});
     return;
   }
   const ownerKeyHash = isValidOwnerKey(ownerKey) ? hashOwnerKey(ownerKey) : '';
@@ -531,15 +537,17 @@ prototypeRouter.get('/marketplace/inquiries', (req: AuthedRequest, res) => {
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
   const rows = db
     .prepare(
-      `SELECT i.*, l.product_name, l.price_lrd, l.unit, l.seller_name
+      `SELECT ${INQUIRY_SELECT}
        FROM marketplace_inquiries i
        JOIN marketplace_listings l ON l.id = i.listing_id
        ${whereSql}
        ORDER BY i.id DESC
        LIMIT 60`
     )
-    .all(...args);
-  res.json({inquiries: rows});
+    .all(...args) as unknown as InquiryRow[];
+  // Whitelisted shape only. A row is seen from the seller's side only if the caller manages that listing (administrator, owner account or listing key).
+  const sellerSide = (r: InquiryRow) => isAdmin || (req.user != null && r.seller_user_id === req.user.id) || (listingId !== null && r.listing_id === listingId && canManageListing(req, r));
+  res.json({inquiries: rows.map((r) => inquiryView(r, sellerSide(r) ? 'seller' : 'buyer'))});
 });
 
 prototypeRouter.post('/marketplace/listings/:id/inquiries', idempotent('marketplace.inquiry.create'), writeLimit('marketplace.inquiry'), (req: AuthedRequest, res) => {
@@ -559,6 +567,10 @@ prototypeRouter.post('/marketplace/listings/:id/inquiries', idempotent('marketpl
 
   if (cleanName.length < 2 || cleanMsg.length < 5) {
     res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'Buyer name and inquiry message required.'}});
+    return;
+  }
+  if (req.body?.requesterKey !== undefined && req.body.requesterKey !== '' && !isStrongDeviceKey(req.body.requesterKey)) {
+    res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'The device key must be a random key made by the app (at least 10 different characters), not a guessable one.'}});
     return;
   }
   const demoBuyerPhone = demoPhoneProblem(buyerPhone, 'The buyer phone number');
@@ -584,34 +596,39 @@ prototypeRouter.post('/marketplace/listings/:id/inquiries', idempotent('marketpl
       cleanMsg.slice(0, 1000),
       isSimulated === false ? 0 : 1,
       // The buyer's private device key is stored only as a keyed hash; it lets the buyer (and nobody else) read their own conversation later.
-      isValidOwnerKey(req.body?.requesterKey) ? hashRequesterKey(req.body.requesterKey) : '',
+      isStrongDeviceKey(req.body?.requesterKey) ? hashRequesterKey(req.body.requesterKey) : '',
       req.body?.buyerPhoneConsent === true && typeof buyerPhone === 'string' && buyerPhone.trim() ? 1 : 0
     );
 
-  const inquiry = db
+  const row = db
     .prepare(
-      `SELECT i.*, l.product_name, l.price_lrd, l.unit, l.seller_name
+      `SELECT ${INQUIRY_SELECT}
        FROM marketplace_inquiries i
        JOIN marketplace_listings l ON l.id = i.listing_id
        WHERE i.id = ?`
     )
-    .get(Number(ins.lastInsertRowid));
+    .get(Number(ins.lastInsertRowid)) as unknown as InquiryRow;
 
-  res.status(201).json({inquiry});
+  res.status(201).json({inquiry: inquiryView(row, 'buyer')});
 });
 
 prototypeRouter.patch('/marketplace/inquiries/:id', (req: AuthedRequest, res) => {
   const db = getDb();
   const id = Number(req.params.id);
   const owner = db
-    .prepare('SELECT l.seller_user_id, l.owner_key_hash FROM marketplace_inquiries i JOIN marketplace_listings l ON l.id = i.listing_id WHERE i.id = ?')
-    .get(id) as OwnerFields | undefined;
+    .prepare('SELECT l.seller_user_id, l.owner_key_hash, l.moderation_status FROM marketplace_inquiries i JOIN marketplace_listings l ON l.id = i.listing_id WHERE i.id = ?')
+    .get(id) as (OwnerFields & {moderation_status: string}) | undefined;
   if (!owner) {
     res.status(404).json({error: {code: 'NOT_FOUND', message: 'Inquiry not found.'}});
     return;
   }
   if (!canManageListing(req, owner)) {
     res.status(403).json({error: {code: 'FORBIDDEN', message: 'Only the listing owner can answer this inquiry.'}});
+    return;
+  }
+  // A listing that moderation has hidden or flagged cannot keep conversations going; an administrator still can.
+  if (owner.moderation_status !== 'approved' && !req.user?.roles.includes('admin')) {
+    res.status(403).json({error: {code: 'FORBIDDEN', message: 'This listing is not visible, so replies are closed.'}});
     return;
   }
   const {status, farmerReply} = req.body ?? {};
@@ -629,8 +646,8 @@ prototypeRouter.patch('/marketplace/inquiries/:id', (req: AuthedRequest, res) =>
     id
   );
 
-  const updated = db.prepare('SELECT * FROM marketplace_inquiries WHERE id = ?').get(id);
-  res.json({inquiry: updated});
+  const updated = db.prepare(`SELECT ${INQUIRY_SELECT} FROM marketplace_inquiries i JOIN marketplace_listings l ON l.id = i.listing_id WHERE i.id = ?`).get(id) as unknown as InquiryRow;
+  res.json({inquiry: inquiryView(updated, 'seller')});
 });
 
 // 2. LOCAL LANGUAGE AI LAB (Bassa, Mano, English, Kpelle)

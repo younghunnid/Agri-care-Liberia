@@ -126,6 +126,15 @@ export function isValidOwnerKey(key: unknown): key is string {
   return typeof key === 'string' && OWNER_KEY_PATTERN.test(key);
 }
 
+/**
+ * A device key that looks randomly generated: valid shape and at least 10 different characters. The app generates 256-bit random hex keys (64 characters, virtually always 10+ different), so this only turns away
+ * keys such as "aaaa...a" or "123456789123456789123456789123456789" that anybody could guess and then read a private conversation or manage a listing with.
+ * Used on the harvest-market surfaces; keys that older features already accepted keep working there.
+ */
+export function isStrongDeviceKey(key: unknown): key is string {
+  return isValidOwnerKey(key) && new Set(key).size >= 10;
+}
+
 /** Keyed hash of a listing owner secret. The secret itself is never stored. */
 export function hashOwnerKey(key: string): string {
   // Must be stable across restarts (unlike the ephemeral session fallback), or every listing would lose its owner.

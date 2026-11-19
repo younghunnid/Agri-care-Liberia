@@ -49,6 +49,7 @@ export async function startBackend(): Promise<Backend> {
   // The black-box suites make hundreds of sign-ins and writes from one address: raise the abuse limits here. tests/phase0.test.ts runs real servers with the defaults.
   process.env.LOGIN_IP_FAIL_MAX = '1000000';
   process.env.PUBLIC_WRITE_LIMIT_SCALE = '10000';
+  process.env.INSIGHTS_MIN_CHANGE = '1'; // publish every change in tests; tests/hardening.test.ts checks the batched default
   process.env.DEMO_OPERATOR_TOKEN = operatorToken;
   process.env.OTP_HMAC_SECRET = crypto.randomBytes(32).toString('hex');
 
