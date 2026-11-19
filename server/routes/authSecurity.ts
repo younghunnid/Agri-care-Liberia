@@ -4,7 +4,7 @@ import {getDb} from '../db.ts';
 import {getAuthConfig} from '../authConfig.ts';
 import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
 import {
-  type AuthedRequest, PasswordBusyError, SESSION_COOKIE_NAME, asyncRoute, checkAndRecordRateLimit, clearCookieOptions, cookieOptions, hashIdentifier, hashPasswordAsync, loadUserById, requireAuth, signSessionToken,
+  type AuthedRequest, PasswordBusyError, SESSION_COOKIE_NAME, asyncRoute, checkAndRecordRateLimit, clearCookieOptions, clientAddress, isSharedDemoAccount, cookieOptions, hashIdentifier, hashPasswordAsync, loadUserById, requireAuth, signSessionToken,
   verifyPasswordAsync, writeAuditLog,
 } from '../security.ts';
 import {
@@ -27,8 +27,11 @@ export const authSecurityRouter = Router();
 const DUMMY_PHONE = '+231000000000'; // sentinel for challenges that never send anything (equal behaviour for unknown accounts)
 const GRANT_MS = 10 * 60 * 1000;
 
-const ip = (req: Request): string => req.ip || 'unknown';
+/** The address used as a rate-limit key (IPv6 by /64; only req.ip, never a raw header). */
+const ip = (req: Request): string => clientAddress(req);
 /** Password hashing is capped (see security.ts): a flood is answered "busy" rather than queued without limit. */
+/** Shared demonstration accounts (published password) cannot change their own password, phone or recovery: that would let a stranger take them over and lock the presenters out. */
+const sharedRefusal = (res: Response): void => { err(res, 403, 'SHARED_DEMO_ACCOUNT', 'This is a shared demonstration account. Its password and phone number cannot be changed here.'); };
 const busy = (res: Response): void => { res.setHeader('Retry-After', '3'); err(res, 503, 'SERVER_BUSY', 'The server is busy. Please try again in a moment.'); };
 const err = (res: Response, status: number, code: string, message: string, extra: Record<string, unknown> = {}): void => { res.status(status).json({error: {code, message, ...extra}}); };
 const demo = (): boolean => getSmsProvider().name === 'simulated';
@@ -185,6 +188,7 @@ authSecurityRouter.post('/auth/reset-password', asyncRoute(async (req, res) => {
   const grant = peekVerified(publicId, secret, 'password_reset', GRANT_MS);
   if (!grant || !grant.user_id) { err(res, 400, 'RESET_NOT_VERIFIED', 'Please verify the code first, or start the reset again.'); return; }
   const user = userRowById(grant.user_id);
+  if (user && isSharedDemoAccount(user.id)) { sharedRefusal(res); return; }
   const problem = passwordProblem(newPassword, {phone: user?.phone, displayName: user?.display_name});
   if (problem) { err(res, 400, 'WEAK_PASSWORD', problem); return; }
   let newHash: string;
@@ -284,6 +288,7 @@ authSecurityRouter.post('/account/password', requireAuth, asyncRoute(async (req:
   const uid = req.user!.id;
   const rl = checkAndRecordRateLimit(hashIdentifier(`pw:${uid}:${ip(req)}`), 'password_change', 5, 15, true);
   if (!rl.allowed) { err(res, 429, 'RATE_LIMITED', 'Too many attempts. Please wait 15 minutes.'); return; }
+  if (isSharedDemoAccount(uid)) { sharedRefusal(res); return; }
   const {currentPassword, newPassword} = req.body ?? {};
   const row = getDb().prepare('SELECT password_hash, phone, display_name FROM users WHERE id = ?').get(uid) as {password_hash: string; phone: string; display_name: string};
   let currentOk = false;
@@ -332,6 +337,7 @@ authSecurityRouter.post('/account/phone/change/start', requireAuth, async (req: 
   const uid = req.user!.id;
   const rl = checkAndRecordRateLimit(hashIdentifier(`pc:${uid}:${ip(req)}`), 'phone_change', 5, 15, true);
   if (!rl.allowed) { err(res, 429, 'RATE_LIMITED', 'Too many attempts. Please wait 15 minutes.'); return; }
+  if (isSharedDemoAccount(uid)) { sharedRefusal(res); return; }
   const u = userRowById(uid)!;
   const row = getDb().prepare('SELECT password_hash FROM users WHERE id = ?').get(uid) as {password_hash: string};
   let currentOk = false;

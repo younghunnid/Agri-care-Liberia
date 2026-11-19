@@ -63,3 +63,45 @@ Against a copy of the previous commit `a845049`, the new child-server tests fail
 ## 5. Operating notes
 * Demo environment variables are in `docs/HOSTINGER_STAGING_DEPLOYMENT.md` section 3 and `.env.example`.
 * A shared venue network may need `PUBLIC_WRITE_LIMIT_SCALE` and `LOGIN_IP_FAIL_MAX` raised; a wrong `TRUST_PROXY` makes every visitor look like one address (measure with the staging diagnostics first).
+
+---
+
+# Follow-up (second commit): findings of the independent review of `9ced7ff`
+
+Eight narrowly scoped fixes. Phase 1 has not been started. New tests: `tests/phase0b.test.ts` (11 tests, `npm run test:phase0b`); each behavioural test was also run against a copy of `9ced7ff` and fails there.
+
+| # | Review finding | Fix | Where |
+|---|---|---|---|
+| 1 | Real phone numbers could be stored and published through marketplace listings and inquiries in the demo environment (H1) | One synthetic-number rule (`server/demoPolicy.ts`) is now used by registration, sign-in, `sellerPhone` (create **and** edit) and `buyerPhone`. In `APP_ENV=demo` anything that is not a valid `+23177000xxxx` number is refused with `422 PHONE_NOT_ALLOWED` before anything is stored. Outside the demo environment nothing changes. | `server/demoPolicy.ts`, `server/routes/prototype.ts`, `server/routes/v1.ts` |
+| 2 | The shared-account guard followed the password, so a password change defeated it (M1) | Migration `008_shared_demo_accounts` adds `users.is_shared_demo`. Accounts seeded with the published passwords are flagged when seeded, and databases seeded earlier are flagged at start-up. The flag is **permanent**: no API clears it. A flagged account also cannot change its password, phone or recovery (`403 SHARED_DEMO_ACCOUNT`), so a stranger cannot lock the presenters out either. Strict-environment demo accounts (private passwords) are not flagged. The contract setup clears the flag through a test-only fixture that stands in for an operator. | `server/migrations/008_*.sql` (+ `down/`), `server/security.ts`, `server/seed.ts`, `server/routes/authSecurity.ts`, `server.ts` |
+| 3 | Remaining "approved" wording (M3) | "Approved Expert Advice" is now "Expert answer (demonstration platform: not verified agricultural advice)"; "approved crop guides", "approved guides", "approved agricultural specialist" and "Approved Expert" kicker reworded. A test scans `src/` for the banned phrases. | `MyQuestionsPage`, `GuidesLibraryPage`, `OfflineLibraryPage`, `ExpertRequestsPage`, `ExpertDashboardPage` |
+| 4 | No `Cache-Control` on API responses (M5) | Everything under `/api` is `Cache-Control: no-store` (the service worker's own offline cache for public guides is unaffected). The app shell and `sw.js` keep their revalidation headers. The contract golden does not record this header and is unchanged. | `server.ts` |
+| 5 | Pruning scanned the whole table (about 1 s on 500 000 rows) (M4) | An index on `created_at` (migration 008) and batches of 5 000 rows through that index, once a minute (every 5 s while a backlog exists). A limiter call with a 50 000-row backlog now takes milliseconds. The per-request counts also use the index. | `server/security.ts` |
+| 6 | IPv6 addresses in one /64 each had their own allowance (M2) | Every limiter key uses `limiterAddress(req.ip)`: IPv6 by /64, IPv4-mapped as IPv4, garbage as "unknown". Only `req.ip` (which follows the configured `TRUST_PROXY`) is used; no limiter reads a forwarding header itself (a test scans for that). | `server/security.ts`, `v1.ts`, `authSecurity.ts`, `mediaQuota.ts` |
+| 7 | Offline sync ignored `Retry-After` (M7) | The client reads `Retry-After`, and `src/lib/retryPolicy.ts` waits at least that long even beyond the 5-minute back-off cap (one wait at most 1 hour); a server-directed wait is not counted as a failure of the item until 12 waits. The 429 now carries the **real remaining wait** (header and body) instead of a fixed 900 s. The queued record and its `Idempotency-Key` are unchanged, so every retry is safe: a rate-limited attempt stores nothing, and the retry with the same key succeeds exactly once and replays afterwards. | `src/lib/retryPolicy.ts`, `api.ts`, `syncEngine.ts`, `server/security.ts` |
+| 8 | Anonymous photos could grow the database (M6) | Anonymous items are capped at 1.0 M characters (images) and 1.5 M (audio); a global **budget for visitor media** (`ANON_MEDIA_BUDGET_MB`, default 150 MB) answers `507 ANON_STORAGE_QUOTA` when full (text-only questions still work); and at most 8 anonymous uploads with media per address (/64) per day. Replays of an accepted upload do not count. Signed-in accounts keep the original 2.5 MB items. Covers expert requests, listing images and language recordings. | `server/mediaQuota.ts`, `server/limits.ts`, `prototype.ts` |
+
+## Remaining issues after the follow-up
+1. **Free text is not policed** (names, villages, descriptions, photo content). The demo needs a non-public staging URL, an access gate, or a "no personal data" step before public use. Not changed by this follow-up.
+2. **Security headers** (HSTS, CSP, frame ancestors, `Permissions-Policy`) are still missing.
+3. **Registration reveals existing numbers** (`409 PHONE_EXISTS`), limited to 10 per hour per address (/64).
+4. **Per-/64 limits are shared by everyone behind one network or one proxy.** A venue can hit the caps; raise `LOGIN_IP_FAIL_MAX` / `PUBLIC_WRITE_LIMIT_SCALE` deliberately, and measure `TRUST_PROXY` on Hostinger first.
+5. **A visitor media budget that is full blocks new anonymous photos for everyone** until space is freed (an operator can delete rows or raise the budget); signed-in users are unaffected.
+6. `audit_logs` still grows with failed sign-ins (bounded by the limits, not pruned).
+7. **Unverified on Hostinger** (unchanged): persistent SQLite storage, launcher behaviour, proxy hop count and headers, outbound HTTPS. `octet_length()` needs SQLite 3.43 or newer (a fallback is used otherwise).
+8. The `+23177000xxxx` range is assumed to belong to no real subscriber (pre-existing assumption).
+
+## Follow-up results (final run, after the last code change)
+| Check | Result |
+|---|---|
+| `tsc --noEmit`, `npm run build` | pass |
+| `test:phase0` | 20 / 20 |
+| `test:phase0b` (new) | 11 / 11 |
+| `test:deploy` | 13 / 13 |
+| `test:sms` | 39 / 39 |
+| `test:h1` / `test:h2` | 18 / 18, 16 / 16 |
+| `test:ministry` | 15 / 15 |
+| `test:api` / `test:harness` | 31 / 31, 4 / 4 |
+| `test:offline` | 22 / 22, 6 / 6, 3 / 3 |
+| `test:contract` | 63 / 63 match the unchanged golden, 3 consecutive runs |
+Against a copy of `9ced7ff`, `phase0b` tests 1, 2, 3, 4, 5, 7, 9, 10 and 11 fail (tests 6 and 8 are unit tests of new code). Not run: `test:m3` (PHP) and any real-browser or Android pass.

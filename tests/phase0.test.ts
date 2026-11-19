@@ -120,10 +120,15 @@ test(`1. ${SHARED_ONLY}: the published demo expert and farmer cannot read or ans
     const officerList = await req(officer, '/api/v1/expert-requests/demo');
     assert.ok(officerList.data.requests.some((r: {id: number}) => r.id === id));
     assert.equal((await req(officer, `/api/v1/expert-requests/demo/${id}/reply`, {method: 'PATCH', body: {expertReply: 'Keep the pen dry and call your extension officer.', status: 'Answered'}})).status, 200);
-    // Changing the shared account's password to a private one makes it a normal trusted expert again (the guard follows the PASSWORD, not the name).
+    // The account is PERMANENTLY flagged: a new password (here set directly, as a stand-in for any takeover) does not make it trusted.
     await fx.setPassword('+231770000201', 'NowPrivate!2026-secret');
-    const nowPrivate = await signIn('+231770000201', 'NowPrivate!2026-secret');
-    assert.ok((await req(nowPrivate, '/api/v1/expert-requests/demo')).data.requests.some((r: {id: number}) => r.id === id));
+    const afterChange = await signIn('+231770000201', 'NowPrivate!2026-secret');
+    assert.ok(!(await req(afterChange, '/api/v1/expert-requests/demo')).data.requests.some((r: {id: number}) => r.id === id), 'a changed password must not expose the visitor request');
+    assert.equal((await req(afterChange, `/api/v1/expert-requests/demo/${id}/reply`, {method: 'PATCH', body: {expertReply: 'Takeover reply to a real visitor.', status: 'Answered'}})).status, 403);
+    // Only an operator re-provisioning (test fixture: password AND flag) makes it a trusted officer.
+    await fx.setPassword('+231770000201', 'Reprovisioned!2026-ok', {clearSharedFlag: true});
+    const reprovisioned = await signIn('+231770000201', 'Reprovisioned!2026-ok');
+    assert.ok((await req(reprovisioned, '/api/v1/expert-requests/demo')).data.requests.some((r: {id: number}) => r.id === id));
   } finally { /* stopped in the last test of this file */ }
 });
 
@@ -216,7 +221,7 @@ test('6. per-address ceiling: failed sign-ins across DIFFERENT accounts are capp
     assert.ok(statuses.slice(30).every((x) => x === 429), 'then the address is throttled');
     // Throttled requests do no password work and are cheap.
     const t = Date.now(); const r = await login(d.base, jar, '+231770002999', 'WrongPassw0rd!x'); assert.equal(r.status, 429); assert.ok(Date.now() - t < 500);
-    assert.equal(r.headers.get('retry-after'), '900');
+    const ra = Number(r.headers.get('retry-after')); assert.ok(ra >= 1 && ra <= 900, `Retry-After ${ra} must be the real remaining wait (at most 15 minutes)`);
   } finally { await d.stop(); }
 });
 
@@ -297,7 +302,7 @@ test('11. anonymous expert requests, marketplace listings and inquiries are rate
     for (let i = 0; i < 14; i++) ls.push((await call(d.base, jar, 'POST', '/api/v1/marketplace/listings', listingBody(`l${i}`))).status);
     assert.deepEqual(ls, [...Array(12).fill(201), 429, 429], `listings (${ls})`);
     const limited = await call(d.base, jar, 'POST', '/api/v1/marketplace/listings', listingBody('x'));
-    assert.equal(limited.status, 429); assert.equal(limited.j.error.code, 'RATE_LIMITED'); assert.equal(limited.headers.get('retry-after'), '900');
+    assert.equal(limited.status, 429); assert.equal(limited.j.error.code, 'RATE_LIMITED'); const ra = Number(limited.headers.get('retry-after')); assert.ok(ra >= 1 && ra <= 3600, `Retry-After ${ra} is the real remaining wait (at most the 1 hour window)`);
     // inquiries: 20 per hour per address
     const lst = await call(d.base, new Jar(), 'GET', '/api/v1/marketplace/listings');
     const listingId = lst.j.listings[0].id;

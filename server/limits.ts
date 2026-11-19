@@ -28,3 +28,8 @@ export const WRITE_LIMITS = {
   'language.recording': {anonPerHour: 10, userPerHour: 30},
 } as const satisfies Record<string, WriteLimit>;
 export type WriteKind = keyof typeof WRITE_LIMITS;
+
+/** Total size of photo / voice data that visitors who are NOT signed in may store in the database (megabytes). Bounds database growth whatever addresses are used. */
+export const anonymousMediaBudgetMb = (): number => intEnv('ANON_MEDIA_BUDGET_MB', 150, 1, 100_000);
+/** Anonymous submissions WITH a photo or voice note allowed per address (/64 for IPv6) per 24 hours, before PUBLIC_WRITE_LIMIT_SCALE. */
+export const ANON_MEDIA_PER_DAY = 8;

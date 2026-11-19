@@ -18,6 +18,7 @@ import {OtpError, maskPhone, startChallenge} from '../otp.ts';
 import {getAuthConfig} from '../authConfig.ts';
 import {getSmsProvider} from '../sms/index.ts';
 import {loginIpFailMax} from '../limits.ts';
+import {demoEnvironment, demoPhoneProblem, isSyntheticPhone, syntheticOnlyMessage} from '../demoPolicy.ts';
 import {
   type AuthedRequest,
   CSRF_COOKIE_NAME,
@@ -26,6 +27,7 @@ import {
   asyncRoute,
   checkAndRecordRateLimit,
   clearCookieOptions,
+  clientAddress,
   cookieOptions,
   hashIdentifier,
   hashPassword,
@@ -319,7 +321,7 @@ v1Router.post('/auth/register', asyncRoute(async (req: AuthedRequest, res) => {
     return;
   }
 
-  const ipKey = hashIdentifier(req.ip || 'unknown');
+  const ipKey = hashIdentifier(clientAddress(req));
   const rl = checkAndRecordRateLimit(ipKey, 'register', 10, 60, true);
   if (!rl.allowed) {
     res.status(429).json({error: {code: 'RATE_LIMITED', message: 'Too many registration attempts. Please try later.'}});
@@ -359,10 +361,10 @@ v1Router.post('/auth/register', asyncRoute(async (req: AuthedRequest, res) => {
     return;
   }
   // Protected demonstration environment: ONLY synthetic test numbers (and no e-mail) so that no real person's contact details are ever stored.
-  if (getAuthConfig().demoEnvironment) {
-    const prefix = getAuthConfig().simulatedPrefix;
-    if (!cleanPhone.startsWith(prefix)) {
-      res.status(422).json({error: {code: 'PHONE_NOT_ALLOWED', message: `This is a demonstration site. Only synthetic test numbers that start with ${prefix} can be used. Please do not enter a real phone number.`}});
+  if (demoEnvironment()) {
+    const phoneRefusal = demoPhoneProblem(cleanPhone, 'Your phone number');
+    if (phoneRefusal) {
+      res.status(422).json({error: {code: 'PHONE_NOT_ALLOWED', message: phoneRefusal}});
       return;
     }
     if (cleanEmail) {
@@ -456,9 +458,10 @@ v1Router.post('/auth/login', asyncRoute(async (req: AuthedRequest, res) => {
   });
 
   // 1. Per-address ceiling on FAILED attempts across all accounts. Checked before any work (and before any password hashing).
-  const ipKey = hashIdentifier(`login-ip:${req.ip || 'unknown'}`);
-  if (!checkAndRecordRateLimit(ipKey, 'login_ip_fail', loginIpFailMax(), 15, false).allowed) {
-    res.setHeader('Retry-After', '900');
+  const ipKey = hashIdentifier(`login-ip:${clientAddress(req)}`);
+  const ipCheck = checkAndRecordRateLimit(ipKey, 'login_ip_fail', loginIpFailMax(), 15, false);
+  if (!ipCheck.allowed) {
+    res.setHeader('Retry-After', String(ipCheck.retryAfterSeconds ?? 900));
     throttled();
     return;
   }
@@ -471,9 +474,9 @@ v1Router.post('/auth/login', asyncRoute(async (req: AuthedRequest, res) => {
       ? phoneIdent.normalized
       : normalizePhone(rawIdent);
 
-  // Protected demonstration environment: sign-in with synthetic test numbers only.
-  if (getAuthConfig().demoEnvironment && rawIdent && !normalized.startsWith(getAuthConfig().simulatedPrefix)) {
-    res.status(422).json({error: {code: 'PHONE_NOT_ALLOWED', message: `This is a demonstration site. Only synthetic test numbers that start with ${getAuthConfig().simulatedPrefix} can sign in. Please do not enter real details.`}});
+  // Protected demonstration environment: sign-in with synthetic test numbers only (same rule as everywhere else: server/demoPolicy.ts).
+  if (demoEnvironment() && rawIdent && !isSyntheticPhone(normalized)) {
+    res.status(422).json({error: {code: 'PHONE_NOT_ALLOWED', message: syntheticOnlyMessage('The phone number')}});
     return;
   }
 
@@ -488,7 +491,7 @@ v1Router.post('/auth/login', asyncRoute(async (req: AuthedRequest, res) => {
   // 3. Per (address + account) limit. An existing account is keyed by its id, so signing in by phone, by e-mail or with any spelling of the number
   //    shares ONE allowance; an unknown identifier is keyed by its normalized form.
   const subject = userRow ? `u${userRow.id}` : `n:${normalized}`;
-  const rateKey = hashIdentifier(`${req.ip || 'unknown'}:${subject}`);
+  const rateKey = hashIdentifier(`${clientAddress(req)}:${subject}`);
   const rl = checkAndRecordRateLimit(rateKey, 'login_attempt', 8, 15, true);
   if (!rl.allowed) {
     throttled();
@@ -536,7 +539,7 @@ v1Router.post('/auth/login', asyncRoute(async (req: AuthedRequest, res) => {
       return;
     }
     const purpose = userRow.phone_verified_at ? 'new_device_login' : 'phone_confirm';
-    startChallenge({userId: userRow.id, purpose, phone: userRow.phone, ip: req.ip || 'unknown'})
+    startChallenge({userId: userRow.id, purpose, phone: userRow.phone, ip: clientAddress(req)})
       .then((started) => {
         res.cookie(CHALLENGE_COOKIE, `${started.publicId}.${started.bindingSecret}`, challengeCookieOptions(req));
         writeAuditLog({actorUserId: userRow.id, actorRole: 'user', action: 'otp_sent', targetType: 'user', targetId: userRow.id, details: {purpose}, ip: req.ip});
@@ -633,7 +636,7 @@ v1Router.post('/advisor/ask', async (req: AuthedRequest, res) => {
     }
     remainingQuota = rl.remaining;
   } else {
-    const anonKey = `anon:${req.anonToken || hashIdentifier(req.ip || 'unknown')}`;
+    const anonKey = `anon:${req.anonToken || hashIdentifier(clientAddress(req))}`;
     const rl = checkAndRecordRateLimit(anonKey, 'ai_advisor_anon', anonLimit, 60 * 24, true);
     if (!rl.allowed) {
       res.status(429).json({
@@ -972,7 +975,7 @@ v1Router.patch('/profile', requireAuth, (req: AuthedRequest, res) => {
 // 8. Public Contact / Feedback
 v1Router.post('/feedback', (req: AuthedRequest, res) => {
   const db = getDb();
-  const rl = checkAndRecordRateLimit(hashIdentifier(req.ip || 'unknown'), 'feedback_submit', 8, 60, true);
+  const rl = checkAndRecordRateLimit(hashIdentifier(clientAddress(req)), 'feedback_submit', 8, 60, true);
   if (!rl.allowed) {
     res.status(429).json({error: {code: 'RATE_LIMITED', message: 'Too many feedback submissions. Please wait.'}});
     return;

@@ -41,7 +41,7 @@ async function main(): Promise<void> {
     // Answering other people's expert requests is reserved for accounts with a PRIVATE password: the seeded demo expert's password is published (so it is an
     // untrusted shared account). The contract plays a real extension officer, so the same seeded record gets a private password. Every recorded response is
     // unchanged (same user, same name); the shared-account restriction itself is covered by tests/api.test.ts and tests/phase0.test.ts.
-    await backend.fixtures.setPassword('+231770000201', 'OfficerPrivate!2026x');
+    await backend.fixtures.setPassword('+231770000201', 'OfficerPrivate!2026x', {clearSharedFlag: true}); // operator re-provisioning: also clears the permanent shared-account flag
     await trust(jars.expert, '+231770000201');
     const expertLogin = await req(jars.expert, '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231770000201', password: 'OfficerPrivate!2026x'}});
     if (adminLogin.status !== 200 || expertLogin.status !== 200) throw new Error('Could not sign in the contract admin/expert users.');

@@ -220,7 +220,7 @@ export const OfflineLibraryPage: React.FC = () => {
           <p className="text-xs font-semibold text-[#16803C]">PWA &amp; Field Access</p>
           <h1 className="font-display text-3xl font-extrabold text-[#183B2B]">Offline Library</h1>
           <p className="text-sm sm:text-base text-[#183B2B]/80 max-w-2xl">
-            Read approved guides without internet connectivity. Only public agricultural guides are cached—never passwords, private expert chats, or sensitive account details.
+            Read saved guides without internet connectivity. Only public agricultural guides are cached—never passwords, private expert chats, or sensitive account details.
           </p>
         </div>
         <PWAInstallButton />

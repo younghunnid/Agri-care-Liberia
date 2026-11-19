@@ -13,10 +13,12 @@ import {
   requireRole,
   verifyOwnerKey,
   writeAuditLog,
-  usesPublishedDemoPassword,
+  isSharedDemoAccount,
   writeLimit,
 } from '../security.ts';
 import {idempotent} from '../idempotency.ts';
+import {demoPhoneProblem} from '../demoPolicy.ts';
+import {maxAudioChars, maxImageChars, mediaAdmission, type MediaRefusal} from '../mediaQuota.ts';
 import {seedPrototypeData} from '../seedPrototype.ts';
 import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
 
@@ -221,6 +223,11 @@ prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.cr
   const ownerKeyHash = isValidOwnerKey(ownerKey) ? hashOwnerKey(ownerKey) : '';
 
   const rawPhone = typeof sellerPhone === 'string' ? sellerPhone.trim() : '';
+  const demoPhone = demoPhoneProblem(rawPhone, 'The seller phone number');
+  if (demoPhone) {
+    res.status(422).json({error: {code: 'PHONE_NOT_ALLOWED', message: demoPhone}});
+    return;
+  }
   let normalizedPhone = '';
   if (rawPhone) {
     const check = normalizeLiberianPhone(rawPhone);
@@ -266,10 +273,15 @@ prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.cr
     const trimmedImg = imageUrl.trim();
     if (
       (trimmedImg.startsWith('/src/assets/images/') || trimmedImg.startsWith('data:image/')) &&
-      trimmedImg.length <= 2_500_000
+      trimmedImg.length <= maxImageChars(req)
     ) {
       safeImage = trimmedImg;
     }
+  }
+  const imageGate = mediaAdmission(req, safeImage.startsWith('data:') ? safeImage.length : 0);
+  if (imageGate) {
+    sendMediaRefusal(res, imageGate);
+    return;
   }
 
   const ins = db
@@ -351,6 +363,11 @@ prototypeRouter.patch('/marketplace/listings/:id', (req: AuthedRequest, res) => 
   let nextPhone: string | null = null;
   if (sellerPhone !== undefined) {
     const trimmedPhone = typeof sellerPhone === 'string' ? sellerPhone.trim() : '';
+    const demoPhone = demoPhoneProblem(trimmedPhone, 'The seller phone number');
+    if (demoPhone) {
+      res.status(422).json({error: {code: 'PHONE_NOT_ALLOWED', message: demoPhone}});
+      return;
+    }
     if (!trimmedPhone) {
       nextPhone = '';
     } else {
@@ -500,6 +517,11 @@ prototypeRouter.post('/marketplace/listings/:id/inquiries', writeLimit('marketpl
     res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'Buyer name and inquiry message required.'}});
     return;
   }
+  const demoBuyerPhone = demoPhoneProblem(buyerPhone, 'The buyer phone number');
+  if (demoBuyerPhone) {
+    res.status(422).json({error: {code: 'PHONE_NOT_ALLOWED', message: demoBuyerPhone}});
+    return;
+  }
 
   const ins = db
     .prepare(
@@ -627,8 +649,13 @@ prototypeRouter.post('/language-lab/recordings', writeLimit('language.recording'
   }
 
   let safeAudio = '';
-  if (typeof audioDataUrl === 'string' && audioDataUrl.startsWith('data:audio/') && audioDataUrl.length <= 2_500_000) {
+  if (typeof audioDataUrl === 'string' && audioDataUrl.startsWith('data:audio/') && audioDataUrl.length <= maxAudioChars(req)) {
     safeAudio = audioDataUrl;
+  }
+  const audioGate = mediaAdmission(req, safeAudio.length);
+  if (audioGate) {
+    sendMediaRefusal(res, audioGate);
+    return;
   }
 
   const ins = db
@@ -735,17 +762,23 @@ function toPublicExpertRequest(row: RawExpertRequestRow, isMine: boolean, canRep
  * Who sees what: experts and administrators see the whole queue (they answer it); a signed-in farmer or a device holding the
  * requester key (header `X-Requester-Key`, never a URL) sees its own requests; everyone else sees only the fictional samples.
  */
+/** Sends a media-quota refusal (see server/mediaQuota.ts). */
+function sendMediaRefusal(res: import('express').Response, g: MediaRefusal): void {
+  if (g.retryAfterSeconds) res.setHeader('Retry-After', String(g.retryAfterSeconds));
+  res.status(g.status).json({error: {code: g.code, message: g.message}});
+}
+
 /** True for the fictional seeded sample requests (public demonstration content). */
 const isSampleRow = (r: RawExpertRequestRow): boolean => r.requester_token.startsWith('demo-seed-req-') && r.user_id === null && r.requester_key_hash === '';
 
 /**
  * Who may read and answer OTHER people's requests: administrators and approved experts whose password is private. A shared demonstration account
- * (documented password, so anyone can sign in as it) is an UNTRUSTED responder: it is treated like an ordinary visitor and may only work on the
+ * (documented password, so anyone can sign in as it; permanently flagged, so a password change does not change this) is an UNTRUSTED responder: it is treated like an ordinary visitor and may only work on the
  * fictional samples.
  */
 function responderScope(req: AuthedRequest): {sharedDemoAccount: boolean; seesQueue: boolean} {
   const isResponder = Boolean(req.user?.roles.some((r) => r === 'expert' || r === 'admin'));
-  const sharedDemoAccount = isResponder && usesPublishedDemoPassword(req.user!.id);
+  const sharedDemoAccount = isResponder && isSharedDemoAccount(req.user!.id);
   return {sharedDemoAccount, seesQueue: isResponder && !sharedDemoAccount};
 }
 
@@ -825,13 +858,18 @@ prototypeRouter.post('/expert-requests/demo', idempotent('expert.request.create'
   }
 
   const safePhoto =
-    typeof photoDataUrl === 'string' && photoDataUrl.startsWith('data:image/') && photoDataUrl.length <= 2_500_000
+    typeof photoDataUrl === 'string' && photoDataUrl.startsWith('data:image/') && photoDataUrl.length <= maxImageChars(req)
       ? photoDataUrl
       : '';
   const safeVoice =
-    typeof voiceNoteDataUrl === 'string' && voiceNoteDataUrl.startsWith('data:audio/') && voiceNoteDataUrl.length <= 2_500_000
+    typeof voiceNoteDataUrl === 'string' && voiceNoteDataUrl.startsWith('data:audio/') && voiceNoteDataUrl.length <= maxAudioChars(req)
       ? voiceNoteDataUrl
       : '';
+  const mediaGate = mediaAdmission(req, safePhoto.length + safeVoice.length);
+  if (mediaGate) {
+    sendMediaRefusal(res, mediaGate);
+    return;
+  }
 
   const ins = db
     .prepare(

@@ -34,7 +34,7 @@ export const ExpertDashboardPage: React.FC = () => {
 
   return (
     <WorkspaceShell
-      kicker={`Approved Expert · ${user?.expertSpecialty || 'Agronomy'}`}
+      kicker={`Expert account · ${user?.expertSpecialty || 'Agronomy'}`}
       title={`Expert Workspace — ${user?.displayName}`}
       subtitle="Review assigned farmer questions and issue clear, low-risk agricultural guidance."
       navItems={EXPERT_NAV}

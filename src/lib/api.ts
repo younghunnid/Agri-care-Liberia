@@ -1,3 +1,4 @@
+import {parseRetryAfter} from './retryPolicy';
 export interface ApiErrorPayload {
   error?:
     | {
@@ -40,12 +41,15 @@ export class ApiRequestError extends Error {
   code: string;
   /** Parsed JSON body of the failed response (for extra fields such as attemptsLeft). Never contains secrets. */
   body?: unknown;
+  /** Milliseconds the server asked us to wait (HTTP Retry-After), if it sent a usable value. */
+  retryAfterMs?: number | null;
 
-  constructor(status: number, code: string, message: string, body?: unknown) {
+  constructor(status: number, code: string, message: string, body?: unknown, retryAfterMs?: number | null) {
     super(message);
     this.status = status;
     this.code = code;
     this.body = body;
+    this.retryAfterMs = retryAfterMs ?? null;
   }
 }
 
@@ -117,7 +121,7 @@ export async function apiFetch<T>(
     if (response.status === 403 && code === 'CSRF_INVALID' && isStateChanging && !_csrfRetried) {
       return apiFetch<T>(path, options, true);
     }
-    throw new ApiRequestError(response.status, code, message, parsed);
+    throw new ApiRequestError(response.status, code, message, parsed, parseRetryAfter(response.headers.get('Retry-After')));
   }
 
   return parsed as T;

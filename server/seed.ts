@@ -415,6 +415,8 @@ If plenty plant (more than 1 out of 10) get twist-twist yellow leaf on the new t
       hashPassword(opts.demoPasswords?.farmer ?? 'FarmerDemo!2026')
     );
     const farmerId = Number(fRes.lastInsertRowid);
+    // Accounts seeded with the PUBLISHED passwords are shared, untrusted demo accounts: flagged permanently (see server/security.ts).
+    if (!opts.demoPasswords) db.prepare('UPDATE users SET is_shared_demo = 1 WHERE id = ?').run(farmerId);
     db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(farmerId, farmerRole.id);
     db.prepare(
       `INSERT INTO farmer_profiles (user_id, county, preferred_language, crops_of_interest, farm_notes)
@@ -433,6 +435,7 @@ If plenty plant (more than 1 out of 10) get twist-twist yellow leaf on the new t
       hashPassword(opts.demoPasswords?.expert ?? 'ExpertDemo!2026')
     );
     const expertId = Number(eRes.lastInsertRowid);
+    if (!opts.demoPasswords) db.prepare('UPDATE users SET is_shared_demo = 1 WHERE id = ?').run(expertId);
     db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(expertId, expertRole.id);
     db.prepare(
       `INSERT INTO expert_profiles (user_id, specialty, county, bio, approval_status, approved_at)

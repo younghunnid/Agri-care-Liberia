@@ -137,7 +137,7 @@ export const MyQuestionsPage: React.FC = () => {
                     >
                       <p className="text-xs font-semibold text-[#183B2B]/75">
                         {m.sender_name}
-                        {m.is_official_expert_advice ? ' · Approved Expert Advice' : ''} · {m.created_at}
+                        {m.is_official_expert_advice ? ' · Expert answer (demonstration platform: not verified agricultural advice)' : ''} · {m.created_at}
                       </p>
                       <p className="text-[#183B2B] leading-relaxed whitespace-pre-wrap">{m.message_text}</p>
                     </div>

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import net from 'node:net';
 import type {CookieOptions, NextFunction, Request, Response} from 'express';
 import {getDb} from './db.ts';
 import type {UserRole} from './constants.ts';
@@ -374,21 +375,76 @@ export function requireRole(...allowedRoles: UserRole[]) {
   };
 }
 
-/** Longest window any limiter uses is 24 h (anonymous AI quota); rows older than this are useless and would grow the database without bound. */
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Network address used as a rate-limit key. Only what Express itself determined (req.ip, which follows the configured trust-proxy setting) is used,
+// never a header read here. IPv6 clients are keyed by their /64 (the standard end-site allocation: one household or phone can use billions of
+// addresses inside it, so per-address keys would let one client rotate addresses to reset every limit). IPv4-mapped IPv6 is treated as IPv4.
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+function expandIpv6(raw: string): number[] | null {
+  let addr = raw.split('%')[0];
+  if (addr.includes('.')) {
+    const i = addr.lastIndexOf(':');
+    const v4 = addr.slice(i + 1).split('.').map(Number);
+    if (v4.length !== 4 || v4.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return null;
+    addr = `${addr.slice(0, i + 1)}${((v4[0] << 8) | v4[1]).toString(16)}:${((v4[2] << 8) | v4[3]).toString(16)}`;
+  }
+  const halves = addr.split('::');
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  const missing = 8 - head.length - tail.length;
+  if ((halves.length === 1 && missing !== 0) || missing < 0) return null;
+  const groups = [...head, ...Array(halves.length === 2 ? missing : 0).fill('0'), ...tail].map((g) => parseInt(g, 16));
+  return groups.length === 8 && groups.every((g) => Number.isInteger(g) && g >= 0 && g <= 0xffff) ? groups : null;
+}
+
+export function limiterAddress(ip: string | undefined | null): string {
+  const raw = (ip ?? '').trim().toLowerCase();
+  if (!raw) return 'unknown';
+  const kind = net.isIP(raw.split('%')[0]);
+  if (kind === 4) return raw;
+  if (kind !== 6) return 'unknown';
+  const g = expandIpv6(raw);
+  if (!g) return 'unknown';
+  if (g.slice(0, 5).every((x) => x === 0) && g[5] === 0xffff) return `${g[6] >> 8}.${g[6] & 255}.${g[7] >> 8}.${g[7] & 255}`; // ::ffff:a.b.c.d
+  return `v6:${g.slice(0, 4).map((x) => x.toString(16)).join(':')}`;
+}
+
+/** The key part identifying the calling network address for every limiter. */
+export const clientAddress = (req: Request): string => limiterAddress(req.ip);
+
+/**
+ * Rate rows older than the longest window (24 h for the anonymous AI quota) are useless and would grow the database without bound. They are removed in
+ * small batches through an index on created_at, so no single call can hold the (synchronous) SQLite connection for long. While a backlog exists the
+ * batch repeats every 5 seconds, otherwise once a minute, and only while the limiter is actually in use.
+ */
 const RATE_ROW_RETENTION_HOURS = 25;
+const PRUNE_BATCH = 5000;
 let lastPrune = 0;
+let pruneBacklog = false;
 /** Test hook: allow the next rate-limit call to prune immediately. */
-export function resetRateLimitPruneForTests(): void { lastPrune = 0; }
+export function resetRateLimitPruneForTests(): void { lastPrune = 0; pruneBacklog = false; }
+/** Runs one prune batch now; returns the number of rows removed. Exported for tests. */
+export function pruneRateLimitBatch(): number {
+  const r = getDb()
+    .prepare('DELETE FROM rate_limit_attempts WHERE id IN (SELECT id FROM rate_limit_attempts WHERE created_at < datetime(\'now\', ?) LIMIT ?)')
+    .run(`-${RATE_ROW_RETENTION_HOURS} hours`, PRUNE_BATCH);
+  const n = Number(r.changes);
+  pruneBacklog = n >= PRUNE_BATCH;
+  return n;
+}
 function pruneRateLimitRows(): void {
   const now = Date.now();
-  if (now - lastPrune < 60_000) return; // at most once a minute, and only when the limiter is actually used
+  if (now - lastPrune < (pruneBacklog ? 5_000 : 60_000)) return;
   lastPrune = now;
   try {
-    getDb().prepare("DELETE FROM rate_limit_attempts WHERE datetime(created_at) < datetime('now', ?)").run(`-${RATE_ROW_RETENTION_HOURS} hours`);
+    pruneRateLimitBatch();
   } catch {
     /* pruning must never break a request */
   }
 }
+
+export interface RateLimitResult {allowed: boolean; remaining: number; count: number; /** Seconds until the oldest counted attempt leaves the window (only when blocked). */ retryAfterSeconds?: number}
 
 export function checkAndRecordRateLimit(
   rateKey: string,
@@ -396,20 +452,27 @@ export function checkAndRecordRateLimit(
   maxAttempts: number,
   windowMinutes: number,
   recordAttempt = true
-): {allowed: boolean; remaining: number; count: number} {
+): RateLimitResult {
   const db = getDb();
   pruneRateLimitRows();
   const row = db
     .prepare(
       `SELECT COUNT(*) as cnt FROM rate_limit_attempts
        WHERE rate_key = ? AND action_type = ?
-         AND datetime(created_at) >= datetime('now', ?)`
+         AND created_at >= datetime('now', ?)`
     )
     .get(rateKey, actionType, `-${windowMinutes} minutes`) as {cnt: number};
 
   const count = row?.cnt ?? 0;
   if (count >= maxAttempts) {
-    return {allowed: false, remaining: 0, count};
+    const w = db
+      .prepare(
+        `SELECT CAST(strftime('%s', MIN(created_at)) AS INTEGER) + ? - CAST(strftime('%s', 'now') AS INTEGER) AS s
+         FROM rate_limit_attempts WHERE rate_key = ? AND action_type = ? AND created_at >= datetime('now', ?)`
+      )
+      .get(windowMinutes * 60, rateKey, actionType, `-${windowMinutes} minutes`) as {s: number | null} | undefined;
+    const retryAfterSeconds = Math.min(windowMinutes * 60, Math.max(1, Number(w?.s ?? windowMinutes * 60)));
+    return {allowed: false, remaining: 0, count, retryAfterSeconds};
   }
   if (recordAttempt) {
     db.prepare('INSERT INTO rate_limit_attempts (rate_key, action_type) VALUES (?, ?)').run(
@@ -437,12 +500,12 @@ export function writeLimit(kind: WriteKind) {
   return (req: AuthedRequest, res: Response, next: NextFunction): void => {
     const cfg = WRITE_LIMITS[kind];
     const scale = writeLimitScale();
-    const actor = req.user ? `user:${req.user.id}` : `ip:${req.ip || 'unknown'}`;
+    const actor = req.user ? `user:${req.user.id}` : `ip:${clientAddress(req)}`;
     const max = (req.user ? cfg.userPerHour : cfg.anonPerHour) * scale;
     const rl = checkAndRecordRateLimit(hashIdentifier(`write:${kind}:${actor}`), `write_${kind}`, max, 60, true);
     if (!rl.allowed) {
-      res.setHeader('Retry-After', '900');
-      res.status(429).json({error: {code: 'RATE_LIMITED', message: 'Too many submissions from this device or account. Please wait a while and try again.'}});
+      res.setHeader('Retry-After', String(rl.retryAfterSeconds ?? 900));
+      res.status(429).json({error: {code: 'RATE_LIMITED', message: 'Too many submissions from this device or account. Please wait a while and try again.', retryAfterSeconds: rl.retryAfterSeconds ?? 900}});
       return;
     }
     next();
@@ -451,27 +514,38 @@ export function writeLimit(kind: WriteKind) {
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Shared demonstration accounts. The two seeded demo accounts have PUBLISHED passwords (project documents). Whoever can reach a server where those
-// work holds a "farmer" and an "approved expert" login. They are therefore treated as UNTRUSTED actors: they must never read or answer other
-// people's expert requests, no matter which role they hold. (Strict environments - production and the protected demo - never create them with the
-// published passwords at all; this guard covers development/test servers and any database that was seeded the old way.)
+// work holds a "farmer" and an "approved expert" login. They are therefore UNTRUSTED actors: they must never read or answer other people's expert
+// requests, no matter which role they hold. The account is identified by a PERMANENT flag (users.is_shared_demo) set when it is seeded or found at
+// start-up. Changing its password does not clear the flag, and the account cannot change its own password, phone or recovery. (Strict environments -
+// production and the protected demo - never create these accounts with the published passwords at all.)
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 export const PUBLISHED_DEMO_ACCOUNTS: readonly {phone: string; password: string}[] = [
   {phone: '+231770000101', password: 'FarmerDemo!2026'},
   {phone: '+231770000201', password: 'ExpertDemo!2026'},
 ];
-const publishedCache = new Map<number, {hash: string; published: boolean}>();
 
-/** True when this user is one of the shared demo accounts AND still has the published password. Cached per (user, password hash). */
-export function usesPublishedDemoPassword(userId: number): boolean {
-  const row = getDb().prepare('SELECT phone, password_hash FROM users WHERE id = ?').get(userId) as {phone: string; password_hash: string} | undefined;
-  if (!row) return false;
-  const known = PUBLISHED_DEMO_ACCOUNTS.find((a) => a.phone === row.phone);
-  if (!known) return false;
-  const hit = publishedCache.get(userId);
-  if (hit && hit.hash === row.password_hash) return hit.published;
-  const published = verifyPassword(known.password, row.password_hash); // one-time cost per account/password, only for the two documented phones
-  publishedCache.set(userId, {hash: row.password_hash, published});
-  return published;
+/** True when this user is a shared demonstration account (permanent flag; cheap indexed read). */
+export function isSharedDemoAccount(userId: number): boolean {
+  const row = getDb().prepare('SELECT is_shared_demo AS f FROM users WHERE id = ?').get(userId) as {f: number} | undefined;
+  return row?.f === 1;
+}
+
+/**
+ * Start-up backfill for databases seeded before the flag existed: an account on a documented phone number that STILL has its published password is
+ * flagged now, permanently. (Once flagged it stays flagged whatever its password becomes.)
+ */
+export function markSharedDemoAccounts(): number {
+  const db = getDb();
+  let marked = 0;
+  for (const {phone, password} of PUBLISHED_DEMO_ACCOUNTS) {
+    const row = db.prepare('SELECT id, password_hash, is_shared_demo AS f FROM users WHERE phone = ?').get(phone) as {id: number; password_hash: string; f: number} | undefined;
+    if (!row || row.f === 1) continue;
+    if (verifyPassword(password, row.password_hash)) {
+      db.prepare('UPDATE users SET is_shared_demo = 1 WHERE id = ?').run(row.id);
+      marked++;
+    }
+  }
+  return marked;
 }
 
 export function writeAuditLog(params: {

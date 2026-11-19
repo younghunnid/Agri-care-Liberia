@@ -1,5 +1,6 @@
 import {useSyncExternalStore} from 'react';
 import {ApiRequestError, apiFetch} from './api';
+import {planRetry} from './retryPolicy';
 import {kvGet, kvSet} from './offlineDb';
 import {generateOwnerKey, getListingKey, getRequesterKey, saveListingKey} from './listingKeys';
 import {
@@ -35,8 +36,6 @@ import {
  */
 
 const REQUEST_TIMEOUT_MS = 20_000;
-const MAX_AUTO_ATTEMPTS = 6;
-const MAX_BACKOFF_MS = 5 * 60_000;
 
 export interface SyncSnapshot {
   version: number;
@@ -134,6 +133,8 @@ interface Classified {
   conflict: boolean;
   network: boolean;
   message: string;
+  /** Milliseconds the server asked us to wait (Retry-After); may be longer than the normal back-off cap. */
+  retryAfterMs?: number | null;
 }
 
 function classify(err: unknown): Classified {
@@ -141,7 +142,11 @@ function classify(err: unknown): Classified {
     const s = err.status;
     if (s === 409) return {retryable: false, conflict: true, network: false, message: err.message};
     if (s === 408 || s === 425 || s === 429 || s >= 500) {
-      return {retryable: true, conflict: false, network: false, message: 'The server is busy. We will try again.'};
+      const asked = err.retryAfterMs ?? null;
+      return {
+        retryable: true, conflict: false, network: false, retryAfterMs: asked,
+        message: asked ? 'The server asked us to wait a while. Your item is safe on this phone and will be sent automatically.' : 'The server is busy. We will try again.',
+      };
     }
     if (s === 401) return {retryable: false, conflict: false, network: false, message: 'Please sign in again, then tap Try again.'};
     if (s === 403) return {retryable: false, conflict: false, network: false, message: err.message || 'You are not allowed to do this.'};
@@ -273,9 +278,10 @@ async function sendQuestion(op: SyncOp, rec: QuestionRecord): Promise<void> {
 }
 
 async function markFailure(op: SyncOp, c: Classified): Promise<void> {
-  const attempts = op.attempts + 1;
-  const giveUpAuto = !c.retryable || attempts >= MAX_AUTO_ATTEMPTS;
-  const delay = Math.min(MAX_BACKOFF_MS, 5_000 * 2 ** (attempts - 1)) + Math.floor(Math.random() * 1000);
+  const plan = planRetry({previousAttempts: op.attempts, retryable: c.retryable, retryAfterMs: c.retryAfterMs});
+  const attempts = plan.attempts;
+  const giveUpAuto = plan.giveUp;
+  const delay = plan.delayMs;
   await putOp({
     ...op,
     attempts,

@@ -57,7 +57,7 @@ export const ExpertRequestsPage: React.FC = () => {
     <WorkspaceShell
       kicker="Farmer Workspace"
       title="New Expert Request"
-      subtitle="Send a crop question to an approved agricultural specialist."
+      subtitle="Send a crop question to an agricultural specialist account (demonstration platform: answers are not verified advice)."
       navItems={FARMER_NAV}
     >
       <form onSubmit={(e) => void handleSubmit(e)} className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 sm:p-8 space-y-4 max-w-3xl">

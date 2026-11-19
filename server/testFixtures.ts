@@ -88,11 +88,12 @@ export function mountTestFixtures(app: Express): void {
     res.status(201).json({id});
   });
 
-  /** Gives an existing user a new (private) password, e.g. to take a seeded demo account off its PUBLISHED password. Test-only. */
+  /** Gives an existing user a new password (optionally also clearing the shared-demo flag, as an operator would). Test-only. */
   router.post('/users/set-password', (req, res) => {
-    const {phone, password} = req.body ?? {};
+    const {phone, password, clearSharedFlag} = req.body ?? {};
     if (typeof phone !== 'string' || typeof password !== 'string' || password.length < 10) { res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'phone and a password of 10+ characters are required.'}}); return; }
-    const r = getDb().prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE phone = ?").run(hashPassword(password), phone);
+    // clearSharedFlag simulates an OPERATOR re-provisioning the account (there is deliberately no API for this): a plain password change keeps users.is_shared_demo.
+    const r = getDb().prepare(`UPDATE users SET password_hash = ?, ${clearSharedFlag === true ? 'is_shared_demo = 0, ' : ''}updated_at = datetime('now') WHERE phone = ?`).run(hashPassword(password), phone);
     if (!r.changes) { res.status(404).json({error: {code: 'NOT_FOUND', message: 'No such user.'}}); return; }
     res.json({ok: true});
   });

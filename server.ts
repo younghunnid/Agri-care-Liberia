@@ -11,6 +11,7 @@ import {sessionMiddleware} from './server/security.ts';
 import {getAuthConfig} from './server/authConfig.ts';
 import {checkStorage, getRuntimeConfig} from './server/runtime.ts';
 import {findKnownDemoCredentials} from './server/demoGuard.ts';
+import {markSharedDemoAccounts} from './server/security.ts';
 import {stagingRouter} from './server/routes/staging.ts';
 import {v1Router} from './server/routes/v1.ts';
 
@@ -32,6 +33,7 @@ export async function createApp() {
     if (known.length) throw new Error(`Refusing to start: this database contains demo accounts with published passwords (${known.join(', ')}). Use a fresh database or remove those accounts.`);
   }
   seedInitialData({demoAccounts: rt.enableDemoSeed, demoPasswords: rt.demoSeedPasswords ?? undefined});
+  markSharedDemoAccounts(); // databases seeded before the flag existed: permanently flag accounts that still have the published passwords
 
   const app = express();
   app.set('trust proxy', rt.trustProxy);
@@ -70,6 +72,13 @@ export async function createApp() {
   app.use(express.json({limit: '4mb'}));
   app.use(cookieParser());
   app.use(sessionMiddleware);
+
+  // Everything under /api is dynamic and may hold personal data (sessions, requests with photos, inquiries): never store it in a browser or shared cache.
+  // The service worker's own offline cache for public guides is separate (Cache API) and unaffected.
+  app.use('/api', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
 
   // Which kind of server is this? (lets the interface label a demonstration environment). No secrets, no account data.
   app.get('/api/v1/environment', (_req, res) => {

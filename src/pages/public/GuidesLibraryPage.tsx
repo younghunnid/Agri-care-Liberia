@@ -451,11 +451,11 @@ export const GuidesLibraryPage: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 3: EXISTING SQLITE APPROVED CROP GUIDES */}
+      {/* TAB 3: crop guides from the database (demonstration content, not professionally reviewed) */}
       {activeTab === 'guides' && (
         <>
           {loading ? (
-            <div className="py-12 text-center text-sm text-[#183B2B]/70">Loading approved crop guides...</div>
+            <div className="py-12 text-center text-sm text-[#183B2B]/70">Loading crop guides...</div>
           ) : guides.length === 0 ? (
             <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-8 text-center space-y-3">
               <p className="font-display font-bold text-lg text-[#183B2B]">No matching guides found</p>
