@@ -491,6 +491,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
                     items: [
                       {to: '/demo', label: 'Hackathon Demo Mode (4 Journeys)', icon: Presentation},
                       {to: '/ministry', label: '5. Ministry Food Security View', icon: BarChart3},
+                      {to: '/ministry-analytics', label: '5b. Ministry & Extension View (Demo)', icon: BarChart3},
                       {to: '/language-lab', label: '4. Local Language Lab', icon: Languages},
                       {to: '/phone-simulator', label: '4b. Simulated Phone Service', icon: PhoneCall},
                       {to: '/dashboard', label: 'Farmer Dashboard (Demo)', icon: LayoutDashboard},

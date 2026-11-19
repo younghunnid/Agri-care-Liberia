@@ -12,6 +12,7 @@ import {ForgotPasswordPage} from './pages/public/ForgotPasswordPage';
 import {DemoSmsInboxPage} from './pages/public/DemoSmsInboxPage';
 import {AccountSecurityPage} from './pages/farmer/AccountSecurityPage';
 import {TrustedDevicesPage} from './pages/farmer/TrustedDevicesPage';
+import {MinistryAnalyticsPage} from './pages/public/MinistryAnalyticsPage';
 import {LearnPage} from './pages/public/LearnPage';
 import {LessonPage} from './pages/public/LessonPage';
 import {CassavaDemoPage} from './pages/public/CassavaDemoPage';
@@ -97,6 +98,7 @@ export default function App() {
             <Route path="/demo" element={<DemoModePage />} />
             <Route path="/demo/cassava" element={<CassavaDemoPage />} />
             <Route path="/advice/crop-problems" element={<CropProblemsPage />} />
+            <Route path="/ministry-analytics" element={<MinistryAnalyticsPage />} />
             <Route path="/learn" element={<LearnPage />} />
             <Route path="/learn/:id" element={<LessonPage />} />
             <Route path="/tools/calculator" element={<FarmCalculatorPage />} />

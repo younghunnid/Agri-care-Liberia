@@ -121,6 +121,11 @@ export const DemoModePage: React.FC = () => {
         </div>
       )}
 
+      <div className="rounded-2xl bg-sky-50 border border-sky-300 p-4 flex flex-wrap items-center justify-between gap-3" data-testid="ministry-analytics-link">
+        <p className="text-sm font-bold text-[#183B2B]">New: Ministry &amp; Extension View (Demo): county production, illustrative food security index, weather, disease signals and a simulated SMS/USSD campaign tool. Synthetic data only.</p>
+        <Link to="/ministry-analytics" className="inline-flex items-center min-h-[44px] rounded-xl bg-[#183B2B] text-white text-sm font-bold px-4">Open the dashboard demo</Link>
+      </div>
+
       <div className="rounded-2xl bg-[#DDEFE0] border border-[#16803C]/30 p-4 flex flex-wrap items-center justify-between gap-3" data-testid="cassava-demo-link">
         <p className="text-sm font-bold text-[#183B2B]">New: the 11-step Bong County cassava farmer demonstration (crop problems, offline saving, expert question, calculator).</p>
         <Link to="/demo/cassava" className="inline-flex items-center min-h-[44px] rounded-xl bg-[#16803C] text-white text-sm font-bold px-4">Open the cassava demo</Link>

@@ -131,6 +131,8 @@ export const MinistryDashboardPage: React.FC = () => {
         />
       </div>
 
+      <p className="text-sm" data-testid="to-analytics"><Link to="/ministry-analytics" className="font-bold underline text-[#0F5C2A]">Open the new Ministry &amp; Extension View (Demo): production, index, weather, disease signals and simulated SMS/USSD.</Link></p>
+
       {/* MANDATORY DATA INTEGRITY NOTICE */}
       <div className="rounded-2xl bg-[#F5B942]/30 border-2 border-[#F5B942] p-4 sm:p-5 flex items-start gap-3 text-sm text-[#183B2B]">
         <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />

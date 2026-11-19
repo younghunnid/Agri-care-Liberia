@@ -22,6 +22,7 @@
     "test:h1": "tsx --test tests/h1.test.ts",
     "test:h2": "tsx --test tests/h2.test.ts",
     "test:sms": "tsx --test tests/sms-auth.test.ts",
+    "test:ministry": "tsx --test tests/ministry.test.ts",
     "test:m3": "tsx --test tests/m3/run.ts",
     "test:m3:unit": "php backend-php/tests/m3_unit.php"
   },
