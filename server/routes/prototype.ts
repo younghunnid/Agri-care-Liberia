@@ -13,6 +13,8 @@ import {
   requireRole,
   verifyOwnerKey,
   writeAuditLog,
+  usesPublishedDemoPassword,
+  writeLimit,
 } from '../security.ts';
 import {idempotent} from '../idempotency.ts';
 import {seedPrototypeData} from '../seedPrototype.ts';
@@ -176,7 +178,7 @@ prototypeRouter.post('/marketplace/listings/:id/view', (req, res) => {
   res.json({view_count: updated.view_count});
 });
 
-prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.create'), (req: AuthedRequest, res) => {
+prototypeRouter.post('/marketplace/listings', idempotent('marketplace.listing.create'), writeLimit('marketplace.listing'), (req: AuthedRequest, res) => {
   const db = getDb();
   const {
     ownerKey,
@@ -480,7 +482,7 @@ prototypeRouter.get('/marketplace/inquiries', (req: AuthedRequest, res) => {
   res.json({inquiries: rows});
 });
 
-prototypeRouter.post('/marketplace/listings/:id/inquiries', (req: AuthedRequest, res) => {
+prototypeRouter.post('/marketplace/listings/:id/inquiries', writeLimit('marketplace.inquiry'), (req: AuthedRequest, res) => {
   const db = getDb();
   const listingId = Number(req.params.id);
   const listing = db.prepare('SELECT id FROM marketplace_listings WHERE id = ?').get(listingId);
@@ -587,7 +589,7 @@ prototypeRouter.get('/language-lab/recordings', (req, res) => {
   res.json({recordings});
 });
 
-prototypeRouter.post('/language-lab/recordings', (req, res) => {
+prototypeRouter.post('/language-lab/recordings', writeLimit('language.recording'), (req, res) => {
   const db = getDb();
   const {
     languageCode,
@@ -733,14 +735,28 @@ function toPublicExpertRequest(row: RawExpertRequestRow, isMine: boolean, canRep
  * Who sees what: experts and administrators see the whole queue (they answer it); a signed-in farmer or a device holding the
  * requester key (header `X-Requester-Key`, never a URL) sees its own requests; everyone else sees only the fictional samples.
  */
+/** True for the fictional seeded sample requests (public demonstration content). */
+const isSampleRow = (r: RawExpertRequestRow): boolean => r.requester_token.startsWith('demo-seed-req-') && r.user_id === null && r.requester_key_hash === '';
+
+/**
+ * Who may read and answer OTHER people's requests: administrators and approved experts whose password is private. A shared demonstration account
+ * (documented password, so anyone can sign in as it) is an UNTRUSTED responder: it is treated like an ordinary visitor and may only work on the
+ * fictional samples.
+ */
+function responderScope(req: AuthedRequest): {sharedDemoAccount: boolean; seesQueue: boolean} {
+  const isResponder = Boolean(req.user?.roles.some((r) => r === 'expert' || r === 'admin'));
+  const sharedDemoAccount = isResponder && usesPublishedDemoPassword(req.user!.id);
+  return {sharedDemoAccount, seesQueue: isResponder && !sharedDemoAccount};
+}
+
 prototypeRouter.get('/expert-requests/demo', (req: AuthedRequest, res) => {
   const db = getDb();
-  const isResponder = Boolean(req.user?.roles.some((r) => r === 'expert' || r === 'admin'));
+  const {sharedDemoAccount, seesQueue} = responderScope(req);
   const key = req.get('X-Requester-Key');
   const keyHash = isValidOwnerKey(key) ? hashRequesterKey(key) : '';
 
   let rows: RawExpertRequestRow[];
-  if (isResponder) {
+  if (seesQueue) {
     rows = db.prepare('SELECT * FROM demo_expert_requests ORDER BY id DESC LIMIT 100').all() as unknown as RawExpertRequestRow[];
   } else {
     const clauses = [`(${PUBLIC_SAMPLE_SQL})`];
@@ -762,13 +778,13 @@ prototypeRouter.get('/expert-requests/demo', (req: AuthedRequest, res) => {
       toPublicExpertRequest(
         r,
         Boolean((keyHash && r.requester_key_hash === keyHash) || (req.user && r.user_id === req.user.id)),
-        isResponder
+        seesQueue || (sharedDemoAccount && isSampleRow(r))
       )
     ),
   });
 });
 
-prototypeRouter.post('/expert-requests/demo', idempotent('expert.request.create'), (req: AuthedRequest, res) => {
+prototypeRouter.post('/expert-requests/demo', idempotent('expert.request.create'), writeLimit('expert.request'), (req: AuthedRequest, res) => {
   const db = getDb();
   const {
     requesterKey,
@@ -846,9 +862,14 @@ prototypeRouter.patch('/expert-requests/demo/:id/reply', requireRole('expert', '
   const db = getDb();
   const id = Number(req.params.id);
   const {expertReply, status} = req.body ?? {};
-  const existing = db.prepare('SELECT id FROM demo_expert_requests WHERE id = ?').get(id);
+  const existing = db.prepare('SELECT * FROM demo_expert_requests WHERE id = ?').get(id) as unknown as RawExpertRequestRow | undefined;
   if (!existing) {
     res.status(404).json({error: {code: 'NOT_FOUND', message: 'Request not found.'}});
+    return;
+  }
+  // A shared demonstration account (documented password) may only answer the fictional samples, never a real visitor's request.
+  if (responderScope(req).sharedDemoAccount && !isSampleRow(existing)) {
+    res.status(403).json({error: {code: 'FORBIDDEN', message: 'This shared demonstration account can only answer the sample requests.'}});
     return;
   }
   if (typeof expertReply !== 'string' || expertReply.trim().length < 5) {

@@ -26,12 +26,12 @@ export async function createApp() {
   else console.warn(`[auth] SMS_PROVIDER=simulated: DEMO MODE${authCfg.demoEnvironment ? ' (APP_ENV=demo, protected hackathon environment)' : ''}. Verification messages are simulated and nothing is sent.${authCfg.demoInlineInbox ? ' The in-website Demo SMS Inbox is ON.' : ''}`);
   if (rt.strict) checkStorage(rt.dbPath); // production/demo: the database folder must be writable and persistent
   getDb();
-  if (rt.strict && !rt.enableDemoSeed) {
-    // Never serve a real deployment that contains accounts with published passwords.
+  if (rt.strict) {
+    // Never serve a real or public deployment that contains accounts with PUBLISHED passwords (also in the demo environment: anyone could sign in).
     const known = findKnownDemoCredentials();
     if (known.length) throw new Error(`Refusing to start: this database contains demo accounts with published passwords (${known.join(', ')}). Use a fresh database or remove those accounts.`);
   }
-  seedInitialData({demoAccounts: rt.enableDemoSeed});
+  seedInitialData({demoAccounts: rt.enableDemoSeed, demoPasswords: rt.demoSeedPasswords ?? undefined});
 
   const app = express();
   app.set('trust proxy', rt.trustProxy);
@@ -137,15 +137,28 @@ export async function createApp() {
   return app;
 }
 
+// Start listening when this file is the process entry (`tsx server.ts`, `node server.js`). Some hosts start apps through their own loader script, in which
+// case process.argv[1] is not this file: START_SERVER=1 forces listening there. Tests import createApp() and never listen.
 const isDirectEntry =
-  process.argv[1] && /server\.(ts|js|mjs|cjs)$/.test(process.argv[1]);
+  process.env.START_SERVER === '1' || Boolean(process.argv[1] && /server\.(ts|js|mjs|cjs)$/.test(process.argv[1]));
 
 if (isDirectEntry) {
   const port = Number(process.env.PORT || 3000);
-  createApp().then((app) => {
-    const host = process.env.HOST || '0.0.0.0';
-    app.listen(port, host, () => {
-      console.log(`Agri-Advisory Liberia server running on http://${host}:${port}`);
+  const host = process.env.HOST || '0.0.0.0';
+  // The test mode mounts fixture routes and relaxes production checks: it must never be reachable from the network.
+  if (process.env.APP_ENV === 'test' && !['127.0.0.1', 'localhost', '::1'].includes(host)) {
+    console.error('Refusing to start: APP_ENV=test is only allowed on a loopback HOST (127.0.0.1, localhost or ::1).');
+    process.exit(1);
+  }
+  createApp()
+    .then((app) => {
+      app.listen(port, host, () => {
+        console.log(`Agri-Advisory Liberia server running on http://${host}:${port}`);
+      });
+    })
+    .catch((e: Error) => {
+      // A clear one-line reason (setting names, never values); no stack trace in the host log.
+      console.error(`Server did not start: ${e.message}`);
+      process.exit(1);
     });
-  });
 }

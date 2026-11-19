@@ -85,11 +85,11 @@ export const PhoneSimulatorPage: React.FC = () => {
   const {speechSupported} = useApp();
   const [searchParams] = useSearchParams();
   const [screen, setScreen] = useState<CallScreen>('idle');
-  const [dialBuffer, setDialBuffer] = useState('*440*8#');
+  const [dialBuffer, setDialBuffer] = useState('');
   const [selectedLangKey, setSelectedLangKey] = useState('1');
   const [selectedTopicKey, setSelectedTopicKey] = useState('1');
   const [transcript, setTranscript] = useState(
-    'Dial *440*8# or press the green Call button to simulate a free basic-phone advisory call.'
+    'Press the green Call button to start a simulated basic-phone advisory call. This is a simulation: no telephone number, short code or telecom network is used.'
   );
   const [voiceActive, setVoiceActive] = useState(false);
 
@@ -101,7 +101,7 @@ export const PhoneSimulatorPage: React.FC = () => {
 
   useEffect(() => {
     if (searchParams.get('scenario') === 'rice' && screen === 'idle') {
-      setDialBuffer('*440*8#');
+      setDialBuffer('');
     }
   }, [searchParams, screen]);
 
@@ -255,7 +255,7 @@ export const PhoneSimulatorPage: React.FC = () => {
               <div className="py-2 space-y-2 text-xs leading-snug">
                 {screen === 'idle' && (
                   <>
-                    <p className="text-center font-bold text-base tracking-wider pt-2">{dialBuffer || '*440*8#'}</p>
+                    <p className="text-center font-bold text-base tracking-wider pt-2">{dialBuffer || 'SIMULATED CALL'}</p>
                     <p className="text-center text-[11px] text-[#183B2B]/80">
                       Press green Call key to enter Voice Menu
                     </p>

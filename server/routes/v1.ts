@@ -17,22 +17,29 @@ import {
 import {OtpError, maskPhone, startChallenge} from '../otp.ts';
 import {getAuthConfig} from '../authConfig.ts';
 import {getSmsProvider} from '../sms/index.ts';
+import {loginIpFailMax} from '../limits.ts';
 import {
   type AuthedRequest,
   CSRF_COOKIE_NAME,
+  PasswordBusyError,
   SESSION_COOKIE_NAME,
+  asyncRoute,
   checkAndRecordRateLimit,
   clearCookieOptions,
   cookieOptions,
   hashIdentifier,
   hashPassword,
+  hashPasswordAsync,
   loadUserById,
   normalizePhone,
+  recordRateLimitAttempt,
   requireAuth,
   requireRole,
   signSessionToken,
+  verifyAgainstDummy,
   verifyCsrf,
   verifyPassword,
+  verifyPasswordAsync,
   writeAuditLog,
 } from '../security.ts';
 
@@ -297,7 +304,7 @@ v1Router.get('/auth/me', (req: AuthedRequest, res) => {
   res.json({user: req.user ?? null});
 });
 
-v1Router.post('/auth/register', (req: AuthedRequest, res) => {
+v1Router.post('/auth/register', asyncRoute(async (req: AuthedRequest, res) => {
   const db = getDb();
   const regSetting = db
     .prepare("SELECT value FROM platform_settings WHERE key = 'allow_public_registration'")
@@ -351,6 +358,18 @@ v1Router.post('/auth/register', (req: AuthedRequest, res) => {
     res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'Enter a valid email address.'}});
     return;
   }
+  // Protected demonstration environment: ONLY synthetic test numbers (and no e-mail) so that no real person's contact details are ever stored.
+  if (getAuthConfig().demoEnvironment) {
+    const prefix = getAuthConfig().simulatedPrefix;
+    if (!cleanPhone.startsWith(prefix)) {
+      res.status(422).json({error: {code: 'PHONE_NOT_ALLOWED', message: `This is a demonstration site. Only synthetic test numbers that start with ${prefix} can be used. Please do not enter a real phone number.`}});
+      return;
+    }
+    if (cleanEmail) {
+      res.status(422).json({error: {code: 'EMAIL_NOT_ALLOWED', message: 'This is a demonstration site. E-mail addresses are not used here. Please leave the e-mail field empty.'}});
+      return;
+    }
+  }
   const pwProblem = passwordProblem(cleanPassword, {phone: cleanPhone, displayName: cleanName});
   if (pwProblem) {
     res.status(400).json({error: {code: 'VALIDATION_ERROR', message: pwProblem}});
@@ -363,6 +382,14 @@ v1Router.post('/auth/register', (req: AuthedRequest, res) => {
 
   // A number is never reserved just because it was typed once (Decision 8): an UNVERIFIED claim that has expired is released to the new registrant,
   // while a verified number and an unexpired claim are never taken. The verified owner can free a number by proving possession (phone-claim flow).
+  // Hash first (non-blocking, may wait for a slot): the uniqueness checks and the INSERT below then run back-to-back with no await between them.
+  let passwordHash: string;
+  try {
+    passwordHash = await hashPasswordAsync(cleanPassword);
+  } catch (e) {
+    if (e instanceof PasswordBusyError) { res.setHeader('Retry-After', '3'); res.status(503).json({error: {code: 'SERVER_BUSY', message: 'The server is busy. Please try again in a moment.'}}); return; }
+    throw e;
+  }
   const phoneState = resolvePhoneForRegistration(cleanPhone, req.cookies?.[CLAIM_COOKIE]);
   const existingPhone = phoneState === 'taken';
   if (existingPhone) {
@@ -378,7 +405,6 @@ v1Router.post('/auth/register', (req: AuthedRequest, res) => {
   }
 
   const farmerRole = db.prepare("SELECT id FROM roles WHERE name = 'farmer'").get() as {id: number};
-  const passwordHash = hashPassword(cleanPassword);
 
   db.exec('BEGIN IMMEDIATE;');
   let userId = 0;
@@ -418,20 +444,54 @@ v1Router.post('/auth/register', (req: AuthedRequest, res) => {
 
   const user = loadUserById(userId);
   res.status(201).json({user});
-});
+}));
 
-v1Router.post('/auth/login', (req: AuthedRequest, res) => {
+v1Router.post('/auth/login', asyncRoute(async (req: AuthedRequest, res) => {
   const db = getDb();
   const {identifier, password} = req.body ?? {};
-  const rawIdent = typeof identifier === 'string' ? identifier.trim() : '';
-  const cleanPassword = typeof password === 'string' ? password : '';
+  const rawIdent = typeof identifier === 'string' ? identifier.trim().slice(0, 200) : '';
+  const cleanPassword = typeof password === 'string' ? password.slice(0, 256) : '';
+  const throttled = () => res.status(429).json({
+    error: {code: 'AUTH_THROTTLED', message: 'Too many login attempts. Please wait 15 minutes before trying again.'},
+  });
 
-  const rateKey = hashIdentifier(`${req.ip || 'unknown'}:${rawIdent.toLowerCase()}`);
+  // 1. Per-address ceiling on FAILED attempts across all accounts. Checked before any work (and before any password hashing).
+  const ipKey = hashIdentifier(`login-ip:${req.ip || 'unknown'}`);
+  if (!checkAndRecordRateLimit(ipKey, 'login_ip_fail', loginIpFailMax(), 15, false).allowed) {
+    res.setHeader('Retry-After', '900');
+    throttled();
+    return;
+  }
+
+  // 2. Normalize the identifier BEFORE it is used as a limiter key: "+231 770 000 101", "0770000101" and "+231770000101" are one account.
+  const phoneIdent = normalizeLiberianPhone(rawIdent);
+  const normalized = rawIdent.includes('@')
+    ? rawIdent.toLowerCase()
+    : phoneIdent.valid
+      ? phoneIdent.normalized
+      : normalizePhone(rawIdent);
+
+  // Protected demonstration environment: sign-in with synthetic test numbers only.
+  if (getAuthConfig().demoEnvironment && rawIdent && !normalized.startsWith(getAuthConfig().simulatedPrefix)) {
+    res.status(422).json({error: {code: 'PHONE_NOT_ALLOWED', message: `This is a demonstration site. Only synthetic test numbers that start with ${getAuthConfig().simulatedPrefix} can sign in. Please do not enter real details.`}});
+    return;
+  }
+
+  const userRow = rawIdent
+    ? (db
+        .prepare('SELECT id, password_hash, status, phone, phone_verified_at FROM users WHERE phone = ? OR lower(email) = ?')
+        .get(normalized, rawIdent.toLowerCase()) as
+        | {id: number; password_hash: string; status: string; phone: string; phone_verified_at: string | null}
+        | undefined)
+    : undefined;
+
+  // 3. Per (address + account) limit. An existing account is keyed by its id, so signing in by phone, by e-mail or with any spelling of the number
+  //    shares ONE allowance; an unknown identifier is keyed by its normalized form.
+  const subject = userRow ? `u${userRow.id}` : `n:${normalized}`;
+  const rateKey = hashIdentifier(`${req.ip || 'unknown'}:${subject}`);
   const rl = checkAndRecordRateLimit(rateKey, 'login_attempt', 8, 15, true);
   if (!rl.allowed) {
-    res.status(429).json({
-      error: {code: 'AUTH_THROTTLED', message: 'Too many login attempts. Please wait 15 minutes before trying again.'},
-    });
+    throttled();
     return;
   }
 
@@ -440,25 +500,23 @@ v1Router.post('/auth/login', (req: AuthedRequest, res) => {
     return;
   }
 
-  const phoneIdent = normalizeLiberianPhone(rawIdent);
-  const normalized = rawIdent.includes('@')
-    ? rawIdent.toLowerCase()
-    : phoneIdent.valid
-      ? phoneIdent.normalized
-      : normalizePhone(rawIdent);
-  const userRow = db
-    .prepare('SELECT id, password_hash, status, phone, phone_verified_at FROM users WHERE phone = ? OR lower(email) = ?')
-    .get(normalized, rawIdent.toLowerCase()) as
-    | {id: number; password_hash: string; status: string; phone: string; phone_verified_at: string | null}
-    | undefined;
+  // 4. Verify off the event loop. An unknown account is checked against a dummy hash so it costs the same time as a wrong password.
+  let passwordOk = false;
+  try {
+    passwordOk = userRow ? await verifyPasswordAsync(cleanPassword, userRow.password_hash) : await verifyAgainstDummy(cleanPassword);
+  } catch (e) {
+    if (e instanceof PasswordBusyError) { res.setHeader('Retry-After', '3'); res.status(503).json({error: {code: 'SERVER_BUSY', message: 'The server is busy. Please try again in a moment.'}}); return; }
+    throw e;
+  }
 
-  if (!userRow || !verifyPassword(cleanPassword, userRow.password_hash)) {
+  if (!userRow || !passwordOk) {
+    recordRateLimitAttempt(ipKey, 'login_ip_fail');
     writeAuditLog({
       actorUserId: null,
       actorRole: 'anonymous',
       action: 'login_failed',
       targetType: 'auth',
-      details: {identifierHash: hashIdentifier(rawIdent)},
+      details: {identifierHash: hashIdentifier(normalized || rawIdent)},
       ip: req.ip,
     });
     res.status(401).json({error: {code: 'INVALID_CREDENTIALS', message: 'Invalid phone/email or password.'}});
@@ -518,7 +576,7 @@ v1Router.post('/auth/login', (req: AuthedRequest, res) => {
   });
 
   res.json({user});
-});
+}));
 
 v1Router.post('/auth/logout', (req: AuthedRequest, res) => {
   if (req.user) {

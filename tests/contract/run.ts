@@ -38,8 +38,12 @@ async function main(): Promise<void> {
     await trust(jars.other, '+231771234002');
     const otherLogin = await req(jars.other, '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231771234002', password: 'SafePassword123'}});
     if (otherLogin.status !== 200) throw new Error('Could not sign in the contract second farmer.');
+    // Answering other people's expert requests is reserved for accounts with a PRIVATE password: the seeded demo expert's password is published (so it is an
+    // untrusted shared account). The contract plays a real extension officer, so the same seeded record gets a private password. Every recorded response is
+    // unchanged (same user, same name); the shared-account restriction itself is covered by tests/api.test.ts and tests/phase0.test.ts.
+    await backend.fixtures.setPassword('+231770000201', 'OfficerPrivate!2026x');
     await trust(jars.expert, '+231770000201');
-    const expertLogin = await req(jars.expert, '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231770000201', password: 'ExpertDemo!2026'}});
+    const expertLogin = await req(jars.expert, '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231770000201', password: 'OfficerPrivate!2026x'}});
     if (adminLogin.status !== 200 || expertLogin.status !== 200) throw new Error('Could not sign in the contract admin/expert users.');
 
     const ctx: Ctx = {jars, fx: backend.fixtures, ids: {}};

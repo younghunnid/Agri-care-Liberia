@@ -24,6 +24,8 @@ export interface RuntimeConfig {
   trustProxy: boolean | number | string[];
   trustProxyExplicit: boolean;
   enableDemoSeed: boolean;
+  /** Private passwords for the two synthetic demo accounts in a strict environment (never the published ones); null when not seeding there. */
+  demoSeedPasswords: {farmer: string; expert: string} | null;
   stagingDiagToken: string | null;
 }
 
@@ -100,6 +102,26 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env, appRoot:
   if (production && enableDemoSeed) problems.push('ENABLE_DEMO_SEED must not be set in production (it creates accounts with published passwords)');
   if (env.ENABLE_DEMO_SEED && !['0', '1', 'true', 'false', 'yes', 'no', 'on', 'off'].includes(env.ENABLE_DEMO_SEED.toLowerCase())) problems.push('ENABLE_DEMO_SEED must be 1 or 0');
 
+  // In a strict environment the synthetic demo accounts must NOT use the passwords published in the project documents: anyone could sign in as the
+  // "approved expert". They get private passwords from the environment, or are not created at all.
+  let demoSeedPasswords: {farmer: string; expert: string} | null = null;
+  const farmerPw = env.DEMO_FARMER_PASSWORD ?? '';
+  const expertPw = env.DEMO_EXPERT_PASSWORD ?? '';
+  if (strict) {
+    const published = ['FarmerDemo!2026', 'ExpertDemo!2026'];
+    const secrets = [env.SESSION_SECRET, env.OTP_HMAC_SECRET, env.DEMO_OPERATOR_TOKEN].filter(Boolean);
+    const okPw = (v: string) => v.length >= 12 && !weak(v) && !published.includes(v) && !secrets.includes(v);
+    if (enableDemoSeed) {
+      if (!okPw(farmerPw) || !okPw(expertPw) || farmerPw === expertPw) {
+        problems.push('ENABLE_DEMO_SEED in the demo environment requires DEMO_FARMER_PASSWORD and DEMO_EXPERT_PASSWORD (two different private passwords of at least 12 characters, never the published demo passwords)');
+      } else demoSeedPasswords = {farmer: farmerPw, expert: expertPw};
+    } else if (farmerPw || expertPw) {
+      problems.push('DEMO_FARMER_PASSWORD / DEMO_EXPERT_PASSWORD are only used together with ENABLE_DEMO_SEED in the demo environment');
+    }
+  } else if (farmerPw || expertPw) {
+    problems.push('DEMO_FARMER_PASSWORD / DEMO_EXPERT_PASSWORD apply only to the production-like demo environment (development uses the documented demo passwords)');
+  }
+
   // ---- staging diagnostics (explicit opt-in; remove after the staging tests)
   const diag = env.STAGING_DIAG_TOKEN ?? '';
   let stagingDiagToken: string | null = null;
@@ -110,7 +132,7 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env, appRoot:
   }
 
   if (problems.length) throw new RuntimeConfigError(problems);
-  return {production, demoEnvironment, strict, appRoot, dbPath, journalMode: jm === 'delete' ? 'delete' : 'wal', cookieMode, trustProxy: tp.value, trustProxyExplicit: tp.explicit, enableDemoSeed, stagingDiagToken};
+  return {production, demoEnvironment, strict, appRoot, dbPath, journalMode: jm === 'delete' ? 'delete' : 'wal', cookieMode, trustProxy: tp.value, trustProxyExplicit: tp.explicit, enableDemoSeed, demoSeedPasswords, stagingDiagToken};
 }
 
 let cached: RuntimeConfig | null = null;

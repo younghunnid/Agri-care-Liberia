@@ -88,6 +88,15 @@ export function mountTestFixtures(app: Express): void {
     res.status(201).json({id});
   });
 
+  /** Gives an existing user a new (private) password, e.g. to take a seeded demo account off its PUBLISHED password. Test-only. */
+  router.post('/users/set-password', (req, res) => {
+    const {phone, password} = req.body ?? {};
+    if (typeof phone !== 'string' || typeof password !== 'string' || password.length < 10) { res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'phone and a password of 10+ characters are required.'}}); return; }
+    const r = getDb().prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE phone = ?").run(hashPassword(password), phone);
+    if (!r.changes) { res.status(404).json({error: {code: 'NOT_FOUND', message: 'No such user.'}}); return; }
+    res.json({ok: true});
+  });
+
   // ---- test-only authentication adapters (narrow and explicit; mounted only with APP_ENV=test and the fixture token) ----
   /** Creates a REAL trusted-device row for an existing user and returns the raw cookie value, so a test can sign in through the normal login path. */
   router.post('/trusted-devices', async (req, res) => {

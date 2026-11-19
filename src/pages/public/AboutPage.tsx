@@ -21,7 +21,7 @@ export const AboutPage: React.FC = () => {
           <WifiOff className="w-6 h-6 text-[#16803C]" aria-hidden="true" />
           <h2 className="font-display text-lg font-bold">Offline-Ready Guides</h2>
           <p className="text-sm text-[#183B2B]/80 leading-relaxed">
-            Approved crop guides can be downloaded in advance and read without mobile data. We clearly state what works offline and what requires internet.
+            Published crop guides can be downloaded in advance and read without mobile data. We clearly state what works offline and what requires internet.
           </p>
         </div>
         <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 space-y-2.5">

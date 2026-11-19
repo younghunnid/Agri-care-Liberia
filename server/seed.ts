@@ -3,10 +3,11 @@ import {hashPassword} from './security.ts';
 import {seedPrototypeData} from './seedPrototype.ts';
 
 /**
- * `demoAccounts`: also create the synthetic demo farmer and approved demo expert, whose passwords are PUBLISHED in project documents. Off by default;
+ * `demoAccounts`: also create the synthetic demo farmer and approved demo expert. Without `demoPasswords` they get the passwords PUBLISHED in project documents
+ * (development/test only); strict environments pass private passwords. Off by default;
  * production refuses to start with it on (server/runtime.ts) and refuses to start if such accounts already exist (server/demoGuard.ts).
  */
-export function seedInitialData(opts: {demoAccounts?: boolean} = {}): void {
+export function seedInitialData(opts: {demoAccounts?: boolean; demoPasswords?: {farmer: string; expert: string}} = {}): void {
   const db = getDb();
 
   // 1. Seed Roles
@@ -411,7 +412,7 @@ If plenty plant (more than 1 out of 10) get twist-twist yellow leaf on the new t
       'Martha Kollie (Demo Farmer)',
       '+231770000101',
       'farmer.demo@agri-advisory.lr',
-      hashPassword('FarmerDemo!2026')
+      hashPassword(opts.demoPasswords?.farmer ?? 'FarmerDemo!2026')
     );
     const farmerId = Number(fRes.lastInsertRowid);
     db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(farmerId, farmerRole.id);
@@ -429,7 +430,7 @@ If plenty plant (more than 1 out of 10) get twist-twist yellow leaf on the new t
       'Samuel Tarnue (Demo Agronomist)',
       '+231770000201',
       'expert.demo@agri-advisory.lr',
-      hashPassword('ExpertDemo!2026')
+      hashPassword(opts.demoPasswords?.expert ?? 'ExpertDemo!2026')
     );
     const expertId = Number(eRes.lastInsertRowid);
     db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(expertId, expertRole.id);

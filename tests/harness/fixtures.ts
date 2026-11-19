@@ -30,6 +30,10 @@ export class Fixtures {
 
   // ---- authentication adapters (SMS verification milestone). Narrow, explicit, test-only; real login code paths still run. ----
   /** Creates a real trusted-device row for an existing user and returns the cookie value to put in a jar as `agri_device`. */
+  /** Replaces a user's password (e.g. moves a seeded demo account off its published password). */
+  async setPassword(phone: string, password: string): Promise<void> {
+    await this.ok('POST', '/users/set-password', {phone, password});
+  }
   async trustDevice(phone: string): Promise<string> {
     return (await this.ok<{token: string}>('POST', '/trusted-devices', {phone})).token;
   }

@@ -57,9 +57,22 @@ test('1. production configuration is validated and fails closed, naming settings
 
 test('2. the protected demo environment is as strict as production on secrets and storage, but may seed synthetic accounts; development stays easy', () => {
   const dir = tmp();
-  const demo = {...goodEnv(dir), NODE_ENV: 'production', APP_ENV: 'demo', ENABLE_DEMO_SEED: '1'} as NodeJS.ProcessEnv;
+  const demoBase = {...goodEnv(dir), NODE_ENV: 'production', APP_ENV: 'demo'} as NodeJS.ProcessEnv;
+  const demo = {...demoBase, ENABLE_DEMO_SEED: '1', DEMO_FARMER_PASSWORD: 'Private-Farmer-Pass-77', DEMO_EXPERT_PASSWORD: 'Private-Expert-Pass-88'} as NodeJS.ProcessEnv;
   const c = loadRuntimeConfig(demo, '/srv/app');
   assert.equal(c.demoEnvironment, true); assert.equal(c.strict, true); assert.equal(c.enableDemoSeed, true); assert.equal(c.cookieMode, 'first_party');
+  assert.deepEqual(c.demoSeedPasswords, {farmer: 'Private-Farmer-Pass-77', expert: 'Private-Expert-Pass-88'});
+  // Phase 0: the demo environment never seeds accounts with the PUBLISHED passwords.
+  for (const bad of [
+    {...demoBase, ENABLE_DEMO_SEED: '1'},
+    {...demo, DEMO_EXPERT_PASSWORD: 'ExpertDemo!2026'},
+    {...demo, DEMO_FARMER_PASSWORD: 'short'},
+    {...demo, DEMO_EXPERT_PASSWORD: 'Private-Farmer-Pass-77'},
+    {...demoBase, DEMO_FARMER_PASSWORD: 'Private-Farmer-Pass-77'},
+  ] as NodeJS.ProcessEnv[]) {
+    try { loadRuntimeConfig(bad, '/srv/app'); assert.fail('should refuse'); } catch (e) { assert.ok(e instanceof RuntimeConfigError); assert.match((e as Error).message, /DEMO_(FARMER|EXPERT)_PASSWORD/); assert.ok(!(e as Error).message.includes('Private-Farmer-Pass-77') && !(e as Error).message.includes('ExpertDemo')); }
+  }
+  assert.throws(() => loadRuntimeConfig({...goodEnv(dir), DEMO_FARMER_PASSWORD: 'Private-Farmer-Pass-77'} as NodeJS.ProcessEnv, '/srv/app'), RuntimeConfigError, 'production refuses demo passwords');
   assert.throws(() => loadRuntimeConfig({...demo, SESSION_SECRET: undefined} as NodeJS.ProcessEnv, '/srv/app'), RuntimeConfigError);
   assert.throws(() => loadRuntimeConfig({...demo, DB_PATH: '/srv/app/x.db'} as NodeJS.ProcessEnv, '/srv/app'), RuntimeConfigError);
   const dev = loadRuntimeConfig({} as NodeJS.ProcessEnv, '/srv/app');
@@ -265,7 +278,7 @@ test('9. staging diagnostics exist only with STAGING_DIAG_TOKEN, require it, and
 
 test('10. the protected demo environment boots as a labelled, isolated demonstration server (synthetic accounts only)', async () => {
   const dir = tmp();
-  const env = {...goodEnv(dir), APP_ENV: 'demo', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only', ENABLE_DEMO_SEED: '1'};
+  const env = {...goodEnv(dir), APP_ENV: 'demo', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only', ENABLE_DEMO_SEED: '1', DEMO_FARMER_PASSWORD: 'Private-Farmer-Pass-77', DEMO_EXPERT_PASSWORD: 'Private-Expert-Pass-88'};
   const s = await boot(env);
   try {
     const e = await (await fetch(`${s.base}/api/v1/environment`)).json() as Record<string, boolean>;

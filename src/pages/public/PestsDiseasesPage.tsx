@@ -242,10 +242,10 @@ export const PestsDiseasesPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Existing Approved SQLite Pest Guides */}
+      {/* Pest guides from the database (demonstration content, not professionally reviewed) */}
       <section className="space-y-4">
         <h2 className="font-display text-2xl font-bold text-[#183B2B]">
-          Detailed Approved Pest &amp; Disease Guides
+          Detailed Pest &amp; Disease Guides (demonstration content)
         </h2>
         {loading ? (
           <p className="text-center text-sm text-[#183B2B]/70 py-6">Loading detailed pest guides...</p>

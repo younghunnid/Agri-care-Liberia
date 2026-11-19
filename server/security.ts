@@ -3,6 +3,7 @@ import type {CookieOptions, NextFunction, Request, Response} from 'express';
 import {getDb} from './db.ts';
 import type {UserRole} from './constants.ts';
 import {getRuntimeConfig} from './runtime.ts';
+import {passwordConcurrency, passwordQueueMax, WRITE_LIMITS, writeLimitScale, type WriteKind} from './limits.ts';
 
 const EPHEMERAL_SECRET = crypto.randomBytes(32).toString('hex');
 
@@ -42,6 +43,7 @@ export function hashPassword(password: string): string {
   return `${salt}:${derived}`;
 }
 
+/** Synchronous check. Only for start-up and operator scripts; request handlers use verifyPasswordAsync so the event loop is never blocked. */
 export function verifyPassword(password: string, storedHash: string): boolean {
   const parts = storedHash.split(':');
   if (parts.length !== 2) return false;
@@ -50,6 +52,71 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   const expected = Buffer.from(expectedHex, 'hex');
   if (derived.length !== expected.length) return false;
   return crypto.timingSafeEqual(derived, expected);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Non-blocking password hashing. scryptSync holds the single Node.js thread for ~80 ms per call, so a burst of sign-ins froze every other request.
+// crypto.scrypt runs on the libuv worker pool; a small semaphore bounds how many run at once and how many may wait, so a flood is answered "busy"
+// (503) instead of exhausting memory or the worker pool. Same algorithm and parameters as before: existing hashes verify unchanged.
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+export class PasswordBusyError extends Error {
+  constructor() { super('Too many password checks in progress.'); this.name = 'PasswordBusyError'; }
+}
+
+let hashActive = 0;
+const hashWaiters: (() => void)[] = [];
+
+async function withHashSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (hashActive < passwordConcurrency()) {
+    hashActive++;
+  } else {
+    if (hashWaiters.length >= passwordQueueMax()) throw new PasswordBusyError();
+    await new Promise<void>((resolve) => hashWaiters.push(resolve)); // the slot is handed to us by the releaser (hashActive stays counted)
+  }
+  try {
+    return await fn();
+  } finally {
+    const next = hashWaiters.shift();
+    if (next) next(); else hashActive--;
+  }
+}
+
+function scryptAsync(password: string, salt: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => crypto.scrypt(password, salt, 64, (err, key) => (err ? reject(err) : resolve(key))));
+}
+
+export function hashPasswordAsync(password: string): Promise<string> {
+  return withHashSlot(async () => {
+    const salt = crypto.randomBytes(16).toString('hex');
+    return `${salt}:${(await scryptAsync(password, salt)).toString('hex')}`;
+  });
+}
+
+export function verifyPasswordAsync(password: string, storedHash: string): Promise<boolean> {
+  const parts = storedHash.split(':');
+  if (parts.length !== 2) return Promise.resolve(false);
+  const [salt, expectedHex] = parts;
+  return withHashSlot(async () => {
+    const derived = await scryptAsync(password, salt);
+    const expected = Buffer.from(expectedHex, 'hex');
+    return derived.length === expected.length && crypto.timingSafeEqual(derived, expected);
+  });
+}
+
+let dummyHash: Promise<string> | null = null;
+/**
+ * Checks a password against a throw-away hash so that "no such account" costs the same time as "wrong password" (account-enumeration timing).
+ * Always returns false.
+ */
+export async function verifyAgainstDummy(password: string): Promise<false> {
+  dummyHash ??= hashPasswordAsync(crypto.randomBytes(24).toString('hex'));
+  await verifyPasswordAsync(password, await dummyHash);
+  return false;
+}
+
+/** Express 4 does not catch rejected promises: this forwards them to the error handler (JSON 500, no internals). */
+export function asyncRoute<R extends Request = Request>(fn: (req: R, res: Response, next: NextFunction) => Promise<unknown>) {
+  return (req: R, res: Response, next: NextFunction): void => { fn(req, res, next).catch(next); };
 }
 
 const OWNER_KEY_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
@@ -307,6 +374,22 @@ export function requireRole(...allowedRoles: UserRole[]) {
   };
 }
 
+/** Longest window any limiter uses is 24 h (anonymous AI quota); rows older than this are useless and would grow the database without bound. */
+const RATE_ROW_RETENTION_HOURS = 25;
+let lastPrune = 0;
+/** Test hook: allow the next rate-limit call to prune immediately. */
+export function resetRateLimitPruneForTests(): void { lastPrune = 0; }
+function pruneRateLimitRows(): void {
+  const now = Date.now();
+  if (now - lastPrune < 60_000) return; // at most once a minute, and only when the limiter is actually used
+  lastPrune = now;
+  try {
+    getDb().prepare("DELETE FROM rate_limit_attempts WHERE datetime(created_at) < datetime('now', ?)").run(`-${RATE_ROW_RETENTION_HOURS} hours`);
+  } catch {
+    /* pruning must never break a request */
+  }
+}
+
 export function checkAndRecordRateLimit(
   rateKey: string,
   actionType: string,
@@ -315,6 +398,7 @@ export function checkAndRecordRateLimit(
   recordAttempt = true
 ): {allowed: boolean; remaining: number; count: number} {
   const db = getDb();
+  pruneRateLimitRows();
   const row = db
     .prepare(
       `SELECT COUNT(*) as cnt FROM rate_limit_attempts
@@ -338,6 +422,56 @@ export function checkAndRecordRateLimit(
     remaining: Math.max(0, maxAttempts - (count + (recordAttempt ? 1 : 0))),
     count,
   };
+}
+
+/** Records one attempt without checking (used to count only FAILED sign-ins against the per-address limit). */
+export function recordRateLimitAttempt(rateKey: string, actionType: string): void {
+  getDb().prepare('INSERT INTO rate_limit_attempts (rate_key, action_type) VALUES (?, ?)').run(rateKey, actionType);
+}
+
+/**
+ * Per-hour cap for a public write endpoint: per account for signed-in users, per network address for anonymous callers. Mount it AFTER
+ * idempotent(): a replay of an already-accepted request (offline sync retry) is answered from the stored result and does not use up the allowance.
+ */
+export function writeLimit(kind: WriteKind) {
+  return (req: AuthedRequest, res: Response, next: NextFunction): void => {
+    const cfg = WRITE_LIMITS[kind];
+    const scale = writeLimitScale();
+    const actor = req.user ? `user:${req.user.id}` : `ip:${req.ip || 'unknown'}`;
+    const max = (req.user ? cfg.userPerHour : cfg.anonPerHour) * scale;
+    const rl = checkAndRecordRateLimit(hashIdentifier(`write:${kind}:${actor}`), `write_${kind}`, max, 60, true);
+    if (!rl.allowed) {
+      res.setHeader('Retry-After', '900');
+      res.status(429).json({error: {code: 'RATE_LIMITED', message: 'Too many submissions from this device or account. Please wait a while and try again.'}});
+      return;
+    }
+    next();
+  };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Shared demonstration accounts. The two seeded demo accounts have PUBLISHED passwords (project documents). Whoever can reach a server where those
+// work holds a "farmer" and an "approved expert" login. They are therefore treated as UNTRUSTED actors: they must never read or answer other
+// people's expert requests, no matter which role they hold. (Strict environments - production and the protected demo - never create them with the
+// published passwords at all; this guard covers development/test servers and any database that was seeded the old way.)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+export const PUBLISHED_DEMO_ACCOUNTS: readonly {phone: string; password: string}[] = [
+  {phone: '+231770000101', password: 'FarmerDemo!2026'},
+  {phone: '+231770000201', password: 'ExpertDemo!2026'},
+];
+const publishedCache = new Map<number, {hash: string; published: boolean}>();
+
+/** True when this user is one of the shared demo accounts AND still has the published password. Cached per (user, password hash). */
+export function usesPublishedDemoPassword(userId: number): boolean {
+  const row = getDb().prepare('SELECT phone, password_hash FROM users WHERE id = ?').get(userId) as {phone: string; password_hash: string} | undefined;
+  if (!row) return false;
+  const known = PUBLISHED_DEMO_ACCOUNTS.find((a) => a.phone === row.phone);
+  if (!known) return false;
+  const hit = publishedCache.get(userId);
+  if (hit && hit.hash === row.password_hash) return hit.published;
+  const published = verifyPassword(known.password, row.password_hash); // one-time cost per account/password, only for the two documented phones
+  publishedCache.set(userId, {hash: row.password_hash, published});
+  return published;
 }
 
 export function writeAuditLog(params: {

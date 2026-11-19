@@ -1,3 +1,4 @@
+import {reviewLine} from '../../lib/adviceLabels';
 import React, {useEffect, useState} from 'react';
 import {Link, useParams} from 'react-router-dom';
 import {
@@ -230,6 +231,11 @@ export const GuideDetailPage: React.FC = () => {
               {readingOfflineCopy ? ' · Reading Saved Offline Copy' : ''}
               {guide.isSampleDemo ? ' · Sample Demonstration Content' : ''}
             </p>
+            {!reviewLine(guide).reviewed && (
+              <p role="note" data-testid="review-badge" className="inline-block rounded-xl bg-[#FFF1C2] px-3 py-1.5 text-xs sm:text-sm font-bold text-[#4A2F00]">
+                {reviewLine(guide).badge}
+              </p>
+            )}
             <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#183B2B] leading-tight">
               {guide.title}
             </h1>
@@ -298,10 +304,8 @@ export const GuideDetailPage: React.FC = () => {
             <p>
               <strong>Source Attribution:</strong> {guide.sourceAttribution}
             </p>
-            <p>
-              <strong>Review Status:</strong> {guide.reviewStatus}
-              {guide.reviewedByName ? ` · Reviewer: ${guide.reviewedByName}` : ''}
-              {guide.lastReviewedAt ? ` · Last reviewed: ${guide.lastReviewedAt}` : ''}
+            <p data-testid="review-line">
+              <strong>Review:</strong> {reviewLine(guide).badge}. {reviewLine(guide).text}
             </p>
             {guide.translationReviewedBy && (
               <p>

@@ -26,7 +26,17 @@ async function loginJar(identifier: string, password: string): Promise<CookieJar
   assert.equal(res.status, 200, `login failed for ${identifier}`);
   return jar;
 }
+/** The SHARED demo expert: its password is published in the project documents, so anyone can sign in as it. Treated as an untrusted account. */
 const expertJar = () => loginJar('+231770000201', 'ExpertDemo!2026');
+let cachedPrivateExpert: Promise<CookieJar> | null = null;
+/** An approved expert whose password is private (what a real extension officer is). */
+function privateExpertJar(): Promise<CookieJar> {
+  cachedPrivateExpert ??= (async () => {
+    await fx.createUser({displayName: 'Private Extension Officer', phone: '+231775555556', password: 'ExpertPrivate!2026x', roles: ['expert'], expertStatus: 'approved'});
+    return loginJar('+231775555556', 'ExpertPrivate!2026x');
+  })();
+  return cachedPrivateExpert;
+}
 let cachedAdmin: Promise<CookieJar> | null = null;
 function adminJar(): Promise<CookieJar> {
   cachedAdmin ??= (async () => {
@@ -423,7 +433,7 @@ test('9. Demo Expert Requests, Simulated Expert reply, and Management summary se
     assignedExpertName: 'Dr. Samuel Tarr (Simulated Extension Officer)',
   };
   assert.equal((await req(jar, `/api/v1/expert-requests/demo/${created.data.request.id}/reply`, {method: 'PATCH', body: replyBody})).status, 401);
-  const replied = await req(await expertJar(), `/api/v1/expert-requests/demo/${created.data.request.id}/reply`, {method: 'PATCH', body: replyBody});
+  const replied = await req(await privateExpertJar(), `/api/v1/expert-requests/demo/${created.data.request.id}/reply`, {method: 'PATCH', body: replyBody});
   assert.equal(replied.status, 200);
   assert.equal(replied.data.request.status, 'Answered');
   assert.notEqual(replied.data.request.assigned_expert_name, 'Dr. Samuel Tarr (Simulated Extension Officer)');
@@ -1046,8 +1056,13 @@ test('28. Only approved experts and administrators can reply; there is no spoofa
   assert.equal(stillOpen.status, 'Submitted');
   assert.equal(stillOpen.expert_reply, '');
 
-  // A real approved expert can; the displayed name comes from the account, not the request body.
-  const expert = await expertJar();
+  // The SHARED demo expert (published password) can NOT answer a real visitor's request, even though it is an approved expert.
+  const shared = await expertJar();
+  assert.equal((await req(shared, url, {method: 'PATCH', body})).status, 403);
+  assert.equal((await fx.expertRequest(id)).expert_reply, '', 'the shared demo account changed nothing');
+
+  // A real approved expert (private password) can; the displayed name comes from the account, not the request body.
+  const expert = await privateExpertJar();
   const ok = await req(expert, url, {method: 'PATCH', body});
   assert.equal(ok.status, 200);
   assert.equal(ok.data.request.status, 'Answered');
@@ -1062,7 +1077,7 @@ test('28. Only approved experts and administrators can reply; there is no spoofa
   assert.match(seen.data.requests.find((r: {id: number}) => r.id === id).expert_reply, /Admin follow-up/);
 });
 
-test('29. Experts and admins see the full queue; signed-in farmers see only their own; no credentials ever returned', async () => {
+test('29. Private experts and admins see the full queue; the shared demo expert and signed-in farmers do not; no credentials ever returned', async () => {
   const farmer = await farmerJar('+231776666662', 'Account Farmer');
   const created = await req(farmer, '/api/v1/expert-requests/demo', {method: 'POST', body: expertBody('acct-q', {requesterKey: undefined})});
   assert.equal(created.status, 201);
@@ -1074,13 +1089,23 @@ test('29. Experts and admins see the full queue; signed-in farmers see only thei
   const otherView = await req(other, '/api/v1/expert-requests/demo');
   assert.equal(otherView.data.requests.some((r: {id: number}) => r.id === created.data.request.id), false);
 
-  for (const jar of [await expertJar(), await adminJar()]) {
+  for (const jar of [await privateExpertJar(), await adminJar()]) {
     const view = await req(jar, '/api/v1/expert-requests/demo');
     assert.ok(view.data.requests.some((r: {id: number}) => r.id === created.data.request.id));
     assert.equal(view.data.requests.every((r: {can_reply: boolean}) => r.can_reply === true), true);
     const text = JSON.stringify(view.data);
     for (const f of SENSITIVE) assert.equal(text.includes(f), false, `responder view leaks ${f}`);
   }
+
+  // Phase 0: the shared demo expert (published password) sees only the fictional samples and can answer only those.
+  const shared = await req(await expertJar(), '/api/v1/expert-requests/demo');
+  assert.equal(shared.status, 200);
+  assert.equal(shared.data.requests.some((r: {id: number}) => r.id === created.data.request.id), false, 'shared demo expert must not see a real visitor request');
+  assert.ok(shared.data.requests.length > 0 && shared.data.requests.every((r: {id: number; can_reply: boolean}) => r.can_reply === true), 'it can still work on the fictional samples');
+  const sharedText = JSON.stringify(shared.data);
+  assert.ok(!sharedText.includes('Private question acct-q'));
+  const sample = shared.data.requests[0];
+  assert.equal((await req(await expertJar(), `/api/v1/expert-requests/demo/${sample.id}/reply`, {method: 'PATCH', body: {expertReply: 'Sample reply for the demonstration.', status: 'Answered'}})).status, 200);
 });
 
 // ---------------------------------------------------------------- language lab review and demo reset

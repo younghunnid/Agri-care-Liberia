@@ -4,8 +4,8 @@ import {getDb} from '../db.ts';
 import {getAuthConfig} from '../authConfig.ts';
 import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
 import {
-  type AuthedRequest, SESSION_COOKIE_NAME, checkAndRecordRateLimit, clearCookieOptions, cookieOptions, hashIdentifier, hashPassword, loadUserById, requireAuth, signSessionToken,
-  verifyPassword, writeAuditLog,
+  type AuthedRequest, PasswordBusyError, SESSION_COOKIE_NAME, asyncRoute, checkAndRecordRateLimit, clearCookieOptions, cookieOptions, hashIdentifier, hashPasswordAsync, loadUserById, requireAuth, signSessionToken,
+  verifyPasswordAsync, writeAuditLog,
 } from '../security.ts';
 import {
   CHALLENGE_COOKIE, CLAIM_COOKIE, DEVICE_COOKIE, bumpSessionVersion, challengeCookieOptions, createTrustedDevice, deviceCookieOptions, findTrustedDevice, getSessionVersion,
@@ -28,6 +28,8 @@ const DUMMY_PHONE = '+231000000000'; // sentinel for challenges that never send 
 const GRANT_MS = 10 * 60 * 1000;
 
 const ip = (req: Request): string => req.ip || 'unknown';
+/** Password hashing is capped (see security.ts): a flood is answered "busy" rather than queued without limit. */
+const busy = (res: Response): void => { res.setHeader('Retry-After', '3'); err(res, 503, 'SERVER_BUSY', 'The server is busy. Please try again in a moment.'); };
 const err = (res: Response, status: number, code: string, message: string, extra: Record<string, unknown> = {}): void => { res.status(status).json({error: {code, message, ...extra}}); };
 const demo = (): boolean => getSmsProvider().name === 'simulated';
 /** The in-website Demo SMS Inbox is on (development / protected demo environment only). */
@@ -177,7 +179,7 @@ authSecurityRouter.post('/auth/forgot-password/verify', (req, res) => {
   res.json({ok: true, graceSeconds: GRANT_MS / 1000});
 });
 
-authSecurityRouter.post('/auth/reset-password', (req, res) => {
+authSecurityRouter.post('/auth/reset-password', asyncRoute(async (req, res) => {
   const {publicId, secret} = challengeFrom(req);
   const newPassword = req.body?.newPassword;
   const grant = peekVerified(publicId, secret, 'password_reset', GRANT_MS);
@@ -185,12 +187,14 @@ authSecurityRouter.post('/auth/reset-password', (req, res) => {
   const user = userRowById(grant.user_id);
   const problem = passwordProblem(newPassword, {phone: user?.phone, displayName: user?.display_name});
   if (problem) { err(res, 400, 'WEAK_PASSWORD', problem); return; }
+  let newHash: string;
+  try { newHash = await hashPasswordAsync(newPassword as string); } catch (e) { if (e instanceof PasswordBusyError) { busy(res); return; } throw e; } // before the one-time grant is consumed
   const won = consumeVerified(publicId, secret, 'password_reset', GRANT_MS); // exactly one caller can win this
   if (!won || !user) { err(res, 400, 'RESET_NOT_VERIFIED', 'Please verify the code first, or start the reset again.'); return; }
   const db = getDb();
   db.exec('BEGIN IMMEDIATE;');
   try {
-    db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(hashPassword(newPassword as string), user.id);
+    db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(newHash, user.id);
     db.prepare("UPDATE password_resets SET used_at = datetime('now') WHERE user_id = ? AND used_at IS NULL").run(user.id);
     bumpSessionVersion(user.id);      // every existing session ends
     revokeAllDevices(user.id);        // every trusted device must verify again
@@ -202,7 +206,7 @@ authSecurityRouter.post('/auth/reset-password', (req, res) => {
   res.clearCookie(SESSION_COOKIE_NAME, clearCookieOptions(req, true));
   res.clearCookie(DEVICE_COOKIE, clearCookieOptions(req, true));
   res.json({ok: true, message: 'Password updated. Please sign in with your new password.'}); // never signs the user in
-});
+}));
 
 // =================================================================== phone ownership claim (proof of possession releases an unverified claim)
 authSecurityRouter.post('/auth/phone-claim/start', async (req, res) => {
@@ -276,24 +280,28 @@ authSecurityRouter.post('/account/devices/revoke-all', requireAuth, (req: Authed
   res.json({ok: true, revoked: n, signedOut: true});
 });
 
-authSecurityRouter.post('/account/password', requireAuth, (req: AuthedRequest, res) => {
+authSecurityRouter.post('/account/password', requireAuth, asyncRoute(async (req: AuthedRequest, res) => {
   const uid = req.user!.id;
   const rl = checkAndRecordRateLimit(hashIdentifier(`pw:${uid}:${ip(req)}`), 'password_change', 5, 15, true);
   if (!rl.allowed) { err(res, 429, 'RATE_LIMITED', 'Too many attempts. Please wait 15 minutes.'); return; }
   const {currentPassword, newPassword} = req.body ?? {};
   const row = getDb().prepare('SELECT password_hash, phone, display_name FROM users WHERE id = ?').get(uid) as {password_hash: string; phone: string; display_name: string};
-  if (typeof currentPassword !== 'string' || !verifyPassword(currentPassword, row.password_hash)) { err(res, 401, 'INVALID_CREDENTIALS', 'Your current password is not correct.'); return; }
+  let currentOk = false;
+  try { currentOk = typeof currentPassword === 'string' && (await verifyPasswordAsync(currentPassword, row.password_hash)); } catch (e) { if (e instanceof PasswordBusyError) { busy(res); return; } throw e; }
+  if (!currentOk) { err(res, 401, 'INVALID_CREDENTIALS', 'Your current password is not correct.'); return; }
   const problem = passwordProblem(newPassword, {phone: row.phone, displayName: row.display_name});
   if (problem) { err(res, 400, 'WEAK_PASSWORD', problem); return; }
+  let newHash: string;
+  try { newHash = await hashPasswordAsync(newPassword); } catch (e) { if (e instanceof PasswordBusyError) { busy(res); return; } throw e; }
   const device = findTrustedDevice(uid, req.cookies?.[DEVICE_COOKIE]);
-  getDb().prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(hashPassword(newPassword), uid);
+  getDb().prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(newHash, uid);
   bumpSessionVersion(uid);
   revokeAllDevices(uid, device?.id ?? null); // other devices must verify again; this one stays trusted
   supersedeAllForUser(uid);
   issueSession(req, res, uid);
   writeAuditLog({actorUserId: uid, actorRole: 'user', action: 'password_changed', targetType: 'user', targetId: uid, ip: req.ip});
   res.json({ok: true, message: 'Password changed. Your other devices were signed out.'});
-});
+}));
 
 authSecurityRouter.post('/account/phone/confirm/start', requireAuth, async (req: AuthedRequest, res) => {
   const u = userRowById(req.user!.id)!;
@@ -326,7 +334,9 @@ authSecurityRouter.post('/account/phone/change/start', requireAuth, async (req: 
   if (!rl.allowed) { err(res, 429, 'RATE_LIMITED', 'Too many attempts. Please wait 15 minutes.'); return; }
   const u = userRowById(uid)!;
   const row = getDb().prepare('SELECT password_hash FROM users WHERE id = ?').get(uid) as {password_hash: string};
-  if (typeof req.body?.currentPassword !== 'string' || !verifyPassword(req.body.currentPassword, row.password_hash)) { err(res, 401, 'INVALID_CREDENTIALS', 'Your current password is not correct.'); return; }
+  let currentOk = false;
+  try { currentOk = typeof req.body?.currentPassword === 'string' && (await verifyPasswordAsync(req.body.currentPassword, row.password_hash)); } catch (e) { if (e instanceof PasswordBusyError) { busy(res); return; } throw e; }
+  if (!currentOk) { err(res, 401, 'INVALID_CREDENTIALS', 'Your current password is not correct.'); return; }
   const p = normalizeLiberianPhone(typeof req.body?.newPhone === 'string' ? req.body.newPhone : '');
   if (!p.valid) { err(res, 400, 'VALIDATION_ERROR', p.error || 'Enter a valid Liberian phone number.'); return; }
   if (p.normalized === u.phone) { err(res, 400, 'VALIDATION_ERROR', 'That is already your number.'); return; }
