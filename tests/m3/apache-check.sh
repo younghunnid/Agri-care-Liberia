@@ -12,6 +12,21 @@ T="$(mktemp -d)"; trap 'kill "$(cat "$T/httpd.pid" 2>/dev/null)" 2>/dev/null || 
 mkdir -p "$T/htdocs" "$T/cgi" "$T/logs"
 ln -s "$ROOT/backend-php/public" "$T/htdocs/api"          # same shape as public_html/api on Hostinger
 echo "<!doctype html><title>spa</title>" > "$T/htdocs/index.html"
+# httpoxy probes (behavioural). Three directories, each with a CGI script that dumps the environment it receives and a PHP probe:
+#   poxy_on   = the REAL Proxy-header rule taken from backend-php/public/.htaccess
+#   mech_on   = the SAME rule form applied to a harmless stand-in header (X-Poxy-Test)  -> proves the directive form works inside .htaccess
+#   mech_off  = no rule (positive control for the stand-in: the header MUST reach the CGI environment, otherwise the test could not detect a broken rule)
+# Apache >= 2.4.25 already refuses to pass "Proxy" into CGI, so the real header cannot be used as its own positive control on this server.
+POXY_RULE="$(grep -E '^[[:space:]]*RequestHeader[[:space:]]+unset[[:space:]]+Proxy' "$ROOT/backend-php/public/.htaccess" || true)"
+for d in poxy_on mech_on mech_off; do
+  mkdir -p "$T/htdocs/$d"
+  printf 'Options +ExecCGI\nAddHandler cgi-script .cgi\n' > "$T/htdocs/$d/.htaccess"
+  printf '#!/bin/sh\necho "Content-Type: text/plain"\necho\nenv | grep -iE "^HTTP_(PROXY|X_POXY_TEST)=" || echo "absent"\n' > "$T/htdocs/$d/env.cgi"
+  chmod +x "$T/htdocs/$d/env.cgi"
+  printf '<?php header("Content-Type: text/plain"); echo "getenv=" . var_export(getenv("HTTP_PROXY"), true) . " server=" . var_export($_SERVER["HTTP_PROXY"] ?? null, true);\n' > "$T/htdocs/$d/probe.php"
+done
+[ -n "$POXY_RULE" ] && printf '<IfModule mod_headers.c>\n%s\n</IfModule>\n' "$POXY_RULE" >> "$T/htdocs/poxy_on/.htaccess"
+[ -n "$POXY_RULE" ] && printf '<IfModule mod_headers.c>\n%s\n</IfModule>\n' "$(printf '%s' "$POXY_RULE" | sed 's/Proxy/X-Poxy-Test/')" >> "$T/htdocs/mech_on/.htaccess"
 cat > "$T/cgi/php" <<SH
 #!/bin/sh
 exec "$PHPCGI" -d cgi.force_redirect=0 -d display_errors=0 "\$@"
@@ -80,4 +95,16 @@ chk "nosniff header present"                         1   "$(hdr $B/api/v1/health
 chk "no X-Powered-By"                                0   "$(hdr $B/api/v1/health | grep -ci '^x-powered-by')"
 chk "Server version hidden by config (ServerSignature Off)" 0 "$(body $B/api/v1/nope | grep -ci 'apache/')"
 chk "SPA root outside /api untouched (index.html)"   200 "$(code $B/)"
+echo "-- httpoxy (behavioural): a client 'Proxy:' header must never become HTTP_PROXY"
+chk "rule present in the shipped .htaccess"                   1   "$([ -n "$POXY_RULE" ] && echo 1 || echo 0)"
+chk "CONTROL: without a rule the stand-in header reaches the CGI environment (test is sensitive)" "HTTP_X_POXY_TEST=leaked" "$(curl -s -H 'X-Poxy-Test: leaked' $B/mech_off/env.cgi | tr -d '\r')"
+chk "the shipped rule FORM removes the stand-in header inside .htaccess" "absent" "$(curl -s -H 'X-Poxy-Test: leaked' $B/mech_on/env.cgi | tr -d '\r')"
+chk "real 'Proxy:' header never reaches the CGI environment under the shipped rule" "absent" "$(curl -s -H 'Proxy: http://127.0.0.1:9/' $B/poxy_on/env.cgi | tr -d '\r')"
+echo "  info this Apache $("$HTTPD" -v | sed -n 's/.*Apache\/\([0-9.]*\).*/\1/p') $([ "$(curl -s -H 'Proxy: http://127.0.0.1:9/' $B/mech_off/env.cgi | tr -d '\r')" = absent ] && echo 'ignores the Proxy header by itself (>= 2.4.25); the rule is defence in depth for older Apache/LiteSpeed' || echo 'passes the Proxy header: the rule is REQUIRED')"
+chk "PHP under the shipped rule sees neither getenv nor \$_SERVER" "getenv=false server=NULL" "$(curl -s -H 'Proxy: http://127.0.0.1:9/' $B/poxy_on/probe.php)"
+chk "real API still works when a Proxy header is sent"        200 "$(code -H 'Proxy: http://127.0.0.1:9/' $B/api/v1/health)"
+BS="$(PHP_BIN_FOR_CLI=${PHP_CLI_BIN:-php}; env -i PATH="$PATH" HTTP_PROXY=http://127.0.0.1:9/ "${PHP_CLI_BIN:-php}" -r '$_SERVER["REQUEST_URI"]="/api/v1/x"; $_SERVER["REQUEST_METHOD"]="GET"; $_SERVER["HTTP_PROXY"]="http://127.0.0.1:9/"; require $argv[1]."/app/autoload.php"; ob_start(); \Agri\Bootstrap::run($argv[1]); ob_end_clean(); echo "getenv=" . var_export(getenv("HTTP_PROXY"), true) . " server=" . var_export($_SERVER["HTTP_PROXY"] ?? null, true);' "$ROOT/backend-php" 2>/dev/null)"
+chk "bootstrap itself removes HTTP_PROXY from env and \$_SERVER (defence in depth)" "getenv=false server=NULL" "$BS"
+DIS="$(env -i PATH="$PATH" "${PHP_CLI_BIN:-php}" -d disable_functions=putenv,umask,header_remove -r '$_SERVER["REQUEST_URI"]="/api/v1/x"; $_SERVER["REQUEST_METHOD"]="GET"; require $argv[1]."/app/autoload.php"; ob_start(); \Agri\Bootstrap::run($argv[1]); $o = ob_get_clean(); echo (str_contains($o, "SERVER_MISCONFIGURED") ? "clean-json-error" : "unexpected: " . substr($o, 0, 80));' "$ROOT/backend-php" 2>&1)"
+chk "hosts that disable putenv/umask/header_remove still get a clean JSON error, not a crash" "clean-json-error" "$DIS"
 [ "$fail" = 0 ] && echo "Apache check: all passed" || { echo "Apache check: FAILED"; tail -5 "$T/logs/error.log" 2>/dev/null; exit 1; }

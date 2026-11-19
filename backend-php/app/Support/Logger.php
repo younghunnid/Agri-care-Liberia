@@ -43,9 +43,9 @@ final class Logger
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR) . "\n";
         if ($this->dir !== '' && (is_dir($this->dir) || @mkdir($this->dir, 0700, true))) {
             $file = rtrim($this->dir, '/') . '/app-' . gmdate('Y-m-d') . '.log';
-            $old = umask(0077); // the file is created 0600 from the start (no window where it is world-readable)
+            $old = function_exists('umask') ? umask(0077) : null; // the file is created 0600 from the start (no window where it is world-readable)
             $ok = @file_put_contents($file, $line, FILE_APPEND | LOCK_EX) !== false;
-            umask($old);
+            if ($old !== null) umask($old);
             if ($ok) { @chmod($file, 0600); return; }
         }
         error_log(rtrim($line));

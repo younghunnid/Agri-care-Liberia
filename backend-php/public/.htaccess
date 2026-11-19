@@ -5,8 +5,9 @@ AcceptPathInfo Off
 ServerSignature Off
 
 <IfModule mod_headers.c>
-  # httpoxy: never let a client "Proxy:" header reach PHP as HTTP_PROXY
-  RequestHeader unset Proxy early
+  # httpoxy: never let a client "Proxy:" header reach PHP as HTTP_PROXY.
+  # NOTE: the "early" flag is silently ignored inside .htaccess (verified), so it must NOT be used here; use it only in a server-level config.
+  RequestHeader unset Proxy
   # Apache-level responses (static 404/403/500) still carry the basics
   Header always set X-Content-Type-Options "nosniff"
   Header always set Cache-Control "no-store"

@@ -19,13 +19,16 @@ final class Bootstrap
 {
     public static function run(string $root, ?Env $env = null): void
     {
-        ini_set('display_errors', '0');
-        ini_set('display_startup_errors', '0');
-        ini_set('log_errors', '1');
-        ini_set('html_errors', '0');
+        // Shared hosts sometimes disable functions (a disabled function is "undefined"); none of these hardening calls may be fatal.
+        if (function_exists('ini_set')) {
+            ini_set('display_errors', '0');
+            ini_set('display_startup_errors', '0');
+            ini_set('log_errors', '1');
+            ini_set('html_errors', '0');
+        }
         error_reporting(E_ALL);
-        header_remove('X-Powered-By');
-        putenv('HTTP_PROXY'); // httpoxy: under CGI a client 'Proxy:' header would become this variable and redirect any outbound HTTP (M7+)
+        if (function_exists('header_remove')) header_remove('X-Powered-By');
+        if (function_exists('putenv')) putenv('HTTP_PROXY'); // (shared hosts often disable putenv; a warning there would become a 500) httpoxy: under CGI a client 'Proxy:' header would become this variable and redirect any outbound HTTP (M7+)
         unset($_SERVER['HTTP_PROXY']);
         $requestId = bin2hex(random_bytes(8));
         $logger = new Logger(self::fallbackLogDir($root), $requestId);

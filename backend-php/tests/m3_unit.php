@@ -202,7 +202,7 @@ t('hygiene flags a world-readable .env, a log dir and an app dir inside the web 
     $cfgDev = $load($prod(['APP_ENV' => 'development', 'LOG_DIR' => $d . '/app/logs'])); chmod($d . '/.env', 0644); ok(!str_contains(implode('|', Agri\Bootstrap::hygiene($cfgDev, $d, '')), '.env is readable'), 'development is not nagged');
 });
 t('front controller refuses PHP < 8.2 with a clean JSON error', function () use ($root) { $src = (string)file_get_contents($root . '/public/index.php'); ok(str_contains($src, 'PHP_VERSION_ID < 80200') && strpos($src, 'PHP_VERSION_ID') < strpos($src, 'autoload.php')); });
-t('httpoxy variable is removed at boot', function () use ($root) { $src = (string)file_get_contents($root . '/app/Bootstrap.php'); ok(str_contains($src, "putenv('HTTP_PROXY')")); $ht = (string)file_get_contents($root . '/public/.htaccess'); ok(str_contains($ht, 'RequestHeader unset Proxy early')); });
+t('httpoxy variable is removed at boot', function () use ($root) { $src = (string)file_get_contents($root . '/app/Bootstrap.php'); ok(str_contains($src, "putenv('HTTP_PROXY')")); $ht = (string)file_get_contents($root . '/public/.htaccess'); ok(preg_match('/^\s*RequestHeader\s+unset\s+Proxy\s*$/m', $ht) === 1 && !preg_match('/unset\s+Proxy\s+early/', $ht), 'the early flag is ineffective in .htaccess and must not be used'); });
 
 echo "\nM3 unit tests: $pass passed, $fail failed\n";
 exit($fail ? 1 : 0);
