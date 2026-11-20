@@ -31,6 +31,8 @@ import {
   Sprout,
   Store,
   UserCheck,
+  UserPlus,
+  UserRound,
   Users,
   Volume2,
   VolumeX,
@@ -152,33 +154,62 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
           </Link>
 
           {/* Zone 2: 5 concise single-line desktop links */}
-          <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-6">
-            <NavLink to="/" end className={navLinkClass}>
-              Home
-            </NavLink>
-            <NavLink to="/advisor" className={navLinkClass}>
-              Advisor
-            </NavLink>
+          <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-4 xl:gap-6">
+            <NavLink to="/" end className={navLinkClass}>Home</NavLink>
+            <NavLink to="/advisor" className={navLinkClass}>Advisor</NavLink>
             <NavLink to="/guides" className={navLinkClass}>
-              Knowledge
+              <span className="xl:hidden">Knowledge</span><span className="hidden xl:inline">Knowledge &amp; Guides</span>
             </NavLink>
-            <NavLink to="/harvest" className={navLinkClass}>
-              Find harvest
-            </NavLink>
-            <NavLink to="/demo" className={navLinkClass}>
-              Demo Mode
-            </NavLink>
+            <NavLink to="/harvest" className={navLinkClass}>Find Harvest</NavLink>
+            <NavLink to="/ussd-demo" className={navLinkClass}>USSD Demo</NavLink>
           </nav>
 
-          {/* Zone 3: Primary action + Menu drawer */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <Link
-              to={user ? (isAdmin ? '/admin' : isExpert ? '/expert' : '/farmer') : '/today'}
-              className="hidden sm:inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-[#16803C] text-white text-sm font-semibold hover:bg-[#116630] transition-colors whitespace-nowrap shrink-0"
-            >
-              <LayoutDashboard className="w-4 h-4" aria-hidden="true" />
-              <span>{user ? (isAdmin ? 'Admin' : isExpert ? 'Expert' : 'Dashboard') : 'Farmer Hub'}</span>
-            </Link>
+          {/* Zone 3: account actions + Menu drawer. Same routes and session as the menu drawer; nothing here is a separate login. */}
+          <div className="flex items-center gap-2 shrink-0">
+            {user ? (
+              <>
+                <Link
+                  to={isAdmin ? '/admin' : isExpert ? '/expert' : '/farmer'}
+                  className="hidden sm:inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-[#16803C] text-white text-sm font-semibold hover:bg-[#116630] transition-colors whitespace-nowrap shrink-0"
+                >
+                  <LayoutDashboard className="w-4 h-4" aria-hidden="true" />
+                  <span>{isAdmin ? 'Admin' : isExpert ? 'Expert' : 'Dashboard'}</span>
+                </Link>
+                <Link
+                  to={isAdmin || isExpert ? '/account/security' : '/farmer/profile'}
+                  aria-label="Account and profile"
+                  className="hidden lg:inline-flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-xl border border-[#183B2B]/20 text-sm font-semibold text-[#183B2B] hover:bg-[#DDEFE0] whitespace-nowrap"
+                >
+                  <UserRound className="w-4 h-4" aria-hidden="true" />
+                  <span className="hidden xl:inline">Account</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  className="hidden lg:inline-flex items-center gap-2 min-h-[44px] px-3 py-2 rounded-xl border border-[#183B2B]/20 text-sm font-semibold text-[#183B2B] hover:bg-[#DDEFE0] whitespace-nowrap"
+                >
+                  <LogOut className="w-4 h-4" aria-hidden="true" />
+                  <span>Logout</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="hidden sm:inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl border border-[#16803C] text-[#0F5C2A] text-sm font-semibold hover:bg-[#DDEFE0] transition-colors whitespace-nowrap shrink-0"
+                >
+                  <LogIn className="w-4 h-4" aria-hidden="true" />
+                  <span>Login</span>
+                </Link>
+                <Link
+                  to="/register"
+                  className="hidden sm:inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-[#16803C] text-white text-sm font-semibold hover:bg-[#116630] transition-colors whitespace-nowrap shrink-0"
+                >
+                  <UserPlus className="w-4 h-4" aria-hidden="true" />
+                  <span>Register</span>
+                </Link>
+              </>
+            )}
 
             <button
               type="button"
@@ -338,26 +369,25 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
           </div>
 
           <div>
-            <h2 className="font-display font-semibold text-sm text-[#183B2B] mb-3">Advisory &amp; Farming Modules</h2>
+            <h2 className="font-display font-semibold text-sm text-[#183B2B] mb-3">Learn &amp; farm</h2>
             <ul className="space-y-2 text-sm text-[#183B2B]/80">
-              <li><Link to="/crops" className="hover:text-[#16803C]">Crops Library (9 Crops)</Link></li>
-              <li><Link to="/livestock" className="hover:text-[#16803C]">Livestock &amp; Fish Farming</Link></li>
-              <li><Link to="/weather" className="hover:text-[#16803C]">County Weather Info (Sample)</Link></li>
-              <li><Link to="/soil" className="hover:text-[#16803C]">Soil &amp; Fertilizer Advisory</Link></li>
-              <li><Link to="/pests" className="hover:text-[#16803C]">Pests &amp; Diseases Support</Link></li>
-              <li><Link to="/advisor" className="hover:text-[#16803C]">AI Agricultural Advisor</Link></li>
+              <li><Link to="/guides" className="hover:text-[#16803C]">Farming Knowledge &amp; Guides</Link></li>
+              <li><Link to="/crops" className="hover:text-[#16803C]">Crops Library</Link></li>
+              <li><Link to="/advisor" className="hover:text-[#16803C]">Agricultural Advisor</Link></li>
+              <li><Link to="/weather" className="hover:text-[#16803C]">County Weather (Sample)</Link></li>
+              <li><Link to="/offline" className="hover:text-[#16803C]">Offline Library</Link></li>
             </ul>
           </div>
 
           <div>
-            <h2 className="font-display font-semibold text-sm text-[#183B2B] mb-3">Access, Market &amp; Ministry</h2>
+            <h2 className="font-display font-semibold text-sm text-[#183B2B] mb-3">Market &amp; project</h2>
             <ul className="space-y-2 text-sm text-[#183B2B]/80">
-              <li><Link to="/marketplace" className="hover:text-[#16803C]">Agricultural Marketplace</Link></li>
+              <li><Link to="/marketplace" className="hover:text-[#16803C]">Marketplace</Link></li>
+              <li><Link to="/ussd-demo" className="hover:text-[#16803C]">USSD Demo</Link></li>
               <li><Link to="/ministry" className="hover:text-[#16803C]">Ministry Food Security View</Link></li>
-              <li><Link to="/language-lab" className="hover:text-[#16803C]">Local Language Lab</Link></li>
-              <li><Link to="/phone-simulator" className="hover:text-[#16803C]">Simulated Phone Service</Link></li>
               <li><Link to="/demo" className="hover:text-[#16803C]">Hackathon Demo Mode</Link></li>
-              <li><Link to="/coming-soon" className="hover:text-[#16803C]">Post-Hackathon Roadmap</Link></li>
+              <li><Link to="/dashboard" className="hover:text-[#16803C]">Farmer Dashboard (Demo)</Link></li>
+              <li><Link to="/about" className="hover:text-[#16803C]">About</Link> · <Link to="/contact" className="hover:text-[#16803C]">Contact</Link> · <Link to="/coming-soon" className="hover:text-[#16803C]">Roadmap</Link></li>
             </ul>
           </div>
         </div>

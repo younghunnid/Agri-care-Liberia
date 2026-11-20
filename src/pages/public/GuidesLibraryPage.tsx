@@ -4,6 +4,7 @@ import {Bookmark, Check, Download, HelpCircle, Layers, Search, Sprout, WifiOff} 
 import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
 import {SafeImage} from '../../components/SafeImage';
+import {KnowledgeResources} from '../../components/knowledge/KnowledgeResources';
 import {SpeakButton} from '../../components/SpeakButton';
 import {getOfflineGuides, isGuideDownloaded} from '../../lib/offlineStorage';
 import {downloadServerGuide, friendlyDownloadError} from '../../lib/offlinePacks';
@@ -550,6 +551,8 @@ export const GuidesLibraryPage: React.FC = () => {
           )}
         </>
       )}
+
+      <KnowledgeResources />
     </div>
   );
 };
