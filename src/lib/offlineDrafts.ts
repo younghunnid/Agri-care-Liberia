@@ -162,6 +162,23 @@ export function initDrafts(): Promise<void> {
   return initPromise;
 }
 
+/** Refresh another tab's committed changes while the caller holds the sync lock. */
+export async function refreshDraftsForSync(): Promise<void> {
+  await initDrafts();
+  const [l, q, o, t] = await Promise.all([
+    dbGetAll<ListingRecord>('drafts'),
+    dbGetAll<QuestionRecord>('questions'),
+    dbGetAll<SyncOp>('syncQueue'),
+    kvGet<string>('lastSyncAt'),
+  ]);
+  listings = l;
+  questions = q;
+  // The previous lock holder may have closed mid-send. Reuse its operation key.
+  ops = o.map((op) => op.status === 'sending' ? {...op, status: 'queued' as const} : op);
+  lastSyncAt = t ?? null;
+  emitSync();
+}
+
 export const getListingRecords = (): ListingRecord[] => listings;
 export const getQuestionRecords = (): QuestionRecord[] => questions;
 export const getSyncOps = (): SyncOp[] => ops;

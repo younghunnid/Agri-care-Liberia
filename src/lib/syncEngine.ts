@@ -16,6 +16,7 @@ import {
   putOp,
   putQuestion,
   removeOp,
+  refreshDraftsForSync,
   setLastSyncAt,
   subscribeSync,
   type ListingRecord,
@@ -362,7 +363,13 @@ export function syncNow(opts: SyncOptions = {}): Promise<SyncResult> {
     const locks = (navigator as Navigator & {locks?: LockManager}).locks;
     if (locks?.request) {
       // Another tab already syncing? Skip rather than send everything twice.
-      const r = await locks.request('agri-sync', {ifAvailable: true}, async (lock) => (lock ? runOnce(opts) : null));
+      const r = await locks.request('agri-sync', {ifAvailable: true}, async (lock) => {
+        if (!lock) return null;
+        // A lock serializes requests, but each tab still has its own in-memory mirror.
+        // Read the previous holder's durable result before deciding what to send.
+        await refreshDraftsForSync();
+        return runOnce(opts);
+      });
       return r ?? {attempted: 0, succeeded: 0, failed: 0, stoppedOffline: false, message: 'Another window is syncing.'};
     }
     return runOnce(opts);

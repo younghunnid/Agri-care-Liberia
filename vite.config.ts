@@ -80,7 +80,7 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff2}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff2,jpg,jpeg,webp,m4a}'],
           cleanupOutdatedCaches: true,
           // Take control on the very first install so the first visit is already offline-capable.
           // Updates still wait for the user's "Update now" tap (skipWaiting is NOT enabled).
@@ -150,10 +150,9 @@ export default defineConfig(() => {
       {
         name: 'copy-unbundled-src-assets',
         apply: 'build',
-        closeBundle(error?: Error): void {
-          if (error) {
-            return;
-          }
+        // Workbox generates its manifest in closeBundle, so legacy image URLs must
+        // already exist in dist before that hook runs, including on a clean build.
+        writeBundle(): void {
           const distDir = path.resolve(import.meta.dirname, 'dist');
           const srcAssets = path.resolve(import.meta.dirname, 'src/assets');
           const distAssets = path.resolve(distDir, 'src/assets');
