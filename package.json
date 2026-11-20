@@ -36,6 +36,8 @@
     "test:phase2a": "tsx --test tests/phase2a.test.ts",
     "test:phase2b": "tsx --test tests/phase2b.test.ts",
     "test:ussd-marketplace": "tsx --test tests/ussd-marketplace.test.ts",
+    "test:offline-qa": "node --import tsx --test tests/offline-qa.test.ts",
+    "test:browser-qa": "node --import tsx tests/browser-qa.ts",
     "test:ministry-workspace": "tsx --test tests/ministry-workspace.test.tsx",
     "test:role-dashboards": "tsx --test tests/role-dashboards.test.tsx"
   },
@@ -64,7 +66,9 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "fake-indexeddb": "6.2.5",
     "jsqr": "1.4.0",
+    "playwright": "1.58.2",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2"
   },

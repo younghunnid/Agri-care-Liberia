@@ -15,7 +15,7 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-async function ensureCsrfToken(forceRefresh = false): Promise<string> {
+async function ensureCsrfToken(forceRefresh = false, signal?: AbortSignal | null): Promise<string> {
   if (!forceRefresh) {
     const existing = getCookie('agri_csrf');
     if (existing) return existing;
@@ -24,6 +24,7 @@ async function ensureCsrfToken(forceRefresh = false): Promise<string> {
   const res = await fetch('/api/v1/csrf-token', {
     credentials: 'include',
     cache: 'no-store',
+    signal,
   });
   if (!res.ok) {
     throw new ApiRequestError(
@@ -95,7 +96,7 @@ export async function apiFetch<T>(
   }
 
   if (isStateChanging) {
-    const csrf = await ensureCsrfToken(_csrfRetried);
+    const csrf = await ensureCsrfToken(_csrfRetried, options.signal);
     if (csrf) {
       headers.set('X-CSRF-Token', csrf);
     }
