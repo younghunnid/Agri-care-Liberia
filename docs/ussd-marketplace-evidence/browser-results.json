@@ -1,0 +1,343 @@
+{
+  "checks": [
+    "Protected synthetic server enables configured UI",
+    "320/360/375/412 widths, readable screen and 44px+ controls",
+    "No submission before final keypad confirmation",
+    "Confirmed offline sale queued without invented SELL reference",
+    "Offline advice and offline route reload",
+    "Reconnect auto-sync created one actual server listing",
+    "My Listings shows server-issued reference",
+    "Separate buyer selects crop/county/listing and reviews inquiry",
+    "Offline inquiry refused without success or outbox entry",
+    "Failed transport reports unconfirmed delivery and offers same-operation retry",
+    "Online inquiry confirms actual server result",
+    "My Inquiries uses buyer device key",
+    "Seller inquiries use existing owner authorization",
+    "Existing seller reply appears in keypad My Inquiries",
+    "Desktop keyboard input, invalid choice and Escape",
+    "Unconfigured printable poster shows setup, no misleading QR"
+  ],
+  "metrics": [
+    {
+      "width": 320,
+      "scrollWidth": 320,
+      "phone": 304,
+      "keys": [
+        {
+          "w": 44,
+          "h": 44
+        },
+        {
+          "w": 130,
+          "h": 52
+        },
+        {
+          "w": 130,
+          "h": 52
+        },
+        {
+          "w": 85.328125,
+          "h": 52
+        },
+        {
+          "w": 85.328125,
+          "h": 52
+        },
+        {
+          "w": 85.34375,
+          "h": 52
+        },
+        {
+          "w": 82.65625,
+          "h": 56
+        },
+        {
+          "w": 82.671875,
+          "h": 56
+        },
+        {
+          "w": 82.65625,
+          "h": 56
+        },
+        {
+          "w": 82.65625,
+          "h": 56
+        },
+        {
+          "w": 82.671875,
+          "h": 56
+        },
+        {
+          "w": 82.65625,
+          "h": 56
+        },
+        {
+          "w": 82.65625,
+          "h": 56
+        },
+        {
+          "w": 82.671875,
+          "h": 56
+        },
+        {
+          "w": 82.65625,
+          "h": 56
+        },
+        {
+          "w": 82.65625,
+          "h": 56
+        },
+        {
+          "w": 82.671875,
+          "h": 56
+        },
+        {
+          "w": 82.65625,
+          "h": 56
+        }
+      ],
+      "font": "16px"
+    },
+    {
+      "width": 360,
+      "scrollWidth": 360,
+      "phone": 344,
+      "keys": [
+        {
+          "w": 44,
+          "h": 44
+        },
+        {
+          "w": 150,
+          "h": 52
+        },
+        {
+          "w": 150,
+          "h": 52
+        },
+        {
+          "w": 98.65625,
+          "h": 52
+        },
+        {
+          "w": 98.671875,
+          "h": 52
+        },
+        {
+          "w": 98.65625,
+          "h": 52
+        },
+        {
+          "w": 96,
+          "h": 56
+        },
+        {
+          "w": 96,
+          "h": 56
+        },
+        {
+          "w": 96,
+          "h": 56
+        },
+        {
+          "w": 96,
+          "h": 56
+        },
+        {
+          "w": 96,
+          "h": 56
+        },
+        {
+          "w": 96,
+          "h": 56
+        },
+        {
+          "w": 96,
+          "h": 56
+        },
+        {
+          "w": 96,
+          "h": 56
+        },
+        {
+          "w": 96,
+          "h": 56
+        },
+        {
+          "w": 96,
+          "h": 56
+        },
+        {
+          "w": 96,
+          "h": 56
+        },
+        {
+          "w": 96,
+          "h": 56
+        }
+      ],
+      "font": "16px"
+    },
+    {
+      "width": 375,
+      "scrollWidth": 375,
+      "phone": 359,
+      "keys": [
+        {
+          "w": 44,
+          "h": 44
+        },
+        {
+          "w": 157.5,
+          "h": 52
+        },
+        {
+          "w": 157.5,
+          "h": 52
+        },
+        {
+          "w": 103.65625,
+          "h": 52
+        },
+        {
+          "w": 103.671875,
+          "h": 52
+        },
+        {
+          "w": 103.65625,
+          "h": 52
+        },
+        {
+          "w": 101,
+          "h": 56
+        },
+        {
+          "w": 101,
+          "h": 56
+        },
+        {
+          "w": 101,
+          "h": 56
+        },
+        {
+          "w": 101,
+          "h": 56
+        },
+        {
+          "w": 101,
+          "h": 56
+        },
+        {
+          "w": 101,
+          "h": 56
+        },
+        {
+          "w": 101,
+          "h": 56
+        },
+        {
+          "w": 101,
+          "h": 56
+        },
+        {
+          "w": 101,
+          "h": 56
+        },
+        {
+          "w": 101,
+          "h": 56
+        },
+        {
+          "w": 101,
+          "h": 56
+        },
+        {
+          "w": 101,
+          "h": 56
+        }
+      ],
+      "font": "16px"
+    },
+    {
+      "width": 412,
+      "scrollWidth": 412,
+      "phone": 396,
+      "keys": [
+        {
+          "w": 44,
+          "h": 44
+        },
+        {
+          "w": 176,
+          "h": 52
+        },
+        {
+          "w": 176,
+          "h": 52
+        },
+        {
+          "w": 116,
+          "h": 52
+        },
+        {
+          "w": 116,
+          "h": 52
+        },
+        {
+          "w": 116,
+          "h": 52
+        },
+        {
+          "w": 113.328125,
+          "h": 56
+        },
+        {
+          "w": 113.328125,
+          "h": 56
+        },
+        {
+          "w": 113.34375,
+          "h": 56
+        },
+        {
+          "w": 113.328125,
+          "h": 56
+        },
+        {
+          "w": 113.328125,
+          "h": 56
+        },
+        {
+          "w": 113.34375,
+          "h": 56
+        },
+        {
+          "w": 113.328125,
+          "h": 56
+        },
+        {
+          "w": 113.328125,
+          "h": 56
+        },
+        {
+          "w": 113.34375,
+          "h": 56
+        },
+        {
+          "w": 113.328125,
+          "h": 56
+        },
+        {
+          "w": 113.328125,
+          "h": 56
+        },
+        {
+          "w": 113.34375,
+          "h": 56
+        }
+      ],
+      "font": "16px"
+    }
+  ],
+  "exceptions": []
+}

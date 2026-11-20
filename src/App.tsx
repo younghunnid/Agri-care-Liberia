@@ -7,8 +7,9 @@ import {ProtectedRoute} from './components/ProtectedRoute';
 import {HomePage} from './pages/public/HomePage';
 import {FarmerTodayPage} from './pages/public/FarmerTodayPage';
 import {GuidancePage} from './pages/public/GuidancePage';
-import {UssdDemoPage} from './pages/public/UssdDemoPage';
+const UssdDemoPage = lazy(() => import('./pages/public/UssdDemoPage').then((m) => ({default: m.UssdDemoPage})));
 
+const UssdPosterPage = lazy(() => import('./pages/public/UssdPosterPage').then((m) => ({default: m.UssdPosterPage})));
 const NotFoundPage = lazy(() => import('./pages/public/NotFoundPage').then((m) => ({default: m.NotFoundPage})));
 
 // Public & Prototype Pages
@@ -118,6 +119,7 @@ export default function App() {
             <Route path="/today" element={<FarmerTodayPage />} />
             <Route path="/guidance" element={<GuidancePage />} />
             <Route path="/ussd-demo" element={<UssdDemoPage />} />
+            <Route path="/ussd-demo/poster" element={<UssdPosterPage />} />
             <Route path="/harvest" element={<HarvestMarketPage />} />
             <Route path="/harvest/sell" element={<SellHarvestPage />} />
             <Route path="/demo/farm-to-market" element={<FarmToMarketDemoPage />} />

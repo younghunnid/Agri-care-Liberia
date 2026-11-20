@@ -28,7 +28,7 @@ const env = (over: Partial<UssdEnv> = {}): UssdEnv => ({online: true, market: SA
 /** A tiny driver: starts a session at t=1000 ms and presses keys one second apart. Multi-digit entries are typed digit by digit. */
 function run(keys: string[], e: UssdEnv = env(), from: Session = newSession(), t0 = 1000): {s: Session; t: number} {
   let s = from; let t = t0;
-  for (const k of keys) for (const ch of (['send', 'back', 'home', 'cancel', 'del'].includes(k) ? [k] : k.split(''))) { s = press(s, ch as Key, e, t); t += 1000; }
+  for (const k of keys) for (const ch of (['send', 'back', 'home', 'cancel', 'end', 'del'].includes(k) ? [k] : k.split(''))) { s = press(s, ch as Key, e, t); t += 1000; }
   return {s, t};
 }
 const go = (keys: string[], e: UssdEnv = env()) => { const r = run(['send', ...keys], e); return {...r, text: view(r.s, e, r.t).text}; };
@@ -70,9 +70,9 @@ test('2. text pages never cut a sentence or drop one: the pages read back as exa
 
 // ------------------------------------------------------------------------------------------------------------------------ 2. navigation
 test('3. numbered menus: the main menu has the seven requested items and each leads where it says', () => {
-  assert.deepEqual([...MAIN_ITEMS], ['Crops & planting', 'Pests & disease', 'Harvest & storage', 'Sell & market', 'Expert help', 'Language', 'Help & exit']);
+  assert.deepEqual([...MAIN_ITEMS], ['Crops & planting', 'Pests & disease', 'Buy & Sell Produce', 'Harvest & storage', 'Expert help', 'Language', 'Help & exit']);
   const main = go([]).text; assert.equal(main, ['FARM ADVICE (DEMO)', ...MAIN_ITEMS.map((m, i) => `${i + 1} ${m}`)].join('\n'));
-  const lands: [string, RegExp][] = [['1', /^Crops & planting: crop\?/], ['2', /^Pests & disease/], ['3', /^Harvest & storage: crop\?/], ['4', /^Sell & market/], ['5', /^Expert help \(demo\)/], ['6', /^Language/], ['7', /^Help & exit/]];
+  const lands: [string, RegExp][] = [['1', /^Crops & planting: crop\?/], ['2', /^Pests & disease/], ['3', /^Buy & Sell Produce/], ['4', /^Harvest & storage: crop\?/], ['5', /^Expert help \(demo\)/], ['6', /^Language/], ['7', /^Help & exit/]];
   for (const [d, re] of lands) assert.match(go(pick(d)).text, re, `option ${d}`);
   const rice = go(pick('1', '1')).text; assert.match(rice, /^\[DEMO\] Rice planting\n1 Planting months\n2 How to plant\n3 Soil & water\n4 Care of the crop/);
 });
@@ -85,15 +85,15 @@ test('4. invalid input: wrong numbers, empty Send, letters-like symbols and too 
   // main menu: 0 and 00 are not offered
   assert.match(go(['0', 'send']).text, /^Invalid choice/); assert.equal(go(['0', '0', 'send']).s.frames.length, 1);
   // number screens: not a number, zero, too large, fractions
-  const sell = (kg: string) => go([...pick('4', '2', '2'), kg, 'send']); assert.match(sell('650').text, /^DEMO sell: price/);
+  const sell = (kg: string) => go([...pick('7', '4', '2'), kg, 'send']); assert.match(sell('650').text, /^DEMO sell: price/);
   for (const bad of ['*', '#', '99999999']) assert.match(sell(bad).text, /^(Not a valid number of kg\.|Too many digits|Invalid choice)/, `kg ${bad}`);
   assert.match(sell('0').text, /^\[DEMO\] Cassava|^DEMO sell: which crop\?/, 'typed 0 is Back (the screen shows "0 Back"), never a zero quantity');
   assert.match(sell('1000001').text, /^Too many digits|^Not a valid number/); assert.match(sell('1000000').text, /^DEMO sell: price/);
-  const price = (p: string) => go([...pick('4', '2', '2', '650'), p, 'send']); assert.match(price('62').text, /^DEMO sell: county\?/); assert.match(price('0').text, /^DEMO sell: quantity/, 'typed 0 goes Back one screen'); assert.match(price('*').text, /^Not a valid price/);
+  const price = (p: string) => go([...pick('7', '4', '2', '650'), p, 'send']); assert.match(price('62').text, /^DEMO sell: county\?/); assert.match(price('0').text, /^DEMO sell: quantity/, 'typed 0 goes Back one screen'); assert.match(price('*').text, /^Not a valid price/);
 });
 
 test('5. Back, Home and Cancel: keys and typed 0 / 00 behave the same; Home from anywhere; Back walks one screen; Cancel ends the session', () => {
-  const deep = go(pick('3', '1', '2'), env());           // storage > rice > handling
+  const deep = go(pick('4', '1', '2'), env());           // storage > rice > handling
   assert.match(deep.text, /^Rice: handling \[General\]/);
   const viaKey = run(['back'], env(), deep.s, deep.t).s; const viaTyped = run(['0', 'send'], env(), deep.s, deep.t).s;
   assert.deepEqual(viaKey.frames, viaTyped.frames); assert.match(view(viaKey, env(), 9).text, /^\[DEMO\] Rice harvest\n1 At harvest/);
@@ -111,7 +111,7 @@ test('6. a session is a state machine: idle, active, ended; it times out, can be
   assert.equal(press(s, '1', e, 10).status, 'idle', 'digits do nothing before a session starts'); assert.match(view(run(['1', '2', 'send'], e, s, 10).s, e, 99).text, /There is no dial code in this demo/);
   s = press(s, 'send', e, 1000); assert.equal(s.status, 'active'); assert.equal(s.no, 1);
   // deep in a menu with a typed entry, then silence
-  s = run(pick('3', '1').concat(['2']), e, s, 2000).s; assert.equal(s.input, '2');
+  s = run(pick('4', '1').concat(['2']), e, s, 2000).s; assert.equal(s.input, '2');
   const last = s.lastActivity; assert.equal(tick(s, last + 89_999).status, 'active'); const timed = tick(s, last + 90_000); assert.equal(timed.status, 'ended'); assert.equal(timed.endReason, 'timeout'); assert.equal(timed.frames.length, 0); assert.equal(timed.input, '');
   assert.match(view(s, e, last + 90_000).text, /^Session timed out after no key was pressed\. Press Send to start again\./);
   assert.equal(view(s, e, last + 30_000).secondsLeft, 60, 'the countdown'); assert.equal(view(s, e, last + 89_001).secondsLeft, 1); assert.equal(view(s, e, last - 700).secondsLeft, 90, 'never above the timeout even if the screen clock is a moment behind the key press');
@@ -138,7 +138,7 @@ test('7. planting, pests and storage screens read back as exactly the existing g
     const section = (menu: string, label: string, sentences: string[]) => { const r = go(pick('1', k, menu), e); const {bodies} = readPages(r.s, e, r.t); assert.equal(norm(bodies.join(' ')), norm(sentences.join(' ')), `${c.slug} ${label}`); };
     section('2', 'how to plant', lib.plantingInfo); section('3', 'soil and water', [...lib.soilRequirements, ...lib.waterManagement]); section('4', 'care', lib.cropMaintenance);
     const pest = go(pick('2', '1', k), e); assert.equal(norm(readPages(pest.s, e, pest.t).bodies.join(' ')), norm([...lib.commonPestsDiseases, 'Not a diagnosis. If you cannot explain a problem, use 5 Expert help from the main menu.'].join(' ')), `${c.slug} pests`);
-    const g = storageGuide(c.slug)!; const st = (m: string, items: {text: string}[], tag: string) => { const r = go(pick('3', k, m), e); const {bodies, head} = readPages(r.s, e, r.t); assert.equal(norm(bodies.join(' ')), norm(items.map((i) => i.text).join(' ')), `${c.slug} storage ${m}`); assert.ok(head[0].includes(`[${tag}]`), `${c.slug}: the source tag [${tag}] is on the screen`); };
+    const g = storageGuide(c.slug)!; const st = (m: string, items: {text: string}[], tag: string) => { const r = go(pick('4', k, m), e); const {bodies, head} = readPages(r.s, e, r.t); assert.equal(norm(bodies.join(' ')), norm(items.map((i) => i.text).join(' ')), `${c.slug} storage ${m}`); assert.ok(head[0].includes(`[${tag}]`), `${c.slug}: the source tag [${tag}] is on the screen`); };
     st('1', g.atHarvest, 'Library'); st('2', g.handling, 'General'); st('3', g.storage, 'Library'); st('4', g.watchFor, 'General'); st('5', [g.sellTip], 'General');
     // months: the same structured months and the same sentence as the planting card, for every month of the year
     for (let m = 0; m < 12; m++) {
@@ -170,27 +170,27 @@ test('8. the symptom check gives the same colour, advice card and steps as the a
 // ------------------------------------------------------------------------------------------------------------------------ 5. offline and internet
 test('9. offline: bundled advice is identical online and offline; the one internet feature (harvest for sale) says what it is showing; no private field is ever shown', () => {
   const online = env({online: true, market: LIVE}); const offline = env({online: false, market: NONE});
-  const paths = [pick('1', '1', '1'), pick('1', '2', '2', '3'), pick('2', '1', '5'), pick('3', '9', '3'), pick('5', '1'), pick('6', '5'), pick('7', '2')];
+  const paths = [pick('1', '1', '1'), pick('1', '2', '2', '3'), pick('2', '1', '5'), pick('4', '9', '3'), pick('5', '1'), pick('6', '5'), pick('7', '2')];
   for (const p of paths) assert.equal(go(p, online).text, go(p, offline).text, `bundled screen ${p.join('')} is the same offline`);
   for (const p of paths) assert.equal(view(go(p, offline).s, offline, 1).internet.needed, false);
-  const none = go(pick('4', '1', '1'), offline); assert.equal(none.text, 'Rice for sale\nNo list on this phone.\nIt needs internet once to download.\n0 Back  00 Home'); const nv = view(none.s, offline, none.t); assert.deepEqual(nv.internet, {needed: true, state: 'none'});
-  const saved = go(pick('4', '1', '1'), env({online: false, market: SAVED})); assert.match(saved.text, /^Rice \(saved 19 Nov, may be old\)\nSELL-2026-000034 900kg L\$150 Nimba\nSELL-2026-000035 400kg L\$140 Grand Cape Mount\n0 Back/); assert.ok(!saved.text.includes('SELL-2026-000036'), 'sold out is hidden'); assert.ok(!saved.text.includes('SELL-2026-000037'), 'only the chosen crop'); assert.deepEqual(view(saved.s, env({market: SAVED}), saved.t).internet, {needed: true, state: 'saved'});
-  const live = go(pick('4', '1', '1'), env({market: LIVE})); assert.match(live.text, /^Rice for sale \(live\)\n/); assert.deepEqual(view(live.s, env({market: LIVE}), live.t).internet, {needed: true, state: 'live'});
-  assert.match(go(pick('4', '1', '4'), env({market: SAVED})).text, /^Pepper \(saved 19 Nov, may be old\)\nNo listings for this crop in the list\./);
+  const none = go(pick('7', '5', '1'), offline); assert.equal(none.text, 'Rice for sale\nNo list on this phone.\nIt needs internet once to download.\n0 Back  00 Home'); const nv = view(none.s, offline, none.t); assert.deepEqual(nv.internet, {needed: true, state: 'none'});
+  const saved = go(pick('7', '5', '1'), env({online: false, market: SAVED})); assert.match(saved.text, /^Rice \(saved 19 Nov, may be old\)\nSELL-2026-000034 900kg L\$150 Nimba\nSELL-2026-000035 400kg L\$140 Grand Cape Mount\n0 Back/); assert.ok(!saved.text.includes('SELL-2026-000036'), 'sold out is hidden'); assert.ok(!saved.text.includes('SELL-2026-000037'), 'only the chosen crop'); assert.deepEqual(view(saved.s, env({market: SAVED}), saved.t).internet, {needed: true, state: 'saved'});
+  const live = go(pick('7', '5', '1'), env({market: LIVE})); assert.match(live.text, /^Rice for sale \(live\)\n/); assert.deepEqual(view(live.s, env({market: LIVE}), live.t).internet, {needed: true, state: 'live'});
+  assert.match(go(pick('7', '5', '4'), env({market: SAVED})).text, /^Pepper \(saved 19 Nov, may be old\)\nNo listings for this crop in the list\./);
   for (const t of [saved.text, live.text]) assert.ok(!/phone|\+231|seller|farmer name|Synthetic/i.test(t.replace('Demonstration', '')), 'no seller names or numbers');
   const src = read('src/lib/ussd/engine.ts'); assert.ok(!/\bfetch\(|apiFetch|XMLHttpRequest|localStorage|sessionStorage|indexedDB|navigator\./.test(src), 'the engine touches no network or storage');
   assert.ok(!/Date\.now\(|new Date\(\)/.test(src), 'the engine has no clock of its own');
 });
 
-test('10. selling and expert help are only a demonstration of a possible future workflow: NOTHING WAS SENT is on the first screen, and nothing can be submitted', () => {
-  const sell = go([...pick('4', '2', '2', '650', '62', '4')]); const first = sell.text; assert.match(first, /^DEMO ONLY\nNOTHING WAS SENT or saved\.\n650 kg Cassava, L\$62\/kg, Grand Bassa\.\nNo listing was made\. Use Sell my harvest in the app\./); assert.ok(!first.includes('1 Next'), 'a single screen: the warning cannot be missed');
+test('10. original selling practice and expert help remain no-submit examples: NOTHING WAS SENT is on their first confirmation screen', () => {
+  const sell = go([...pick('7', '4', '2', '650', '62', '4')]); const first = sell.text; assert.match(first, /^DEMO ONLY\nNOTHING WAS SENT or saved\.\n650 kg Cassava, L\$62\/kg, Grand Bassa\.\nNo listing was made\. Use Sell my harvest in the app\./); assert.ok(!first.includes('1 Next'), 'a single screen: the warning cannot be missed');
   assert.equal(view(sell.s, env(), sell.t).appLink?.to, '/harvest/sell');
   const ex = go(pick('5', '2', '2')); assert.match(ex.text, /^DEMO ONLY\nNOTHING was sent\. No number was saved\.\nA question about Cassava would start here\.\nUse Expert support in the app\./); assert.ok(!ex.text.includes('1 Next')); assert.equal(view(ex.s, env(), ex.t).appLink?.to, '/experts');
-  const how = go(pick('5', '1')); const pages = readPages(how.s, env(), how.t).bodies.join(' '); assert.match(pages, /simulated/); assert.match(pages, /Nothing can be sent from this phone simulator/); assert.match(pages, /telecom partner/);
+  const how = go(pick('5', '1')); const pages = readPages(how.s, env(), how.t).bodies.join(' '); assert.match(pages, /simulated/); assert.match(pages, /Expert questions cannot be sent from this simulator/); assert.match(pages, /telecom partner/);
   for (const f of ['src/components/ussd/UssdPhone.tsx', 'src/pages/public/UssdDemoPage.tsx', 'src/lib/ussd/engine.ts']) { const s = read(f); assert.ok(!/method:\s*'(POST|PUT|PATCH|DELETE)'|sendBeacon|XMLHttpRequest|localStorage|sessionStorage/.test(s), `${f} cannot submit or store anything`); assert.ok(!/apiFetch|\bfetch\(/.test(s), `${f} calls no API`); }
-  assert.ok(read('src/components/ussd/UssdPhone.tsx').includes('harvestClient.load()'), 'the only data it reads is the existing harvest list (and its saved copy)');
+  assert.ok(read('src/lib/ussd/marketApp.ts').includes('harvestClient.load()'), 'the adapter reuses the existing harvest snapshot client');
   for (const bad of [['4', '2', '2', '0', 'x'], ['4', '2', '2', '650', '0']]) void bad;
-  assert.equal(go([...pick('4', '2', '2'), '650', 'send', '0', 'send']).s.input, '');
+  assert.equal(go([...pick('7', '4', '2'), '650', 'send', '0', 'send']).s.input, '');
 });
 
 // ------------------------------------------------------------------------------------------------------------------------ 6. languages, identity, honesty
@@ -224,12 +224,12 @@ test('13. the phone screen: keypad, function keys, labels, focus, keyboard, touc
   assert.ok(/\/\^\[0-9\*#\]\$\/\.test\(e\.key\)/.test(ui) && ui.includes("e.key === 'Enter'") && ui.includes("e.key === 'Backspace'") && ui.includes("e.key === 'Escape'"), 'digits, Enter, Backspace and Escape'); assert.ok(ui.includes("tag !== 'BUTTON'"), 'Enter on a focused button keeps its own action');
   assert.ok(ui.includes("tag === 'INPUT'") && ui.includes('removeEventListener'), 'the listener ignores form fields and is removed on leaving');
   for (const m of (ui + page).matchAll(/min-h-\[(\d+)px\]/g)) assert.ok(Number(m[1]) >= 44, `touch target ${m[0]}`); assert.ok(ui.includes('min-h-[56px]') && ui.includes('min-h-[52px]'), 'big keys');
-  assert.ok(ui.includes('max-w-[340px]') && ui.includes('w-full') && /grid-cols-3/.test(ui), 'fits 320 px (the phone is at most 340 px and shrinks)');
+  assert.ok(ui.includes('max-w-[440px]') && ui.includes('w-full') && /grid-cols-3/.test(ui), 'fits 320 px (the phone is at most 440 px and shrinks)');
   assert.ok(ui.includes('bg-[#CFEAA8]') && ui.includes('text-[#0A1A0E]'), 'dark text on a light LCD green'); const lum = (hex: string) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
-  const ratio = (a: string, b: string) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05); assert.ok(ratio('#CFEAA8', '#0A1A0E') >= 7, 'screen contrast is at least 7:1'); assert.ok(ratio('#E8EDF3', '#10161D') >= 7); assert.ok(ui.includes('bg-[#16803C] text-white'), 'Send uses the brand green'); assert.ok(ratio('#16803C', '#FFFFFF') >= 4.5, 'Send: normal-size text meets AA contrast'); assert.ok(ratio('#DC2626', '#FFFFFF') >= 4.5);
+  const ratio = (a: string, b: string) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05); assert.ok(ratio('#CFEAA8', '#0A1A0E') >= 7, 'screen contrast is at least 7:1'); assert.ok(ratio('#E8EDF3', '#10161D') >= 7); assert.ok(ui.includes('bg-[#16803C] text-white'), 'Send uses the brand green'); assert.ok(ratio('#16803C', '#FFFFFF') >= 4.5, 'Send: normal-size text meets AA contrast'); assert.ok(ratio('#B91C1C', '#FFFFFF') >= 4.5);
   assert.ok(!/text-xs/.test(ui.replace('className="text-xs" data-testid="ussd-timer"', '')), 'no tiny text apart from the timer, which is also hidden from screen readers'); assert.ok(ui.includes('aria-hidden className="text-xs" data-testid="ussd-timer"'));
   assert.ok(page.includes("t >= 5 && t <= 300") && page.includes('DEFAULT_TIMEOUT_S'), 'a presenter can shorten the timeout with ?timeout=');
-  assert.ok(ui.includes('Needs internet') && ui.includes('Built into the app: works without internet.'), 'which screens need the internet is stated');
+  assert.ok(ui.includes('Inquiries need internet') && ui.includes('Built into the app: works without internet.'), 'which screens need the internet is stated');
 });
 
 test('14. routes, navigation, the Farmer Today link and the presenter walkthrough', () => {
@@ -237,8 +237,8 @@ test('14. routes, navigation, the Farmer Today link and the presenter walkthroug
   const today = read('src/pages/public/FarmerTodayPage.tsx'); assert.ok(today.includes('to="/ussd-demo"') && today.includes('data-testid="go-ussd"') && today.includes('Demonstration only. No mobile network.'));
   assert.equal(FARM_TO_MARKET_STEPS.length, 16); const s3 = FARM_TO_MARKET_STEPS[2]; const s4 = FARM_TO_MARKET_STEPS[3];
   assert.equal(s3.to, '/ussd-demo'); assert.ok(s3.kinds.includes('simulated') && s3.kinds.includes('draft')); assert.match(s3.note, /works offline/); assert.match(s3.note, /no mobile network and no dial code/);
-  assert.equal(s4.to, '/ussd-demo'); assert.ok(s4.kinds.includes('simulated') && s4.kinds.includes('future')); assert.match(s4.note, /NOTHING was sent/); assert.match(s4.note, /no translation or recording exists/);
+  assert.equal(s4.to, '/ussd-demo'); assert.ok(s4.kinds.includes('simulated') && s4.kinds.includes('future')); assert.match(s4.note, /require explicit confirmation/); assert.match(s4.note, /no translation or recording exists/);
   assert.deepEqual(FARM_TO_MARKET_STEPS.map((s) => s.n), Array.from({length: 16}, (_x, i) => i + 1)); for (const s of FARM_TO_MARKET_STEPS) assert.ok(routes.has(s.to.split('#')[0].split('?')[0]) || /^\/advice-cards\/ADV/.test(s.to), s.to);
   assert.ok(!fs.readdirSync(path.join(root, 'server/migrations')).some((f) => /^012_/.test(f)), 'Phase 2B adds no migration'); assert.ok(!fs.existsSync(path.join(root, 'server/routes/ussd.ts')), 'and no server route: the simulator is client-side only');
-  for (const county of LIBERIA_COUNTIES) assert.ok(go([...pick('4', '2', '2', '650', '62')]).text.length > 0, county);
+  for (const county of LIBERIA_COUNTIES) assert.ok(go([...pick('7', '4', '2', '650', '62')]).text.length > 0, county);
 });

@@ -1,110 +1,106 @@
-# Phase 2B: basic-phone (USSD-style) simulator
+# Basic-phone USSD browser simulator — interactive presentation extension
 
-Status: **implemented and committed locally; not deployed, pushed or merged.** Client-side only: **no migration, no server route, no database access, no new dependency.** This is a **simulator**. It is not connected to any mobile network, uses no dial code or short code, sends no SMS, and submits nothing.
+Updated 20 November 2026. Extends the existing Phase 2B simulator and Phase 3 polish; does not replace the application or change its authentication/database schema.
 
-Label shown on the page and read by screen readers: **"Demonstration only — no mobile network connection."**
+**Public route:** `/ussd-demo`. **Printable poster:** `/ussd-demo/poster`.
 
-## 1. What it is
-`/ussd-demo` shows a pretend feature phone: a monochrome (light-green LCD) screen, a 12-key keypad, and Send, Back, Home, Cancel and Delete keys. A farmer presses **Send** to start a session, types the number of a menu choice and presses Send again. Screens are limited to **182 characters** (the constant the Ministry module already uses for its USSD preview), so long advice is split into numbered pages ("1 Next").
+**Demonstration only — no mobile network connection.** There is no assigned short code, telecom gateway, SMS, payment, money transfer or completed order. The phone/session are simulated. When explicitly enabled on the protected demo server, confirmed marketplace actions create **actual synthetic records through the existing browser APIs**. Agricultural advice remains bundled and unreviewed demonstration content.
 
-The pretend caller is the synthetic number `+231 77 000 9001` (matches the project's synthetic-only pattern). The simulator has **no field that accepts a phone number**, stores nothing in the browser, and keeps the session only in memory.
+## Phone and menus
 
-## 2. Menu tree
+The handset fills the mobile content width up to 440 px and uses a tall portrait layout: speaker detail, monochrome LCD, typed entry, countdown/status, Call / Send, End, Back, Home, Cancel, Delete and a 12-key numeric keypad. Text on the screen is 16 px, controls are at least 44 px and numeric keys at least 56 px high. The mobile bottom navigation is hidden on this route to keep it from covering the phone; the shared header/menu and related-page links remain available. PWA update/offline-ready notices appear in the page flow here so they cannot cover the keypad.
+
 ```
-(idle)  Press Send  ->  FARM ADVICE (DEMO)
+Call / Send → FARM ADVICE (DEMO)
 1 Crops & planting
-    crop? (9 crops) -> 1 Planting months | 2 How to plant | 3 Soil & water | 4 Care of the crop
-2 Pests & disease
-    1 Common problems by crop -> crop -> pests text (then "use 5 Expert help")
-    2 Symptom check (simulated) -> Cassava | Rice | Poultry -> what do you see? -> 3 questions -> result pages
-3 Harvest & storage
-    crop? -> 1 At harvest [Library] | 2 Handling [General] | 3 Storing it [Library] | 4 Watch for [General] | 5 Before you sell [General]
-4 Sell & market
-    1 Harvest for sale (net) -> crop -> list of listings (live online, saved copy offline)
-    2 Try selling (demo only) -> crop -> kilograms -> price -> county -> "DEMO ONLY: NOTHING WAS SENT"
-5 Expert help (demo)
-    1 How it works | 2 Try a question (demo) -> crop -> "DEMO ONLY: NOTHING was sent"
-6 Language
-    English (now) | Bassa, Mano, Liberian English, Kpelle: planned, not available
+2 Pests & disease (including the existing simulated symptom check)
+3 Buy & Sell Produce
+    1 Buy Produce
+        crop → county → available demo listing → details → question template
+        → paged review → explicit Send demo inquiry confirmation
+    2 Sell My Harvest
+        crop → whole kilograms → whole LRD/kg → county → synthetic town
+        → paged review → explicit Save & send when online confirmation
+    3 My Listings (USSD demo drafts on this browser)
+    4 My Inquiries (authorized buyer/seller conversations)
+    5 Back
+4 Harvest & storage
+5 Expert help (practice only; no expert request submitted)
+6 Language (English; others marked planned)
 7 Help & exit
-    1 How to use | 2 About this demo | 3 Exit
-On every screen: 0 = Back, 00 = Home, 99 = More (long lists). Pages: 1 = Next.
+    1 How to use
+    2 About this demo
+    3 Exit
+    4 Original selling practice (nothing submitted)
+    5 Original read-only harvest list
 ```
 
-## 3. Where the advice comes from (no new agricultural claims)
-Every screen is assembled from content that already exists; a test reads each screen back and requires the **same text**:
-| Screen | Source |
+`0` = Back, `00` = Home. `99 More` paginates long menus; numbering restarts on each menu page. `1 Next` advances advice/review pages. A confirmation action only appears on the **last review page**. Enter on a focused key activates that key; elsewhere Enter sends, digits enter choices, Backspace deletes and Escape cancels. All keys are reachable with Tab. End/Cancel clear the session; Call / Send restarts it. The inactivity timeout remains 90 seconds, with `/ussd-demo?timeout=5` available for presenters (5–300 seconds).
+
+Screens retain the 182-character limit and word-boundary pagination. Invalid selections, oversized quantities/prices, disabled submissions, offline inquiries, loading, failures and uncertain delivery have explicit states. A late response cannot reopen a cancelled or expired session. **End, Cancel, Home or timeout cannot undo an action already confirmed.** Its outcome remains available through My Listings/My Inquiries.
+
+## Buy, sell and private identity
+
+| Flow | Actual behavior |
 |---|---|
-| Planting months | Phase 2A structured months (a copy of the Crops Library window) and the very same sentence builder as the planting card (`plantingSentence`), for every month of the year |
-| How to plant, soil and water, care, pests | Crops Library text, unchanged |
-| At harvest, storing it | Crops Library text, unchanged, tagged **[Library]** |
-| Handling, watch for, before you sell | The Phase 2A "general good practice" text, tagged **[General]** |
-| Symptom check | The app's own six situations, questions, point rules (`evaluateTriage`), colour wording and **advice cards** (`ADV-2026-001` to `-006`): all 162 answer combinations are compared with the app |
-| Harvest for sale | The existing harvest client (live list, or the copy saved on the phone); sold-out listings hidden; **never** a seller name or phone number |
-| Language | The app's language list; non-English entries only say "planned" |
-Everything is labelled demonstration advice, not reviewed by an agronomist or the Ministry (headlines carry `[DEMO]`, the About page and the page legend say so).
+| Buy | Chooses among structured harvest crops and Liberia counties; shows available **synthetic** listings, quantity, asking price and town. Saved lists are marked stale. The adapter rechecks the selected listing online before submitting. |
+| Inquiry | One of three labelled synthetic question templates (availability, collection or asking price). Final review names the data sent. Confirmation posts an inquiry; no purchase/order/payment is created. No phone is collected or shared. |
+| Sale | Uses the existing crop/quantity/date validation, asking-price limits, county list and offline draft queue. The two town choices are explicitly invented `Demo Town A` and `Demo Town B`. Harvest date defaults to today and is shown in the review. |
+| Pending/synced/failed | Pending means the phone has saved and queued the listing, not that the server accepted it. A SELL code is shown only after the existing sync engine records server confirmation. Failures remain on the phone; an owned failed draft can be explicitly retried or reviewed in the existing Sell my harvest workspace. |
+| My Listings | Shows USSD-marked demo drafts saved on this browser, including accurate queue state and server reference. It does not pretend that a phone number retrieves listings on another device. |
+| My Inquiries | Uses `X-Requester-Key` for buyer conversations and `X-Listing-Key` for each locally owned listing, plus the existing signed-in cookie where applicable. Server authorization is unchanged. Replies are made through the existing authorized harvest workspace and read back here after refresh. |
 
-## 4. Working, simulated and future
-| | Status |
-|---|---|
-| Menus, numbers, Back/Home/Cancel, sessions, timeout, restart, the advice | **Working** (built into the app, works offline) |
-| The phone, the "session", the caller number | **Simulated**: no network, no USSD code, no SMS |
-| Harvest list | Simulated demo data online; the saved copy offline. **Needs internet** to refresh (marked "(net)") |
-| Selling and expert help | **Demonstration of a possible future workflow only.** The first screen says NOTHING WAS SENT; no request is made |
-| Other languages, recorded audio | **Future / planned.** No translation or recording exists; none was invented |
-| A real basic-phone service | **Future**: see section 9 |
+There is **no invented phone-number identity or new buyer/farmer role**. The historical fake caller number is no longer displayed. Synthetic display names are labels, not authentication. Existing signed-in account cookies and existing random browser keys provide the same authority as the normal marketplace. If requester storage is unstable, inquiry submission fails closed. No seller or buyer phone field enters the simulator's projections, even when another client has consent to see it. Server CSRF, owner/account checks, consent rules, rate limits and idempotency remain unchanged.
 
-## 5. Sessions, timeout and restart
-* States: idle, active, ended (exit, cancel, timeout). **Send** starts a new session; every restart is completely fresh (menu path, typed digits and notices are forgotten; the session counter increases).
-* **90 seconds** with no key ends the session ("Session timed out ..."); any key press resets the clock. Digits typed after a timeout only fill the idle entry line, and Send with digits typed does not start a session (there is no dial code). A timeout wipes anything typed. For demonstrations the presenter can shorten it with `/ussd-demo?timeout=5` (5 to 300 seconds).
-* Invalid entries (a number not on the menu, `*` or `#`, a quantity outside 1 to 1,000,000 kg, a price outside 1 to 50,000,000, too many digits, an empty Send) are refused with a message and change nothing.
+The engine stays pure (no network, storage or clock). It emits a command only after the final numbered confirmation. The browser adapter deduplicates concurrent dispatch, uses the existing harvest queue/owner keys, and gives inquiries a stable idempotency key. Requests have a 12-second adapter deadline. An uncertain inquiry response says delivery is unconfirmed and offers retry of **the same operation**. It never says an offline inquiry succeeded or puts one into an invented outbox.
 
-## 6. Offline
-The engine and all advice are bundled and make no network call (tested); the page is part of the precached app. Verified with the server stopped: menus, planting, storage and the symptom check work, the harvest list shows the **saved** copy labelled "saved 20 Nov, may be old", the timeout and restart work. With no saved list the screen says "No list on this phone. It needs internet once to download it." A small badge under the phone says, for every screen, whether it is built in, live, saved or needs internet.
+## Demo isolation and enabling interaction
 
-## 7. Accessibility
-Large keys (12 digit keys at least 52 px, function keys 52 px), 7:1 contrast on the screen, a gold focus ring on every key, labelled controls (Digit 1 ... Digit Star, Digit Hash, Send, Cancel and end the session, Back one screen, Home, Delete the last digit), a polite live region for the screen, the countdown hidden from screen readers. **Keyboard:** digits, `*` and `#`; **Enter** = Send; **Backspace** = Delete; **Escape** = Cancel; Tab reaches every key and Enter/Space on a focused key does what a click does. Responsive down to **320 px**. Checking this also found and fixed an existing layout bug: **every page overflowed horizontally at 320 px when the app was offline** (the shared top strip is now allowed to wrap).
+The ordinary build remains **read-only/practice by default**. Advice, practice and QR setup do not need write access. Interactive submissions require both:
 
-## 8. Tests and verification
-`tests/phase2b.test.ts` (14, `npm run test:phase2b`): an exhaustive walk of **every reachable screen** (over 900 per market state) and its error variant against the 182-character limit; pagination loses nothing; the seven main menu items; invalid input; Back/Home/Cancel and typed 0/00 equivalence; the session state machine with a fake clock; advice equals the Crops Library and Phase 2A for all nine crops and twelve months; all 162 symptom-check combinations equal the app; offline behaviour and "no private field"; "NOTHING WAS SENT" on the first screen of the demo-only flows; languages; no short code, no operator names, no phone field; keyboard, labels, focus, touch targets, contrast; routes, navigation and the walkthrough. Removing the warning or the timeout makes tests fail (checked by hand). Browser (desktop Chrome, disposable server; 320, 360, 375, 412 and desktop widths measured in same-origin frames, not on real devices): real keyboard and tap paths, online live list, real offline, 5-second timeout and restart, Tab focus ring, no console errors, no horizontal overflow.
+1. The public build setting `VITE_USSD_MARKETPLACE_ENABLED=true`.
+2. The existing `/api/v1/environment` response reporting **both** `demoEnvironment: true` and `syntheticAccountsOnly: true` (`APP_ENV=demo`, using the project's existing protected demonstration configuration).
 
-### Continuation verification — 20 November 2026
+A query parameter, QR link, hostname, fake phone number or client account label cannot enable submissions. The adapter checks the existing environment endpoint again before each online write. A page already verified online can prepare an offline sale while open. After an offline reload, guidance/drafts still open, but new submissions stay disabled until that page verifies the protected server online again.
 
-The existing Phase 2B implementation was committed as `bf9f446`, following Phase 2A `b90c45a`. Review found one UI timeout defect: the phone screen expired, but the entry line retained typed digits and the status still said the session was open. The timer now applies the engine's expiry transition to React state as well as updating the clock, clearing the entry and displaying the ended status and restart control without another key press.
+**Use a separate demonstration database, origin and browser profile.** Do not point a demo server at the development database. Listing filtering accepts the server's synthetic seed marker or the fixed `USSD DEMO: synthetic harvest. No payments.` description on records created by this interface. These labels help presentation and filtering; they are **not a database isolation boundary**. Actual separation is the existing dedicated demo database/runtime. No reset, seed or migration was run against the development database for this work.
 
-Verification passed:
+The existing server on port 3000 remains running unchanged; its development mode does not satisfy the protected-demo write gate. To rehearse interaction, use a separately started disposable protected demo instance on another port with the existing HTTPS proxy. Configure its existing `APP_ENV=demo`, `DEMO_ENV_ACK=synthetic-accounts-only`, simulated SMS and independent random secrets as documented in `.env.example` and `docs/SIMULATED_SMS_SECURITY.md`. Secure cookies require HTTPS. Do not expose test fixture mode publicly or assume `APP_ENV=test` enables this gate. Synthetic background data may be loaded only into that separate disposable instance, never the current database.
 
-| Check | Result |
-|---|---|
-| `npm run test:phase2b` | 14 passed |
-| `npm run test:phase2a` | 12 passed |
-| `npm run test:offline` | 31 passed across advice, cache and inventory |
-| `npm run test:triage` | 21 passed |
-| `npm run test:harvest` | 17 passed, including client tests |
-| `npm run test:hardening` | 11 passed |
-| `npm run test:ministry` | 15 passed |
-| `npm run lint` | TypeScript passed |
-| `npm run build` | Client, service worker and server built; bundle-size and mixed-import warnings remain |
+## Offline behavior
 
-The Phase 2B and Phase 2A suites, TypeScript and production build were repeated after the timeout correction. Headless Chrome checked the rebuilt production app using its own temporary profile and disposable SQLite database on an unused port: no horizontal overflow at 320, 360 or 375 px; typed input cleared on a five-second timeout; ended status and fresh restart; numeric keyboard selection, Enter and Escape; invalid selection and Cancel. Service-worker reload and bundled planting/storage advice worked with the disposable server stopped. These browser flows produced no uncaught JavaScript exceptions or non-GET requests. Browser checks are desktop emulation, not physical-device or screen-reader certification.
+- The service worker precaches the simulator route and all route chunks in a production build. First visit/installation still needs a connection; Vite development mode has no offline service worker.
+- Bundled planting, pest, harvest/storage and symptom guidance reuse the existing Crops Library, Phase 2A sentence builder, advice cards and triage rules. No agricultural claims or translations were invented.
+- Explicitly confirmed sales reuse `saveListingDraft` → `queueRecord('listing', ...)` → the existing `syncSoon`/reconnect processing. Existing auto-sync pause and retry rules still apply. A failed/draft record is never silently reported as published.
+- Public produce browsing reuses the existing saved harvest snapshot and labels it old. Only available demo listings enter this view.
+- Inquiries need a live connection and listing revalidation. Private inquiry lists remain in the current session's memory, are labelled previously loaded and need refresh for new replies; they are not newly persisted offline by this feature.
+- A queued listing survives session End/restart or page reload. Confirmation explicitly authorizes later sync. Clearing browser data can lose local drafts/private keys; no new recovery identity is invented.
 
-Timeout regression for presenters: open `/ussd-demo?timeout=5`, start a session, open a submenu, type a digit without sending it, then wait six seconds. Confirm that the screen says timed out, the entry is empty, the status says the session ended and **Start a session** appears. Press Send and confirm a fresh main menu with the next session number.
+## QR destination and printable poster
 
-The existing server on port 3000 was identified as Node PID `33070`, running `server.ts` from this project, and `/ussd-demo` returned HTTP 200. It was not stopped or restarted. All server tests used disposable databases; the development database was not reset or migrated. Existing untracked documents and the nested project copy were left untouched.
+Set **`VITE_PUBLIC_DEMO_URL`** to the **actual public HTTPS origin that hosts this application**, or that origin's `/ussd-demo` URL, then rebuild. This setting is public client configuration; it is separate from the server's existing `APP_URL`. Do not put any secret in a `VITE_` setting.
 
-## 9. Presenter demonstration (steps 3 and 4 of the walkthrough)
-1. Open `/ussd-demo` (also linked from **My farm today** and Farm Tools). Point at the label and the legend.
-2. **Send** -> `1` Send (crops) -> `1` Send (rice) -> `1` Send (planting months). Say: same text as the app, built in, works offline. Press `0` Send to go Back and `00` Send for Home.
-3. Type `9` Send to show the invalid-option message. Type digits and press Backspace.
-4. Go offline (airplane mode): everything above still works; `4` `1` `1` shows the **saved** harvest list with its date.
-5. `4` `2`: try selling (cassava, 650 kg, 62, a county). Read the screen: **NOTHING WAS SENT**. Then `5` `2`: the expert demo says the same.
-6. `6` Send: Kpelle, Bassa and Mano are **planned**; English is the only language. `7` `3` exits. Open `?timeout=5` to show a timeout and press Send to restart.
+The QR encodes exactly the configured origin plus `/ussd-demo`. It is generated locally as SVG using pinned `qrcode-generator`; no external QR service receives the URL. The code has a four-module quiet zone and medium error correction. The same component appears on `/ussd-demo`, `/demo/farm-to-market` and `/ussd-demo/poster`.
 
-## 10. Limitations and what a real service would need
-1. **Not a real USSD service.** No dial code or short code exists or is requested; nothing is registered with any operator or regulator.
-2. A real service needs: a short code and agreement with a mobile operator or an aggregator; a USSD gateway that calls our server for every key press (the engine here is pure and could be reused behind such an endpoint); acceptance by the regulator; operator session limits and costs; server-side session storage; consent and privacy rules for subscriber numbers (the simulator deliberately never handles one); abuse and rate limits; monitoring.
-3. **Character set:** real USSD uses the GSM 7-bit alphabet. Some library text contains characters outside it (for example en dashes and typographic quotes); a real gateway would need a reviewed transliteration. The simulator shows the text as is.
-4. Screens are split by length, not by an editor's judgement; long advice takes several pages on a basic phone.
-5. Sending a real expert question or a listing by USSD or SMS is **not** implemented (the demo screens say so). Languages other than English are **not** available; no translation or recording was made.
-6. The advice is demonstration content, not reviewed by an agronomist or the Ministry. Planting months are the general Crops Library months, not county-specific; there is no weather on the phone menu.
-7. Not verified: real feature phones, screen readers (TalkBack, VoiceOver), slow networks, the Hostinger runtime, the PHP `test:m3`.
+No configured URL means **setup instructions and no QR image**. Validation also refuses localhost, IP literals, local/placeholder suffixes, HTTP, custom ports, credentials, query strings, fragments and unrelated paths. Request headers and the current localhost address are never used as fallback. The title is **“Scan to Try the Agri-Advisory Basic-Phone Demo.”** The poster has a print stylesheet and a normal accessible destination link.
+
+Before printing: verify that the configured public address actually serves this app, open `/ussd-demo` on a second device, compare the printed destination and scan the QR. **No real public demo URL was supplied or configured during this implementation.** QR encoding/decoding and its matching navigation link are tested with an explicit URL fixture; live navigation to an operator-configured public deployment and physical-camera scanning remain presenter setup checks. No invented public domain or authentication link is shipped as the default.
+
+## Verification
+
+- Existing Phase 2B tests retain exhaustive advice/menu pagination, all crops/months, 162 symptom combinations, keyboard/labels, offline guidance, timeout/restart and untouched expert/practice simulations. Main-menu references were updated for marketplace `3` and harvest/storage `4`.
+- `npm run test:ussd-marketplace`: **13 tests** cover keypad sale and buy confirmation, actual disposable-backend listing/inquiry calls, ownership denial, seller reply, validation, storage failure, offline pending/reconnect, disabled gates, demo-only/phone-free projections, same-operation lost-response retry, stalled-request deadline, session boundaries, owned failed-draft retry, unstable requester storage, invalid QR destinations and QR decoding/link equality. Queue storage is injected in these contract tests; the real IndexedDB queue is verified in Chrome.
+- Browser: actual protected `APP_ENV=demo` runtime on a disposable SQLite database, temporary local HTTPS and isolated farmer/buyer profiles. **16 checkpoints passed**, including real IndexedDB offline save, reconnect auto-sync, one server listing/code, inquiry transport failure/retry, owner-authorized reply and keypad conversation retrieval. All four mobile widths (320/360/375/412) fit with no horizontal overflow; every key measured at least 44×44 px. Keyboard/invalid input and the unconfigured print poster also passed. No uncaught JavaScript exceptions.
+- **234 tests passed**: 221 existing tests across Phase 2B, Phase 2A, H1/H2, triage, harvest, offline, hardening, Ministry, API, harness and Phase 0/0B, plus the 13 new tests. All **63 contract requests** matched the unchanged golden snapshot. TypeScript and the production build passed. The main entry is about **444 kB** raw / **135 kB** gzip; the local QR module is about **24 kB** raw / **9 kB** gzip, and route chunks remain precached. No bundle-size or mixed-import warning remains. The final default-build browser check also passed the disabled write gate, QR/poster navigation, print generation, presenter QR setup, timeout/restart and inline PWA notice. No database or server route/schema/authentication change is part of this feature.
+
+Not certified: real feature phones or telecom networks, physical-camera QR scans, screen-reader/native-audio compatibility, live public hosting, production security certification or qualified agricultural approval. English is the only USSD language; other languages and real expert submission remain future work. No actual payments or orders exist.
+
+## Presenter sequence
+
+1. Show the browser/telecom disclaimer. If a real public URL is configured, scan its QR; otherwise show why setup is required.
+2. Call / Send → `1` → crop → planting months. Show Back/Home and the same bundled advice offline.
+3. `3` → `2` Sell My Harvest → crop → kg → asking price → county → synthetic town. Read every review page. **Nothing is saved until the final confirmation.**
+4. Disconnect, confirm, and show Pending Sync without a reference. Reconnect and use My Listings to read the actual server SELL reference.
+5. In a separate buyer profile: `3` → `1` Buy Produce → crop/county/listing → template → review → confirm online. Read the server confirmation, not a payment claim.
+6. My Inquiries shows each participant's authorized conversation. Reply through Sell my harvest, refresh and read it on the buyer phone.
+7. `6` shows English and future-language notices. `7` retains the original no-submit selling practice and expert demonstration. End, invalid selection and `?timeout=5` can be used for a brief session-control demonstration.

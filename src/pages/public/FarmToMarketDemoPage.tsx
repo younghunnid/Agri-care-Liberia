@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {Link} from 'react-router-dom';
 import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
+import {DemoQr} from '../../components/ussd/DemoQr';
 import {StatusLabel} from '../../components/StatusLabel';
 import type {StatusKind} from '../../lib/statusLabels';
 
@@ -11,7 +12,7 @@ export const FARM_TO_MARKET_STEPS: Step[] = [
   {n: 1, text: 'Open "My farm today": choose a county and the crops you grow', to: '/today', kinds: ['working', 'simulated'], note: 'Your choices are saved on the phone only. The screen shows online/offline, what is waiting to send, and reminders built from SAMPLE weather (not live, not a forecast) and the Crops Library planting months.'},
   {n: 2, text: 'Open the planting months and the harvest and storage guidance for a crop (works offline)', to: '/guidance', kinds: ['draft'], note: 'Demonstration guidance, not reviewed by an agronomist or the Ministry. The regional-data limit is shown on the page.'},
   {n: 3, text: 'Basic phone: open the simulator, press Send, choose 1 Crops & planting, then a crop and "Planting months"', to: '/ussd-demo', kinds: ['simulated', 'draft'], note: 'A pretend feature phone with numbered menus. The advice is the same bundled guidance as the app and works offline. There is no mobile network and no dial code.'},
-  {n: 4, text: 'Same phone: 4 Sell & market, then "Try selling (demo only)"; then 5 Expert help and 6 Language', to: '/ussd-demo', kinds: ['simulated', 'future'], note: 'The sell and expert screens only show a possible future workflow and say NOTHING was sent. Kpelle, Bassa and Mano are listed as planned: no translation or recording exists.'},
+  {n: 4, text: 'Same phone: 3 Buy & Sell Produce; review and confirm a synthetic listing or inquiry; then 6 Language', to: '/ussd-demo', kinds: ['working', 'simulated', 'future'], note: 'Interactive marketplace actions use existing browser keys/account and require explicit confirmation on a protected synthetic demo server. Offline listings wait for sync; inquiries need internet. No order or payment. Expert and selling practice examples submit nothing. Other languages are planned: no translation or recording exists.'},
   {n: 5, text: 'Open the app and choose "Check my crop"', to: '/check-my-crop', kinds: ['simulated', 'draft'], note: 'A simple rule on the farmer\'s answers. Not a diagnosis; no photo is analysed.'},
   {n: 6, text: 'Cassava, young leaves patchy or twisted; answer the questions', to: '/check-my-crop', kinds: ['simulated'], note: 'Tick "add my result to the anonymous county counts" to feed the Ministry view.'},
   {n: 7, text: 'Read the colour and the advice card (ADV-2026-001)', to: '/advice-cards/ADV-2026-001', kinds: ['draft'], note: 'Demonstration advice, labelled NOT reviewed by a qualified agronomist.'},
@@ -54,6 +55,7 @@ export const FarmToMarketDemoPage: React.FC = () => {
         </ul>
         {isAdmin && <div className="space-y-2"><div className="flex flex-wrap gap-3"><button type="button" onClick={() => void load(false)} className="min-h-[48px] rounded-xl bg-[#183B2B] text-white font-bold px-4" data-testid="load-demo-data">Add missing synthetic data</button>{!confirmReset ? <button type="button" onClick={() => setConfirmReset(true)} className="min-h-[48px] rounded-xl border-2 border-[#183B2B]/40 text-[#183B2B] font-bold px-4" data-testid="reset-demo-data">Reset synthetic data...</button> : <span className="inline-flex flex-wrap items-center gap-2 rounded-xl border-2 border-amber-400 bg-amber-50 p-2" data-testid="reset-confirm"><span className="text-sm font-bold text-amber-950">This deletes the synthetic listings, their questions and replies, and starts them again. Real entries stay.</span><button type="button" onClick={() => void load(true)} className="min-h-[44px] rounded-xl bg-amber-700 text-white font-bold px-4" data-testid="reset-demo-confirm">Yes, reset</button><button type="button" onClick={() => setConfirmReset(false)} className="min-h-[44px] rounded-xl border-2 border-[#183B2B]/30 px-4 font-bold">Cancel</button></span>}</div>{msg && <p role="status" className="text-base font-bold text-[#0F5C2A]">{msg}</p>}</div>}
       </section>
+      <DemoQr />
       <ol className="space-y-3">
         {FARM_TO_MARKET_STEPS.map((s) => (
           <li key={s.n} className="rounded-2xl bg-white border border-[#183B2B]/10 p-4 space-y-2" data-testid="demo-step">

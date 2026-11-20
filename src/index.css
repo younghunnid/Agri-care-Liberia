@@ -111,3 +111,19 @@
     font-size: 0.875rem;
   }
 }
+
+@media (max-width: 639px) {
+  .ussd-handset { min-height: calc(100svh - 4rem); }
+}
+
+@media print {
+  body:has([data-qr-poster]) { background: white; }
+  body:has([data-qr-poster]) * { visibility: hidden; }
+  body:has([data-qr-poster]) [data-qr-poster],
+  body:has([data-qr-poster]) [data-qr-poster] * { visibility: visible; }
+  body:has([data-qr-poster]) [data-qr-poster] {
+    position: absolute; inset: 0 auto auto 0; width: 100%; max-width: 180mm;
+    margin: 0; padding: 8mm; border: 0; color: #183B2B; background: white;
+    break-inside: avoid;
+  }
+}

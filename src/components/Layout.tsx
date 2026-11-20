@@ -116,6 +116,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
     }`;
 
   const isHome = location.pathname === '/';
+  const isPhoneDemo = location.pathname === '/ussd-demo';
   const narrow = useNarrowScreen();
 
   return (
@@ -187,7 +188,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
       </header>
 
       {/* Compact utility strip: one row on phones (icon buttons, 44 px targets); labels appear from sm up. */}
-      <div className="bg-white/80 border-b border-[#183B2B]/10">
+      <div className={`${isPhoneDemo ? 'hidden sm:block' : ''} bg-white/80 border-b border-[#183B2B]/10`}>
         <div className="max-w-7xl mx-auto px-2 sm:px-6 py-1.5 flex flex-wrap items-center gap-1 sm:gap-2">
           {!isHome && (
             <>
@@ -304,7 +305,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
       <PwaUpdatePrompt />
 
       {/* Main Content */}
-      <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 pb-28 md:pb-12">
+      <main id="main-content" tabIndex={-1} className={`flex-1 min-w-0 ${isPhoneDemo ? 'pb-6' : 'pb-28 md:pb-12'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3">
           <ListenModeBar />
         </div>
@@ -361,7 +362,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
       {/* Mobile Bottom Navigation Bar (5 thumb-friendly targets) */}
       <nav
         aria-label="Mobile navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#183B2B]/10 pb-safe"
+        className={`${isPhoneDemo ? 'hidden' : 'md:hidden'} fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#183B2B]/10 pb-safe`}
       >
         <div className="grid grid-cols-5 h-[4.25rem] items-center">
           <Link to="/today" aria-current={location.pathname === '/today' ? 'page' : undefined} className={mobileTabClass(location.pathname.startsWith('/today'))} data-testid="tab-today">

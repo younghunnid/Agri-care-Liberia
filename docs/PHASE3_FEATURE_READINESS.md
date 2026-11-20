@@ -1,6 +1,6 @@
 # Phase 3 — feature readiness and quality assurance
 
-Audit base: `feature/offline-first`, `8e3269b`. Verified 20 November 2026. This report covers a **synthetic local hackathon demonstration**, not deployment or field readiness. [Presenter script](PHASE3_HACKATHON_DEMO.md).
+Audit base: `feature/offline-first`, `8e3269b`. **Subsequent extension:** see [interactive USSD marketplace and QR](PHASE2B_USSD_SIMULATOR.md) for the newer confirmed browser marketplace flow and public-URL setup; the baseline verification below remains historical. Verified 20 November 2026. This report covers a **synthetic local hackathon demonstration**, not deployment or field readiness. [Presenter script](PHASE3_HACKATHON_DEMO.md).
 
 ## Audit findings and disposition
 

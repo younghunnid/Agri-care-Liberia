@@ -34,7 +34,8 @@
     "test:harvest": "tsx --test tests/harvest.test.ts tests/harvest-client.test.ts",
     "test:hardening": "tsx --test tests/hardening.test.ts",
     "test:phase2a": "tsx --test tests/phase2a.test.ts",
-    "test:phase2b": "tsx --test tests/phase2b.test.ts"
+    "test:phase2b": "tsx --test tests/phase2b.test.ts",
+    "test:ussd-marketplace": "tsx --test tests/ussd-marketplace.test.ts"
   },
   "dependencies": {
     "@google/genai": "^3.4.0",
@@ -48,6 +49,7 @@
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "qrcode-generator": "2.0.4",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "react-router-dom": "^7.18.5",
@@ -56,12 +58,13 @@
     "vite-plugin-pwa": "^2.0.0"
   },
   "devDependencies": {
+    "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "jsqr": "1.4.0",
     "tsx": "^4.21.0",
-    "typescript": "^7.0.2",
-    "@types/express": "^4.17.21"
+    "typescript": "^7.0.2"
   },
   "engines": {
     "node": ">=22.13.0"

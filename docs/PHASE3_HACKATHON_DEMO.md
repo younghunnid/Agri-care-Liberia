@@ -1,6 +1,6 @@
 # Team 8 — hackathon demonstration (8–9 minutes)
 
-Prepared 20 November 2026 for the existing React/TypeScript, Express and SQLite prototype. Companion: [feature readiness and QA](PHASE3_FEATURE_READINESS.md). In-app presenter route: `/demo/farm-to-market`.
+Prepared 20 November 2026 for the existing React/TypeScript, Express and SQLite prototype. Companion: [feature readiness and QA](PHASE3_FEATURE_READINESS.md). In-app presenter route: `/demo/farm-to-market`. The subsequent [interactive USSD and QR extension](PHASE2B_USSD_SIMULATOR.md) adds optional protected-demo marketplace submissions; they stay disabled on the development server.
 
 ## The story
 
@@ -53,10 +53,25 @@ Before presenting:
 | 3:15–4:35 | `/harvest/sell`, then disconnect | Submit the synthetic listing while offline. Show **Pending Sync** and that no SELL reference exists yet. Open guidance again while still disconnected. “The draft is on this phone. The server has not received it.” Reconnect; wait for the listing to publish and receive its SELL reference. Use **Send now** on Today only if the auto-sync delay would distract from the presentation. |
 | 4:35–5:50 | Buyer profile `/harvest`, then Farmer profile `/harvest/sell` | Buyer refreshes, filters to Cassava/Bong, finds the new SELL code and asks “Can I collect this demonstration harvest tomorrow?” Farmer reopens Sell, reads the question and replies. Buyer refreshes to read the reply. “The owner and requester device keys protect their conversations. Phone sharing is optional. This is an inquiry, not an order or a payment.” |
 | 5:50–6:50 | `/ministry-analytics#sec-live` | Show the separate app-entered and synthetic blocks, the minimum-group notice and a suppressed group. “This is not an official Ministry system. Small groups are suppressed or combined; updates are batched. One new check may intentionally not change the public counts.” Never promise an immediate count increment for a single farmer. |
-| 6:50–7:50 | `/ussd-demo` | Read the simulation disclaimer. Send → `1` → a crop → planting months; use Back/Home. Show Language and the “planned” messages. “English works here. There is no telecom connection, assigned short code or SMS.” Selling/expert menu examples submit nothing. |
+| 6:50–7:50 | `/ussd-demo` | Read the simulation disclaimer. Send → `1` → a crop → planting months; use Back/Home. Show Language and the “planned” messages. “English works here. There is no telecom connection, assigned short code or SMS.” Menu 3 now has explicitly confirmed browser marketplace actions when configured on a protected synthetic demo instance. Its expert and legacy practice examples still submit nothing. Do not present an inquiry as an order or payment. |
 | 7:50–8:30 | Close with the limits and next evidence | “The expected benefits are continuity during connection loss, clearer guidance access and easier market conversations. We have tested the software, not measured farmer adoption, yield or income. Next steps require farmer usability studies, qualified content review and separately approved service integrations.” |
 
 For a shorter seven-minute version, omit photo selection, show only one storage tip, and describe the second profile's reply using the prepared screenshot if switching profiles takes too long. Do not replace a failed live step with an invented successful result.
+
+## Optional QR and keypad marketplace segment
+
+Use the same `DemoQr` section on `/ussd-demo` and `/demo/farm-to-market`, or open `/ussd-demo/poster` to print. Set `VITE_PUBLIC_DEMO_URL` to the actual public HTTPS origin that hosts this app and rebuild first. No public URL is currently supplied by this work, so setup instructions replace the QR; never print a localhost or placeholder QR. No token, password or sign-in link belongs in that URL.
+
+Interactive keypad writes additionally need `VITE_USSD_MARKETPLACE_ENABLED=true` at build time **and** the existing protected synthetic-only `APP_ENV=demo` response. The loopback `APP_ENV=test` command above is suitable for the general rehearsal, but intentionally does not enable this new gate. Use a separate protected demo database/origin/profile with HTTPS for the interactive segment; never change, reset or seed the development database.
+
+For a 9–10-minute version, replace the normal listing-entry portion with:
+
+1. Farmer phone: **3 Buy & Sell Produce → 2 Sell My Harvest**. Choose crop, kg, asking price, county and a labelled synthetic town. Read the date/contact/queue explanation on every review page.
+2. Disconnect and make the final numbered confirmation. Show Pending Sync and explain that the later sync is authorized by that confirmation. Reconnect and show **3 My Listings** with the actual server-issued SELL reference.
+3. Buyer profile: **3 → 1 Buy Produce**, select crop/county/listing, choose an inquiry template, review and confirm online. **4 My Inquiries** then shows the authorized conversation; the farmer replies through the existing harvest workspace.
+4. Close with the labels: no phone-number identity, no order/payment, no real telecom connection. Original selling practice is still under Help and submits nothing.
+
+If interaction is not configured, demonstrate the advice and legacy practice screens and describe the tested workflow from the evidence. Do not imply that a disabled confirmation submitted anything. See the [USSD setup and verification details](PHASE2B_USSD_SIMULATOR.md).
 
 ## What works, what is simulated, what is future
 
@@ -66,7 +81,7 @@ For a shorter seven-minute version, omit photo selection, show only one storage 
 | Harvest creation, server-issued SELL lookup codes, buyer filters, inquiry/reply authorization and optional contact consent | Synthetic listings, sellers and example prices; no live market-price feed | Payments, orders and external buyer verification |
 | Symptom question flow, saved assessments and optional aggregate sharing | Rule-based crop results; no photo analysis or measured diagnostic accuracy | Validated diagnostic service |
 | Public suppressed aggregate calculations and saved snapshots | Synthetic statistics and illustrative Food Security Index; no official endorsement | Official data feeds, Ministry analyst accounts and measured field impact |
-| Numeric USSD simulator, keyboard, timeout, restart and bundled advice | Browser phone and expert/selling examples submit nothing | Operator USSD, SMS gateway and reviewed local-language content |
+| Numeric USSD simulator, keyboard, timeout, restart, bundled advice and gated browser marketplace confirmation | Telecom phone/session and legacy expert/selling practice are simulated | Operator USSD, SMS gateway and reviewed local-language content |
 | Existing English device speech and demonstration recordings where labelled | Device voice availability varies; language previews are incomplete | New human voice recordings and complete reviewed translations |
 
 ## Architecture in one minute

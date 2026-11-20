@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import {useLocation} from 'react-router-dom';
 import {CheckCircle2, RefreshCw, X} from 'lucide-react';
 import {applyPwaUpdate, dismissPwaNotice, usePwaState} from '../lib/pwaUpdate';
 
@@ -8,13 +9,15 @@ import {applyPwaUpdate, dismissPwaNotice, usePwaState} from '../lib/pwaUpdate';
  */
 export const PwaUpdatePrompt: React.FC = () => {
   const {needRefresh, offlineReady} = usePwaState();
+  const inline = useLocation().pathname === '/ussd-demo';
   const [updating, setUpdating] = useState(false);
 
   if (!needRefresh && !offlineReady) return null;
 
   return (
     <div
-      className="fixed inset-x-0 bottom-20 md:bottom-4 z-50 flex justify-center px-4 pointer-events-none"
+      className={inline ? 'flex justify-center px-2 py-3' : 'fixed inset-x-0 bottom-20 md:bottom-4 z-50 flex justify-center px-4 pointer-events-none'}
+      data-testid="pwa-notice"
       role="status"
       aria-live="polite"
     >
