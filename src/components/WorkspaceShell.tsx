@@ -1,4 +1,5 @@
 import React from 'react';
+import {WorkspaceScaffold} from './workspace/WorkspaceScaffold';
 import {NavLink} from 'react-router-dom';
 
 export interface WorkspaceNavItem {
@@ -13,7 +14,9 @@ export const WorkspaceShell: React.FC<{
   subtitle?: string;
   navItems: WorkspaceNavItem[];
   children: React.ReactNode;
-}> = ({kicker, title, subtitle, navItems, children}) => {
+  layout?: 'tabs' | 'sidebar';
+}> = ({kicker, title, subtitle, navItems, children, layout = 'tabs'}) => {
+  if (layout === 'sidebar') return <WorkspaceScaffold title={title} subtitle={subtitle} navItems={navItems}>{children}</WorkspaceScaffold>;
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <div className="space-y-1">

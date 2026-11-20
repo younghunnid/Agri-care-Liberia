@@ -1,3 +1,4 @@
+import {isMinistryPath} from '../lib/ministryWorkspace';
 import {PwaUpdatePrompt} from './PwaUpdatePrompt';
 import {SyncBanner} from './SyncStatus';
 import {DemoEnvironmentBanner} from './DemoEnvironmentBanner';
@@ -118,6 +119,12 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
   const isHome = location.pathname === '/';
   const isPhoneDemo = location.pathname === '/ussd-demo';
   const narrow = useNarrowScreen();
+
+  if (isMinistryPath(location.pathname)) return <div className="min-h-dvh bg-[#F5F7F6] text-[#183B2B]">
+    <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[80] focus:rounded-xl focus:bg-[#16803C] focus:px-4 focus:py-3 focus:text-white">Skip to main content</a>
+    <DemoEnvironmentBanner /><SyncBanner /><PwaUpdatePrompt />
+    <main id="main-content" tabIndex={-1} className="min-w-0"><ListenModeBar />{children}</main>
+  </div>;
 
   return (
     <div className="min-h-screen min-h-dvh flex flex-col bg-[#F3F8F0] text-[#183B2B]">
@@ -439,7 +446,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
                       {to: '/harvest', label: 'Buyers: find harvest', icon: Store},
                       {to: '/harvest/sell', label: 'Farmers: sell my harvest', icon: Sprout},
                       {to: '/expert', label: 'Experts: workspace (sign in)', icon: UserCheck},
-                      {to: '/ministry-analytics', label: 'Ministry: aggregate demonstration', icon: BarChart3},
+                      {to: '/ministry', label: 'Ministry: aggregate workspace', icon: BarChart3},
                       {to: '/demo/farm-to-market', label: 'Presenter walkthrough', icon: Presentation},
                     ],
                   },
@@ -481,8 +488,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
                     title: 'Programme & demo views',
                     items: [
                       {to: '/demo', label: 'Hackathon Demo Mode (4 Journeys)', icon: Presentation},
-                      {to: '/ministry', label: '5. Ministry Food Security View', icon: BarChart3},
-                      {to: '/ministry-analytics', label: '5b. Ministry & Extension View (Demo)', icon: BarChart3},
+                      {to: '/ministry', label: '5. Ministry workspace (aggregate demo)', icon: BarChart3},
                       {to: '/language-lab', label: '4. Local Language Lab', icon: Languages},
                       {to: '/phone-simulator', label: '4b. Simulated Phone Service', icon: PhoneCall},
                       {to: '/dashboard', label: 'Farmer Dashboard (Demo)', icon: LayoutDashboard},

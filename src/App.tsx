@@ -26,7 +26,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/public/ForgotPasswordPage'
 const DemoSmsInboxPage = lazy(() => import('./pages/public/DemoSmsInboxPage').then((m) => ({default: m.DemoSmsInboxPage})));
 const AccountSecurityPage = lazy(() => import('./pages/farmer/AccountSecurityPage').then((m) => ({default: m.AccountSecurityPage})));
 const TrustedDevicesPage = lazy(() => import('./pages/farmer/TrustedDevicesPage').then((m) => ({default: m.TrustedDevicesPage})));
-const MinistryAnalyticsPage = lazy(() => import('./pages/public/MinistryAnalyticsPage').then((m) => ({default: m.MinistryAnalyticsPage})));
+const MinistryWorkspacePage = lazy(() => import('./pages/public/MinistryWorkspacePage').then((m) => ({default: m.MinistryWorkspacePage})));
 const LearnPage = lazy(() => import('./pages/public/LearnPage').then((m) => ({default: m.LearnPage})));
 const LessonPage = lazy(() => import('./pages/public/LessonPage').then((m) => ({default: m.LessonPage})));
 const CassavaDemoPage = lazy(() => import('./pages/public/CassavaDemoPage').then((m) => ({default: m.CassavaDemoPage})));
@@ -49,7 +49,7 @@ const WeatherPage = lazy(() => import('./pages/public/WeatherPage').then((m) => 
 const SoilAdvisoryPage = lazy(() => import('./pages/public/SoilAdvisoryPage').then((m) => ({default: m.SoilAdvisoryPage})));
 const CropsLibraryPage = lazy(() => import('./pages/public/CropsLibraryPage').then((m) => ({default: m.CropsLibraryPage})));
 const LivestockPage = lazy(() => import('./pages/public/LivestockPage').then((m) => ({default: m.LivestockPage})));
-const MinistryDashboardPage = lazy(() => import('./pages/public/MinistryDashboardPage').then((m) => ({default: m.MinistryDashboardPage})));
+
 const AboutPage = lazy(() => import('./pages/public/AboutPage').then((m) => ({default: m.AboutPage})));
 const ContactFeedbackPage = lazy(() => import('./pages/public/ContactFeedbackPage').then((m) => ({default: m.ContactFeedbackPage})));
 const LoginPage = lazy(() => import('./pages/public/LoginPage').then((m) => ({default: m.LoginPage})));
@@ -98,8 +98,9 @@ export default function App() {
             <Route path="/weather" element={<WeatherPage />} />
             <Route path="/soil" element={<SoilAdvisoryPage />} />
             <Route path="/pests" element={<PestsDiseasesPage />} />
-            <Route path="/ministry" element={<MinistryDashboardPage />} />
-            <Route path="/food-security" element={<MinistryDashboardPage />} />
+            <Route path="/ministry" element={<MinistryWorkspacePage />} />
+            <Route path="/ministry/*" element={<MinistryWorkspacePage />} />
+            <Route path="/food-security" element={<MinistryWorkspacePage />} />
             <Route path="/offline" element={<OfflineLibraryPage />} />
             <Route path="/offline/read/:id" element={<OfflineReaderPage />} />
             <Route path="/downloads" element={<OfflineDownloadsPage />} />
@@ -123,7 +124,7 @@ export default function App() {
             <Route path="/harvest" element={<HarvestMarketPage />} />
             <Route path="/harvest/sell" element={<SellHarvestPage />} />
             <Route path="/demo/farm-to-market" element={<FarmToMarketDemoPage />} />
-            <Route path="/ministry-analytics" element={<MinistryAnalyticsPage />} />
+            <Route path="/ministry-analytics" element={<MinistryWorkspacePage />} />
             <Route path="/learn" element={<LearnPage />} />
             <Route path="/learn/:id" element={<LessonPage />} />
             <Route path="/tools/calculator" element={<FarmCalculatorPage />} />

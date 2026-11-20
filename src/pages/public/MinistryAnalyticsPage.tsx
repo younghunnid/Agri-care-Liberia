@@ -1,6 +1,6 @@
 import {LiveInsightsPanel} from '../../components/ministry/LiveInsightsPanel';
 import React, {useEffect, useMemo, useState} from 'react';
-import {Link} from 'react-router-dom';
+import {Link, useSearchParams} from 'react-router-dom';
 import {AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, CloudRain, Droplets, MessageSquareText, ShieldCheck, Smartphone, Thermometer} from 'lucide-react';
 import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
@@ -38,11 +38,18 @@ const Pill: React.FC<{cls: string; icon?: React.ReactNode; children: React.React
   <span data-testid={testid} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold ${cls}`}>{icon}{children}</span>
 );
 
-export const MinistryAnalyticsPage: React.FC = () => {
+export const MinistryAnalyticsPage: React.FC<{embedded?: boolean; view?: string}> = ({embedded = false, view = 'overview'}) => {
+  const sections: Record<string,string[]> = {overview:['overview'],'food-security':['production','fsi','weather'],'crop-monitoring':['disease'],extension:['disease','campaigns'],'data-quality':['privacy']};
+  const show = (id:string) => !embedded || (sections[view] ?? []).includes(id);
+  const [params,setParams] = useSearchParams();
+  const sampleParam=(key:string,value:string)=>setParams(previous=>{const next=new URLSearchParams(previous);next.set(key,value);return next;},{replace:true});
   const {isOnline} = useApp();
   const sync = useSyncState();
-  const [county, setCounty] = useState<DemoCounty | 'All'>('All');
-  const [crop, setCrop] = useState<string>(ALL);
+  const requestedCounty=params.get('sampleCounty')??'All';
+  const county:DemoCounty|'All'=(DEMO_COUNTIES as readonly string[]).includes(requestedCounty)?requestedCounty as DemoCounty:'All';
+  const setCounty=(v:DemoCounty|'All')=>sampleParam('sampleCounty',v);
+  const crop=DEMO_CROPS.includes(params.get('sampleCrop')??'')?params.get('sampleCrop')!:ALL;
+  const setCrop=(v:string)=>sampleParam('sampleCrop',v);
   const [sortKey, setSortKey] = useState<SortKey>('fsi');
   const [asc, setAsc] = useState(true);
   const [selectedId, setSelectedId] = useState<string>(PRODUCTION[0].id);
@@ -111,7 +118,8 @@ export const MinistryAnalyticsPage: React.FC = () => {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8" data-testid="ministry-analytics-page">
+    <div className={embedded ? "min-w-0 space-y-5" : "max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8"} data-testid="ministry-analytics-page">
+      {!embedded && (<>
       <header className="space-y-3">
         <div className="flex flex-wrap gap-2"><StatusLabel kind="simulated" text="Demonstration dashboard" /><StatusLabel kind="working" text="Runs offline" /></div>
         <h1 className="font-display text-3xl font-extrabold text-[#183B2B]">Ministry &amp; Extension View (Demo)</h1>
@@ -133,10 +141,15 @@ export const MinistryAnalyticsPage: React.FC = () => {
           </label>
         </div>
       </header>
+      </>)}
+
+
+      {embedded && ['food-security','crop-monitoring','extension'].includes(view) && <fieldset className="rounded-2xl border border-[#183B2B]/10 bg-white p-4"><legend className="px-2 text-sm font-bold">Illustrative Ministry dataset A</legend><p className="mb-3 text-sm text-[#52665B]">These sample filters affect only the illustrative sections below, not published aggregates. No historical reporting periods are available.</p><div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="text-sm font-bold">Sample county<select data-testid="filter-county" value={county} onChange={e=>setCounty(e.target.value as DemoCounty|'All')} className={sel}><option value="All">All five demo counties</option>{DEMO_COUNTIES.map(c=><option key={c}>{c}</option>)}</select></label>{view==='food-security'&&<label className="text-sm font-bold">Sample crop (production and index)<select data-testid="filter-crop" value={crop} onChange={e=>setCrop(e.target.value)} className={sel}><option value={ALL}>All crops</option>{DEMO_CROPS.map(c=><option key={c}>{c}</option>)}</select></label>}</div></fieldset>}
 
       {/* ============================ A. OVERVIEW */}
+      {show('overview') && (
       <section id="sec-overview" aria-labelledby="h-overview" className="space-y-3 scroll-mt-20">
-        <h2 id="h-overview" className="font-display text-2xl font-extrabold text-[#183B2B]">Overview</h2>
+        <h2 id="h-overview" className="font-display text-2xl font-extrabold text-[#183B2B]">Illustrative sample overview</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="kpis">
           {[
             ['Registered farmers', nf.format(OVERVIEW_SYNTHETIC.registeredFarmers), 'synthetic', 'Counts only. No names or phone numbers are shown anywhere on this page.'],
@@ -160,10 +173,13 @@ export const MinistryAnalyticsPage: React.FC = () => {
           </div>
         </div>
       </section>
+      )}
+
 
       {/* ============================ B. COUNTY PRODUCTION */}
-      <LiveInsightsPanel />
+      {!embedded && <LiveInsightsPanel />}
 
+      {show('production') && (
       <section id="sec-production" aria-labelledby="h-production" className="space-y-3 scroll-mt-20">
         <h2 id="h-production" className="font-display text-2xl font-extrabold text-[#183B2B]">County production <SourceBadge kind="synthetic" /></h2>
         <p className="text-sm text-[#183B2B]/80" data-testid="prod-summary">Showing <strong>{sum.rows}</strong> of {PRODUCTION.length} rows · planted {nf.format(sum.plantedHa)} ha · expected {nf.format(sum.expectedMt)} MT · actual {nf.format(sum.actualMt)} MT · actual is <strong>{sum.achievementPct}%</strong> of expected{sum.meanFsi !== null ? ` · mean demo index ${sum.meanFsi}` : ''}.</p>
@@ -192,8 +208,11 @@ export const MinistryAnalyticsPage: React.FC = () => {
         </div>
         <ExpectedActualChart bars={chart.bars} max={chart.max} title={`Expected versus actual harvest (MT): ${county === 'All' ? 'all counties' : county}, ${crop === ALL ? 'all crops' : crop}`} />
       </section>
+      )}
+
 
       {/* ============================ C. FOOD SECURITY INDEX */}
+      {show('fsi') && (
       <section id="sec-fsi" aria-labelledby="h-fsi" className="space-y-3 scroll-mt-20">
         <h2 id="h-fsi" className="font-display text-2xl font-extrabold text-[#183B2B]">Food security index (illustrative)</h2>
         <p data-testid="fsi-label" className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-sm font-bold text-amber-950">{FSI_LABEL}</p>
@@ -217,8 +236,11 @@ export const MinistryAnalyticsPage: React.FC = () => {
           </div>
         ) : <p className={card}>Select a row in the production table to see its index.</p>}
       </section>
+      )}
+
 
       {/* ============================ D. WEATHER */}
+      {show('weather') && (
       <section id="sec-weather" aria-labelledby="h-weather" className="space-y-3 scroll-mt-20">
         <h2 id="h-weather" className="font-display text-2xl font-extrabold text-[#183B2B]">Weather and planting <StatusLabel kind="simulated" text="Not a live forecast" /></h2>
         <p className="text-sm text-[#183B2B]/80">Demonstration numbers for five counties. Planting windows and wording are <strong>draft</strong> rules written by the team. They have not been checked by an agronomist or a meteorological service. Always confirm with an agricultural extension officer.</p>
@@ -244,8 +266,11 @@ export const MinistryAnalyticsPage: React.FC = () => {
           })}
         </div>
       </section>
+      )}
+
 
       {/* ============================ E. DISEASE SIGNALS */}
+      {show('disease') && (
       <section id="sec-disease" aria-labelledby="h-disease" className="space-y-3 scroll-mt-20">
         <h2 id="h-disease" className="font-display text-2xl font-extrabold text-[#183B2B]">Disease and illness signals <SourceBadge kind="synthetic" /></h2>
         <p role="note" className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-sm font-semibold text-amber-950">These are counts of what farmers reported, grouped by county. They are <strong>not diagnoses</strong>. No confirmed disease is named here, no AI confidence score is shown, and nothing has been verified by an expert. A person (extension or veterinary officer) must review each signal.</p>
@@ -280,8 +305,11 @@ export const MinistryAnalyticsPage: React.FC = () => {
         </ul>
         <p className="text-xs text-[#183B2B]/75">Assigning only changes this page. No officer is notified and no record is stored.</p>
       </section>
+      )}
+
 
       {/* ============================ F. SIMULATED SMS AND USSD */}
+      {show('campaigns') && (
       <section id="sec-campaigns" aria-labelledby="h-campaigns" className="space-y-3 scroll-mt-20">
         <h2 id="h-campaigns" className="font-display text-2xl font-extrabold text-[#183B2B]">Simulated SMS and USSD campaigns</h2>
         <p data-testid="sim-banner" className="rounded-xl border-2 border-sky-300 bg-sky-50 p-3 text-sm font-bold text-sky-950">SIMULATION ONLY. Nothing on this page sends a real SMS or opens a USSD session, and no telecom network is connected. Sign-in codes are never part of campaigns: they are handled only by the separate sign-in service.</p>
@@ -349,19 +377,24 @@ export const MinistryAnalyticsPage: React.FC = () => {
           </table>
         </div>
       </section>
+      )}
+
 
       {/* ============================ G. PRIVACY AND ACCESS */}
+      {show('privacy') && (
       <section id="sec-privacy" aria-labelledby="h-privacy" className="space-y-3 scroll-mt-20">
         <h2 id="h-privacy" className="font-display text-2xl font-extrabold text-[#183B2B] flex items-center gap-2"><ShieldCheck className="w-6 h-6 text-[#16803C]" aria-hidden /> Privacy and access</h2>
         <ul className={`${card} list-disc pl-8 space-y-2 text-base text-[#183B2B]/90`} data-testid="privacy-list">
-          <li><strong>Separate from farmer views.</strong> This page has its own address and reads none of the farmer, expert or marketplace records.</li>
-          <li><strong>No personal data.</strong> Only aggregate counts. There are no names, phone numbers or individual reports anywhere on this page, and there is no export of data.</li>
-          <li><strong>No Ministry login exists yet.</strong> Because there is no Ministry role in this prototype, the page is kept synthetic and isolated. It does not pretend to have production access control. Before any real data is connected, the server must enforce a Ministry role, return only aggregates, and write security-sensitive actions to the audit log.</li>
+          <li><strong>Separate from farmer views.</strong> {embedded ? 'This workspace shows permitted published aggregates and prototype summary counts only. No individual farmer, expert or marketplace record is fetched.' : 'This page has its own address and reads none of the farmer, expert or marketplace records.'}</li>
+          <li><strong>No personal data.</strong> Only aggregate counts. There are no names, phone numbers or individual reports anywhere on this page, and there is no export of data from these local campaign simulations.</li>
+          <li><strong>No Ministry login exists yet.</strong> {embedded ? 'There is no Ministry permission in this prototype. Public app-entered views use the existing aggregate suppression and rounding rules. This workspace grants no access to protected records. Future privileged reports or actions require server authorization and an audit trail.' : 'Because there is no Ministry role in this prototype, the page is kept synthetic and isolated. It does not pretend to have production access control. Before any real data is connected, the server must enforce a Ministry role, return only aggregates, and write security-sensitive actions to the audit log.'}</li>
           <li><strong>Campaigns are simulated.</strong> Nothing is sent, so nothing is audited. A real campaign feature would need consent records, sender approval and an audit trail.</li>
           <li><strong>Not an official source.</strong> Nothing here is a Ministry statistic, assessment or endorsement.</li>
         </ul>
-        <p className="text-sm"><Link to="/demo" className="font-bold underline text-[#0F5C2A] inline-flex items-center min-h-[44px]">Back to Demo Mode</Link> · <Link to="/ministry" className="font-bold underline text-[#0F5C2A] inline-flex items-center min-h-[44px]">Existing food security demo view</Link></p>
+        <p className="text-sm"><Link to="/demo" className="font-bold underline text-[#0F5C2A] inline-flex items-center min-h-[44px]">Back to Demo Mode</Link> · <Link to="/ministry/food-security" className="font-bold underline text-[#0F5C2A] inline-flex items-center min-h-[44px]">Existing food security demo view</Link></p>
       </section>
+      )}
+
     </div>
   );
 };

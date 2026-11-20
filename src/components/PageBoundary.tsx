@@ -1,10 +1,14 @@
+import {isMinistryPath} from '../lib/ministryWorkspace';
 import React, {Component, Suspense, useEffect} from 'react';
 import {Link, useLocation} from 'react-router-dom';
 
 /** Keep navigation usable if a route fails to load, including an uncached page on an offline device. */
-class PageBoundary extends Component<{children: React.ReactNode}, {failed: boolean}> {
+class PageBoundary extends Component<{children: React.ReactNode; resetKey: string}, {failed: boolean}> {
   state = {failed: false};
   static getDerivedStateFromError() { return {failed: true}; }
+  componentDidUpdate(previous: {resetKey: string}) {
+    if (previous.resetKey !== this.props.resetKey && this.state.failed) this.setState({failed: false});
+  }
   render() {
     if (!this.state.failed) return this.props.children;
     return (
@@ -36,7 +40,7 @@ const PageFocus: React.FC<{children: React.ReactNode}> = ({children}) => {
 export const RouteContent: React.FC<{children: React.ReactNode}> = ({children}) => {
   const {pathname} = useLocation();
   return (
-    <PageBoundary key={pathname}>
+    <PageBoundary key={isMinistryPath(pathname) ? 'ministry-workspace' : pathname} resetKey={pathname}>
       <Suspense fallback={<p role="status" className="max-w-3xl mx-auto px-4 py-10 text-base font-semibold">Opening page… Your saved work stays on this phone.</p>}>
         <PageFocus>{children}</PageFocus>
       </Suspense>

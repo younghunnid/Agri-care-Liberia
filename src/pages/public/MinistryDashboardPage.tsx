@@ -30,7 +30,7 @@ interface PrototypeCounts {
   };
 }
 
-export const MinistryDashboardPage: React.FC = () => {
+export const MinistryDashboardPage: React.FC<{embedded?: boolean}> = ({embedded = false}) => {
   const {isOnline} = useApp();
   const [countyFilter, setCountyFilter] = useState('All Counties');
   const [snap, setSnap] = useState<CachedSnapshot<PrototypeCounts['demoAndExperimentalData']> | null>(null);
@@ -109,7 +109,8 @@ export const MinistryDashboardPage: React.FC = () => {
       .join(' ');
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className={embedded ? "min-w-0 space-y-5" : "max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6"}>
+      {!embedded && <>
       <div className="rounded-3xl bg-[#183B2B] text-white p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="space-y-2 max-w-3xl">
           <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#F5B942]">
@@ -133,6 +134,7 @@ export const MinistryDashboardPage: React.FC = () => {
 
       <p className="text-sm" data-testid="to-analytics"><Link to="/ministry-analytics" className="font-bold underline text-[#0F5C2A]">Open the new Ministry &amp; Extension View (Demo): production, index, weather, disease signals and simulated SMS/USSD.</Link></p>
 
+      </>}
       {/* MANDATORY DATA INTEGRITY NOTICE */}
       <div className="rounded-2xl bg-[#F5B942]/30 border-2 border-[#F5B942] p-4 sm:p-5 flex items-start gap-3 text-sm text-[#183B2B]">
         <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useId} from 'react';
 import type {Bar} from '../../lib/ministryAnalytics';
 
 const nf = new Intl.NumberFormat('en-US');
@@ -8,11 +8,12 @@ const nf = new Intl.NumberFormat('en-US');
  * differ by pattern AND label (not colour alone), and the table above/below shows the same data. Plain HTML/CSS: scales to any width, no library.
  */
 export const ExpectedActualChart: React.FC<{bars: Bar[]; max: number; title: string}> = ({bars, max, title}) => {
+  const captionId = useId();
   if (bars.length === 0) return <p data-testid="chart-empty" className="rounded-2xl border border-dashed border-[#183B2B]/25 bg-white p-4 text-sm">No rows match the filters, so there is nothing to chart.</p>;
-  const w = (v: number) => `${max > 0 ? Math.max(1, Math.round((v / max) * 100)) : 0}%`;
+  const w = (v: number) => `${max > 0 ? Math.max(0, Math.min(100, (v / max) * 100)) : 0}%`;
   return (
-    <figure role="group" aria-labelledby="chart-title" className="rounded-2xl bg-white border border-[#183B2B]/12 p-4 space-y-3" data-testid="yield-chart">
-      <figcaption id="chart-title" className="font-display text-lg font-extrabold text-[#183B2B]">{title}</figcaption>
+    <figure role="group" aria-labelledby={captionId} className="rounded-2xl bg-white border border-[#183B2B]/12 p-4 space-y-3" data-testid="yield-chart">
+      <figcaption id={captionId} className="font-display text-lg font-extrabold text-[#183B2B]">{title}</figcaption>
       <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-[#183B2B]" aria-label="Chart legend">
         <li className="inline-flex items-center gap-2"><span aria-hidden className="inline-block w-6 h-3 rounded-sm border-2 border-dashed border-[#183B2B] bg-[#F3F8F0]" /> Expected (MT)</li>
         <li className="inline-flex items-center gap-2"><span aria-hidden className="inline-block w-6 h-3 rounded-sm bg-[#16803C]" /> Actual (MT)</li>

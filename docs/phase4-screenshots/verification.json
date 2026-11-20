@@ -1,0 +1,649 @@
+{
+  "date": "2026-11-20",
+  "automatedSuites": {
+    "ministry": {
+      "passed": 15,
+      "failed": 0
+    },
+    "workspace-tests": {
+      "passed": 9,
+      "failed": 0
+    },
+    "hardening": {
+      "passed": 11,
+      "failed": 0
+    },
+    "phase0": {
+      "passed": 20,
+      "failed": 0
+    },
+    "api": {
+      "passed": 31,
+      "failed": 0
+    },
+    "phase2b": {
+      "passed": 15,
+      "failed": 0
+    },
+    "ussd-marketplace": {
+      "passed": 13,
+      "failed": 0
+    },
+    "harvest": {
+      "passed": 17,
+      "failed": 0
+    },
+    "offline": {
+      "passed": 31,
+      "failed": 0
+    },
+    "phase2a": {
+      "passed": 12,
+      "failed": 0
+    },
+    "triage": {
+      "passed": 21,
+      "failed": 0
+    },
+    "h1": {
+      "passed": 18,
+      "failed": 0
+    },
+    "h2": {
+      "passed": 16,
+      "failed": 0
+    }
+  },
+  "apiContractRequests": 63,
+  "ministryBrowser": {
+    "checks": [
+      "Unified overview has eight destinations and one primary heading",
+      "Legacy routes and section anchors resolve without loops",
+      "All eight views render on desktop without horizontal page overflow",
+      "Published county filter matches server values; unsupported crop/date controls disabled",
+      "Search/reset dimension controls never create a joint county-crop view",
+      "Synthetic production filters retain exact FSI math and separate legacy charts",
+      "Campaign simulator and its local receipt survive workspace navigation",
+      "320/360/375/412 mobile and 768 tablet widths have no horizontal page overflow",
+      "Compact mobile display controls expand without losing language or accessibility tools",
+      "Drawer traps focus, wraps Tab/Shift-Tab, closes with Escape and restores focus",
+      "Report export contains only selected permitted columns and scope/source/privacy metadata",
+      "Failed refresh retains saved information and explicit error state",
+      "Initial loading state does not claim zero statistics",
+      "Fresh error and true empty states differ from privacy suppression",
+      "Real small groups remain suppressed, never shown as zero-valued charts",
+      "Saved Ministry snapshot and Home/Today/Guidance/USSD reopen with page and worker offline; menu 8 preserved"
+    ],
+    "sizes": [
+      {
+        "width": 320,
+        "scroll": 320
+      },
+      {
+        "width": 360,
+        "scroll": 360
+      },
+      {
+        "width": 375,
+        "scroll": 375
+      },
+      {
+        "width": 412,
+        "scroll": 412
+      },
+      {
+        "width": 768,
+        "scroll": 768
+      }
+    ],
+    "exceptions": []
+  },
+  "marketplaceBrowser": {
+    "checks": [
+      "Protected synthetic server enables configured UI",
+      "320/360/375/412 widths, readable screen and 44px+ controls",
+      "No submission before final keypad confirmation",
+      "Confirmed offline sale queued without invented SELL reference",
+      "Offline advice and offline route reload",
+      "Reconnect auto-sync created one actual server listing",
+      "My Listings shows server-issued reference",
+      "Separate buyer selects crop/county/listing and reviews inquiry",
+      "Offline inquiry refused without success or outbox entry",
+      "Failed transport reports unconfirmed delivery and offers same-operation retry",
+      "Online inquiry confirms actual server result",
+      "My Inquiries uses buyer device key",
+      "Seller inquiries use existing owner authorization",
+      "Existing seller reply appears in keypad My Inquiries",
+      "Desktop keyboard input, invalid choice and Escape",
+      "Unconfigured printable poster shows setup, no misleading QR"
+    ],
+    "metrics": [
+      {
+        "width": 320,
+        "scrollWidth": 320,
+        "phone": 304,
+        "keys": [
+          {
+            "w": 44,
+            "h": 44
+          },
+          {
+            "w": 130,
+            "h": 52.6875
+          },
+          {
+            "w": 130,
+            "h": 52.6875
+          },
+          {
+            "w": 85.328125,
+            "h": 52
+          },
+          {
+            "w": 85.328125,
+            "h": 52
+          },
+          {
+            "w": 85.34375,
+            "h": 52
+          },
+          {
+            "w": 82.65625,
+            "h": 56
+          },
+          {
+            "w": 82.671875,
+            "h": 56
+          },
+          {
+            "w": 82.65625,
+            "h": 56
+          },
+          {
+            "w": 82.65625,
+            "h": 56
+          },
+          {
+            "w": 82.671875,
+            "h": 56
+          },
+          {
+            "w": 82.65625,
+            "h": 56
+          },
+          {
+            "w": 82.65625,
+            "h": 56
+          },
+          {
+            "w": 82.671875,
+            "h": 56
+          },
+          {
+            "w": 82.65625,
+            "h": 56
+          },
+          {
+            "w": 82.65625,
+            "h": 56
+          },
+          {
+            "w": 82.671875,
+            "h": 56
+          },
+          {
+            "w": 82.65625,
+            "h": 56
+          }
+        ],
+        "font": "16px"
+      },
+      {
+        "width": 360,
+        "scrollWidth": 360,
+        "phone": 344,
+        "keys": [
+          {
+            "w": 44,
+            "h": 44
+          },
+          {
+            "w": 150,
+            "h": 52
+          },
+          {
+            "w": 150,
+            "h": 52
+          },
+          {
+            "w": 98.65625,
+            "h": 52
+          },
+          {
+            "w": 98.671875,
+            "h": 52
+          },
+          {
+            "w": 98.65625,
+            "h": 52
+          },
+          {
+            "w": 96,
+            "h": 56
+          },
+          {
+            "w": 96,
+            "h": 56
+          },
+          {
+            "w": 96,
+            "h": 56
+          },
+          {
+            "w": 96,
+            "h": 56
+          },
+          {
+            "w": 96,
+            "h": 56
+          },
+          {
+            "w": 96,
+            "h": 56
+          },
+          {
+            "w": 96,
+            "h": 56
+          },
+          {
+            "w": 96,
+            "h": 56
+          },
+          {
+            "w": 96,
+            "h": 56
+          },
+          {
+            "w": 96,
+            "h": 56
+          },
+          {
+            "w": 96,
+            "h": 56
+          },
+          {
+            "w": 96,
+            "h": 56
+          }
+        ],
+        "font": "16px"
+      },
+      {
+        "width": 375,
+        "scrollWidth": 375,
+        "phone": 359,
+        "keys": [
+          {
+            "w": 44,
+            "h": 44
+          },
+          {
+            "w": 157.5,
+            "h": 52
+          },
+          {
+            "w": 157.5,
+            "h": 52
+          },
+          {
+            "w": 103.65625,
+            "h": 52
+          },
+          {
+            "w": 103.671875,
+            "h": 52
+          },
+          {
+            "w": 103.65625,
+            "h": 52
+          },
+          {
+            "w": 101,
+            "h": 56
+          },
+          {
+            "w": 101,
+            "h": 56
+          },
+          {
+            "w": 101,
+            "h": 56
+          },
+          {
+            "w": 101,
+            "h": 56
+          },
+          {
+            "w": 101,
+            "h": 56
+          },
+          {
+            "w": 101,
+            "h": 56
+          },
+          {
+            "w": 101,
+            "h": 56
+          },
+          {
+            "w": 101,
+            "h": 56
+          },
+          {
+            "w": 101,
+            "h": 56
+          },
+          {
+            "w": 101,
+            "h": 56
+          },
+          {
+            "w": 101,
+            "h": 56
+          },
+          {
+            "w": 101,
+            "h": 56
+          }
+        ],
+        "font": "16px"
+      },
+      {
+        "width": 412,
+        "scrollWidth": 412,
+        "phone": 396,
+        "keys": [
+          {
+            "w": 44,
+            "h": 44
+          },
+          {
+            "w": 176,
+            "h": 52
+          },
+          {
+            "w": 176,
+            "h": 52
+          },
+          {
+            "w": 116,
+            "h": 52
+          },
+          {
+            "w": 116,
+            "h": 52
+          },
+          {
+            "w": 116,
+            "h": 52
+          },
+          {
+            "w": 113.328125,
+            "h": 56
+          },
+          {
+            "w": 113.328125,
+            "h": 56
+          },
+          {
+            "w": 113.34375,
+            "h": 56
+          },
+          {
+            "w": 113.328125,
+            "h": 56
+          },
+          {
+            "w": 113.328125,
+            "h": 56
+          },
+          {
+            "w": 113.34375,
+            "h": 56
+          },
+          {
+            "w": 113.328125,
+            "h": 56
+          },
+          {
+            "w": 113.328125,
+            "h": 56
+          },
+          {
+            "w": 113.34375,
+            "h": 56
+          },
+          {
+            "w": 113.328125,
+            "h": 56
+          },
+          {
+            "w": 113.328125,
+            "h": 56
+          },
+          {
+            "w": 113.34375,
+            "h": 56
+          }
+        ],
+        "font": "16px"
+      }
+    ],
+    "exceptions": []
+  },
+  "layoutMatrix": {
+    "measurements": [
+      {
+        "view": "overview",
+        "width": 320,
+        "scroll": 320
+      },
+      {
+        "view": "food-security",
+        "width": 320,
+        "scroll": 320
+      },
+      {
+        "view": "crop-monitoring",
+        "width": 320,
+        "scroll": 320
+      },
+      {
+        "view": "harvest",
+        "width": 320,
+        "scroll": 320
+      },
+      {
+        "view": "extension",
+        "width": 320,
+        "scroll": 320
+      },
+      {
+        "view": "counties",
+        "width": 320,
+        "scroll": 320
+      },
+      {
+        "view": "reports",
+        "width": 320,
+        "scroll": 320
+      },
+      {
+        "view": "data-quality",
+        "width": 320,
+        "scroll": 320
+      },
+      {
+        "view": "overview",
+        "width": 360,
+        "scroll": 360
+      },
+      {
+        "view": "food-security",
+        "width": 360,
+        "scroll": 360
+      },
+      {
+        "view": "crop-monitoring",
+        "width": 360,
+        "scroll": 360
+      },
+      {
+        "view": "harvest",
+        "width": 360,
+        "scroll": 360
+      },
+      {
+        "view": "extension",
+        "width": 360,
+        "scroll": 360
+      },
+      {
+        "view": "counties",
+        "width": 360,
+        "scroll": 360
+      },
+      {
+        "view": "reports",
+        "width": 360,
+        "scroll": 360
+      },
+      {
+        "view": "data-quality",
+        "width": 360,
+        "scroll": 360
+      },
+      {
+        "view": "overview",
+        "width": 375,
+        "scroll": 375
+      },
+      {
+        "view": "food-security",
+        "width": 375,
+        "scroll": 375
+      },
+      {
+        "view": "crop-monitoring",
+        "width": 375,
+        "scroll": 375
+      },
+      {
+        "view": "harvest",
+        "width": 375,
+        "scroll": 375
+      },
+      {
+        "view": "extension",
+        "width": 375,
+        "scroll": 375
+      },
+      {
+        "view": "counties",
+        "width": 375,
+        "scroll": 375
+      },
+      {
+        "view": "reports",
+        "width": 375,
+        "scroll": 375
+      },
+      {
+        "view": "data-quality",
+        "width": 375,
+        "scroll": 375
+      },
+      {
+        "view": "overview",
+        "width": 412,
+        "scroll": 412
+      },
+      {
+        "view": "food-security",
+        "width": 412,
+        "scroll": 412
+      },
+      {
+        "view": "crop-monitoring",
+        "width": 412,
+        "scroll": 412
+      },
+      {
+        "view": "harvest",
+        "width": 412,
+        "scroll": 412
+      },
+      {
+        "view": "extension",
+        "width": 412,
+        "scroll": 412
+      },
+      {
+        "view": "counties",
+        "width": 412,
+        "scroll": 412
+      },
+      {
+        "view": "reports",
+        "width": 412,
+        "scroll": 412
+      },
+      {
+        "view": "data-quality",
+        "width": 412,
+        "scroll": 412
+      },
+      {
+        "view": "overview",
+        "width": 768,
+        "scroll": 768
+      },
+      {
+        "view": "food-security",
+        "width": 768,
+        "scroll": 768
+      },
+      {
+        "view": "crop-monitoring",
+        "width": 768,
+        "scroll": 768
+      },
+      {
+        "view": "harvest",
+        "width": 768,
+        "scroll": 768
+      },
+      {
+        "view": "extension",
+        "width": 768,
+        "scroll": 768
+      },
+      {
+        "view": "counties",
+        "width": 768,
+        "scroll": 768
+      },
+      {
+        "view": "reports",
+        "width": 768,
+        "scroll": 768
+      },
+      {
+        "view": "data-quality",
+        "width": 768,
+        "scroll": 768
+      }
+    ],
+    "exceptions": []
+  }
+}
