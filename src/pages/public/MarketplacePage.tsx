@@ -1690,7 +1690,7 @@ export const MarketplacePage: React.FC = () => {
                   </button>
 
                   <p className="text-xs text-[#183B2B]/70 leading-relaxed">
-                    Opens your device&apos;s telephone dialer so you can speak with the farmer directly. Agri-Advisory Liberia does not complete calls automatically.
+                    Opens your device&apos;s telephone dialer so you can speak with the farmer directly. Agriccare Liberia does not complete calls automatically.
                   </p>
                 </div>
               ) : callState.isDemoSimulatedCall ? (

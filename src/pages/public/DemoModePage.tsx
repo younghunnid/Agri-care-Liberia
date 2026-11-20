@@ -20,6 +20,7 @@ import {
   getCompletedScenarios,
   markScenarioComplete,
 } from '../../lib/demoStorage';
+import {PresenterPanel} from '../../components/workspace/PresenterPanel';
 
 export const DemoModePage: React.FC = () => {
   const {setListenMode, setLanguage, user} = useApp();
@@ -120,6 +121,8 @@ export const DemoModePage: React.FC = () => {
           <span>{statusNotice}</span>
         </div>
       )}
+
+      <PresenterPanel completed={Object.values(completed).filter(Boolean).length} total={5} />
 
       <div className="rounded-2xl bg-sky-50 border border-sky-300 p-4 flex flex-wrap items-center justify-between gap-3" data-testid="ministry-analytics-link">
         <p className="text-sm font-bold text-[#183B2B]">New: Ministry &amp; Extension View (Demo): county production, illustrative food security index, weather, disease signals and a simulated SMS/USSD campaign tool. Synthetic data only.</p>

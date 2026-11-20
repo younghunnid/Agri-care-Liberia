@@ -10,7 +10,7 @@ Base: branch `feature/offline-first`, after commit `7da6edc` (in-website Demo SM
 **Problems found in the source (and why they were not copied):**
 | Finding | Handling |
 |---|---|
-| Branded as "KPAA" / "MoA-KPAA", messages signed "MoA-KPAA", footer says "Grounded in KPAA System Design" | Not adopted. Our name is Agri-Advisory Liberia; no Ministry attribution anywhere; the page states it is **not endorsed**. |
+| Branded as "KPAA" / "MoA-KPAA", messages signed "MoA-KPAA", footer says "Grounded in KPAA System Design" | Not adopted. Our name is Agriccare Liberia; no Ministry attribution anywhere; the page states it is **not endorsed**. |
 | USSD code `*384#` presented as the service's short code, used in templates | Not adopted. No short code exists; messages containing any `*…#` code are **refused** by the validator; the preview says none is assigned. A test fails if the string appears in `src/`. |
 | AI "confidence" percentages (74 to 88%), "<60% escalated", named confirmed diseases (e.g. "Rice Blast", "Newcastle Disease") and treatment text ("apply recommended fungicide", "vaccinate") | Not adopted. We show **counts of farmer reports** only, a plain description of what was reported, a rule-based severity indicator and "ask an officer". No named disease, no confidence, no treatment. |
 | Privacy panel claims (.NET `[Authorize]`, Argon2id, JWT, Supabase, audit logs) that describe a different system | Replaced by statements that are true for **our** prototype (no Ministry role exists yet; synthetic and isolated). |

@@ -57,6 +57,7 @@ const RegisterPage = lazy(() => import('./pages/public/RegisterPage').then((m) =
 
 // Authenticated Farmer Pages
 const FarmerDashboardPage = lazy(() => import('./pages/farmer/FarmerDashboardPage').then((m) => ({default: m.FarmerDashboardPage})));
+const MyMarketplacePage = lazy(() => import('./pages/farmer/MyMarketplacePage').then((m) => ({default: m.MyMarketplacePage})));
 const SavedAdvicePage = lazy(() => import('./pages/farmer/SavedAdvicePage').then((m) => ({default: m.SavedAdvicePage})));
 const MyQuestionsPage = lazy(() => import('./pages/farmer/MyQuestionsPage').then((m) => ({default: m.MyQuestionsPage})));
 const ExpertRequestsPage = lazy(() => import('./pages/farmer/ExpertRequestsPage').then((m) => ({default: m.ExpertRequestsPage})));
@@ -139,6 +140,7 @@ export default function App() {
 
             {/* Authenticated Farmer Routes */}
             <Route path="/farmer" element={<ProtectedRoute><FarmerDashboardPage /></ProtectedRoute>} />
+            <Route path="/farmer/market" element={<ProtectedRoute><MyMarketplacePage /></ProtectedRoute>} />
             <Route path="/farmer/saved" element={<ProtectedRoute><SavedAdvicePage /></ProtectedRoute>} />
             <Route path="/farmer/questions" element={<ProtectedRoute><MyQuestionsPage /></ProtectedRoute>} />
             <Route path="/farmer/expert-requests" element={<ProtectedRoute><ExpertRequestsPage /></ProtectedRoute>} />

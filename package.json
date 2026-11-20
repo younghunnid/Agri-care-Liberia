@@ -36,7 +36,8 @@
     "test:phase2a": "tsx --test tests/phase2a.test.ts",
     "test:phase2b": "tsx --test tests/phase2b.test.ts",
     "test:ussd-marketplace": "tsx --test tests/ussd-marketplace.test.ts",
-    "test:ministry-workspace": "tsx --test tests/ministry-workspace.test.tsx"
+    "test:ministry-workspace": "tsx --test tests/ministry-workspace.test.tsx",
+    "test:role-dashboards": "tsx --test tests/role-dashboards.test.tsx"
   },
   "dependencies": {
     "@google/genai": "^3.4.0",

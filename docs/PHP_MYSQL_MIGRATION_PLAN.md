@@ -1,4 +1,4 @@
-# PHP 8.2+ / MySQL 8 migration plan — Agri-Advisory Liberia (Team 8)
+# PHP 8.2+ / MySQL 8 migration plan — Agriccare Liberia (Team 8)
 
 **Status: M1 (test harness) implemented and verified; M2 onward NOT started.** (Originally: assessment and design only.) Nothing here has changed the React frontend, the PWA service
 worker, IndexedDB, the Node/Express backend, the SQLite files (`data/agri_advisory.db*` is untouched), or any existing migration.

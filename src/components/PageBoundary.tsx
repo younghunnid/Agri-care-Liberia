@@ -30,7 +30,7 @@ const PageFocus: React.FC<{children: React.ReactNode}> = ({children}) => {
   useEffect(() => {
     const heading = document.querySelector<HTMLElement>('main h1');
     if (!heading) return;
-    document.title = `${heading.textContent} | Agri-Advisory Liberia`;
+    document.title = `${heading.textContent} | Agriccare Liberia`;
     heading.tabIndex = -1;
     heading.focus({preventScroll: true});
   }, [pathname]);

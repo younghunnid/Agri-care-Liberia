@@ -327,7 +327,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
               <span className="w-8 h-8 rounded-xl bg-[#16803C] text-white flex items-center justify-center">
                 <Sprout className="w-4 h-4" aria-hidden="true" />
               </span>
-              <span>Agri-Advisory Liberia</span>
+              <span>Agriccare Liberia</span>
             </div>
             <p className="text-sm text-[#183B2B]/75 max-w-md leading-relaxed">
               Team 8 Inclusive Agricultural e-Advisory Platform (Liberia Agricultural Innovation Hackathon, November 20–22, 2026). Independent prototype separated from personal AgriConnect systems.
@@ -424,7 +424,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
               <div className="flex items-center justify-between border-b border-[#183B2B]/10 pb-4">
                 <div className="flex items-center gap-2 font-display font-bold text-[#183B2B]">
                   <Sprout className="w-5 h-5 text-[#16803C]" aria-hidden="true" />
-                  <span>Agri-Advisory Menu</span>
+                  <span>Agriccare Menu</span>
                 </div>
                 <button
                   type="button"

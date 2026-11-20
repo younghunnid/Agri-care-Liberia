@@ -1,6 +1,6 @@
 # Team 8 — Hackathon Judge Presentation Script (5–7 Minutes)
 **Event:** Liberia Agricultural Innovation Hackathon (November 20–22, 2026)  
-**Platform:** **Agri-Advisory Liberia** (Inclusive Agricultural e-Advisory Platform)  
+**Platform:** **Agriccare Liberia** (Inclusive Agricultural e-Advisory Platform)  
 **Target Duration:** ~6 minutes (leaving ~2 minutes for Judge Q&A)
 
 ---
@@ -18,7 +18,7 @@
 - **Script:**
   > "Good afternoon judges. Across Liberia's 15 counties, smallholder farmers face eight interconnected daily challenges: finding buyers and reliable input suppliers, unpredictable rainfall, crop pests and livestock diseases, language barriers in Bassa and Mano, poor soil health, limited crop & aquaculture guidance, and gaps in county-level food security visibility.
   >  
-  > Team 8 built **Agri-Advisory Liberia** as an independent, mobile-first, inclusive platform—completely separate from commercial marketplaces. From our clean green-and-white homepage, any farmer sees four clear starting buttons and direct access to all **eight agricultural problem-statement modules**, plus **Low-Data Mode** and **Smart Listen Mode** right at the top."
+  > Team 8 built **Agriccare Liberia** as an independent, mobile-first, inclusive platform—completely separate from commercial marketplaces. From our clean green-and-white homepage, any farmer sees four clear starting buttons and direct access to all **eight agricultural problem-statement modules**, plus **Low-Data Mode** and **Smart Listen Mode** right at the top."
 
 ---
 

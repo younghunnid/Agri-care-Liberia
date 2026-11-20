@@ -1,6 +1,9 @@
-import React, {useEffect, useState} from 'react';
+import React from 'react';
+import {Link} from 'react-router-dom';
 import {apiFetch} from '../../lib/api';
+import {useResource} from '../../lib/useResource';
 import {WorkspaceShell} from '../../components/WorkspaceShell';
+import {MetricCard, PanelState, PublishedDataTable, SectionCard} from '../../components/workspace/DashboardBits';
 
 export const ADMIN_NAV = [
   {to: '/admin', label: 'Overview', end: true},
@@ -14,99 +17,62 @@ export const ADMIN_NAV = [
 ];
 
 interface AdminOverviewData {
-  metrics: {
-    farmers: number;
-    experts: number;
-    guidesPublished: number;
-    guidesPending: number;
-    questionsOpen: number;
-    feedbackNew: number;
-  };
-  recentAudits: Array<{
-    id: number;
-    actor_role: string;
-    actor_name: string | null;
-    action: string;
-    target_type: string;
-    target_id: string;
-    created_at: string;
-  }>;
+  metrics: {farmers: number; experts: number; guidesPublished: number; guidesPending: number; questionsOpen: number; feedbackNew: number};
+  recentAudits: Array<{id: number; actor_role: string; actor_name: string | null; action: string; target_type: string; target_id: string; created_at: string}>;
 }
 
 export const AdminOverviewPage: React.FC = () => {
-  const [data, setData] = useState<AdminOverviewData | null>(null);
-
-  useEffect(() => {
-    apiFetch<AdminOverviewData>('/admin/overview')
-      .then(setData)
-      .catch(() => undefined);
-  }, []);
-
+  const {data, loading, error, reload} = useResource(() => apiFetch<AdminOverviewData>('/admin/overview'), []);
   const m = data?.metrics;
+  const initial = loading && !data;
+  const cards: {label: string; value?: number; note: string; to: string}[] = [
+    {label: 'Farmers', value: m?.farmers, note: 'Accounts with the farmer role.', to: '/admin/farmers'},
+    {label: 'Experts', value: m?.experts, note: 'Expert profiles.', to: '/admin/experts'},
+    {label: 'Published guides', value: m?.guidesPublished, note: 'Approved and published.', to: '/admin/guides'},
+    {label: 'Pending review', value: m?.guidesPending, note: 'Guides waiting for a review decision.', to: '/admin/reviews'},
+    {label: 'Open questions', value: m?.questionsOpen, note: 'Submitted, assigned or awaiting clarification.', to: '/admin/questions'},
+    {label: 'New feedback', value: m?.feedbackNew, note: 'Not yet triaged.', to: '/admin/reports'},
+  ];
 
   return (
     <WorkspaceShell
-      kicker="Administrator Console · RBAC Protected"
+      kicker="Administrator console · role protected on the server"
       title="Admin Overview"
-      subtitle="Platform activity, content publication queues, and security audit trail."
+      subtitle="Platform activity, content publication queues, and the security audit trail."
       navItems={ADMIN_NAV}
     >
-      <div className="space-y-6">
-        <div className="rounded-2xl bg-[#DDEFE0] border border-[#16803C]/20 p-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm font-medium text-[#183B2B]">
-            Need to review Bassa/Mano voice clips, marketplace moderation, or judge demo analytics?
-          </p>
-          <a
-            href="/management"
-            className="min-h-[44px] inline-flex items-center px-4 py-1.5 rounded-xl bg-[#16803C] text-white text-xs font-bold"
-          >
-            Open Prototype Management Console
-          </a>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-          {[
-            {label: 'Farmers', val: m?.farmers ?? '—'},
-            {label: 'Experts', val: m?.experts ?? '—'},
-            {label: 'Published Guides', val: m?.guidesPublished ?? '—'},
-            {label: 'Pending Review', val: m?.guidesPending ?? '—'},
-            {label: 'Open Questions', val: m?.questionsOpen ?? '—'},
-            {label: 'New Feedback', val: m?.feedbackNew ?? '—'},
-          ].map((stat) => (
-            <div key={stat.label} className="rounded-2xl bg-white border border-[#183B2B]/10 p-4 space-y-1">
-              <p className="text-xs text-[#183B2B]/65">{stat.label}</p>
-              <p className="font-display text-2xl font-extrabold tabular-nums text-[#183B2B]">{stat.val}</p>
-            </div>
-          ))}
-        </div>
+      {error && <PanelState kind="error" title="Platform overview could not be loaded" onRetry={reload}>{error}</PanelState>}
 
-        <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 space-y-3">
-          <h2 className="font-display text-lg font-bold">Recent Audit Activity</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-[#183B2B]/10 text-xs text-[#183B2B]/65">
-                <tr>
-                  <th className="py-2 pr-4">Time</th>
-                  <th className="py-2 pr-4">Actor</th>
-                  <th className="py-2 pr-4">Action</th>
-                  <th className="py-2">Target</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#183B2B]/10">
-                {(data?.recentAudits || []).map((a) => (
-                  <tr key={a.id}>
-                    <td className="py-2.5 pr-4 text-xs font-mono tabular-nums">{a.created_at}</td>
-                    <td className="py-2.5 pr-4">{a.actor_name || a.actor_role}</td>
-                    <td className="py-2.5 pr-4 font-semibold">{a.action}</td>
-                    <td className="py-2.5 text-xs text-[#183B2B]/75">
-                      {a.target_type} #{a.target_id}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <section aria-label="Platform summary" className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6">
+        {cards.map((c) => (
+          <Link key={c.label} to={c.to} className="block rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#16803C]">
+            <MetricCard label={c.label} loading={initial} value={c.value} source="Platform database" note={c.note} />
+          </Link>
+        ))}
+      </section>
+
+      <SectionCard title="Recent audit activity" description="The latest recorded administrative and security actions. Open Reports & Audit Logs for the full trail." actions={<Link to="/admin/reports" className="text-sm font-semibold text-[#16803C] hover:underline">Full audit log</Link>}>
+        {initial ? <PanelState kind="loading" title="Loading audit activity…" />
+          : !data ? <PanelState kind="unavailable" title="Audit activity unavailable">It could not be loaded. Nothing is shown rather than a made-up empty list.</PanelState>
+          : data.recentAudits.length === 0 ? <PanelState kind="empty" title="No audit events recorded yet" />
+          : <PublishedDataTable
+              caption="Recent audit events"
+              rows={data.recentAudits}
+              columns={[
+                {key: 'time', label: 'Time', value: (a) => a.created_at},
+                {key: 'actor', label: 'Actor', value: (a) => a.actor_name || a.actor_role},
+                {key: 'action', label: 'Action', value: (a) => a.action},
+                {key: 'target', label: 'Target', value: (a) => `${a.target_type} #${a.target_id}`},
+              ]}
+            />}
+      </SectionCard>
+
+      <SectionCard title="Prototype and demonstration tools" description="Voice clips, marketplace moderation and presenter tools live in the prototype console.">
+        <div className="flex flex-wrap gap-2">
+          <Link to="/management" className="inline-flex min-h-[44px] items-center rounded-xl bg-[#16803C] px-4 text-sm font-bold text-white">Prototype management console</Link>
+          <Link to="/demo" className="inline-flex min-h-[44px] items-center rounded-xl bg-[#DDEFE0] px-4 text-sm font-bold">Presenter mode</Link>
         </div>
-      </div>
+      </SectionCard>
     </WorkspaceShell>
   );
 };

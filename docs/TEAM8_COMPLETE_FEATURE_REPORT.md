@@ -1,5 +1,5 @@
 # Team 8 — Complete Feature & Status Report (Phase 2)
-**Project:** Inclusive Agricultural e-Advisory Platform (**Agri-Advisory Liberia**)  
+**Project:** Inclusive Agricultural e-Advisory Platform (**Agriccare Liberia**)  
 **Event:** Liberia Agricultural Innovation Hackathon (November 20–22, 2026)  
 **Isolation Notice:** Completely independent of the owner's personal AgriConnect Liberia marketplace. Uses its own isolated SQLite database (`./data/agri_advisory.db`) and zero payment or cart modules.
 

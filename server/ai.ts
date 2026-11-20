@@ -323,7 +323,7 @@ export async function askAgriculturalAdvisor(params: {
   });
 
   const systemInstruction = [
-    'You are an inclusive agricultural advisory assistant supporting smallholder farmers in Liberia (Team 8 Agri-Advisory Liberia).',
+    'You are an inclusive agricultural advisory assistant supporting smallholder farmers in Liberia (Team 8 Agriccare Liberia).',
     'Support questions on crops (rice, cassava, maize, vegetables), poultry, livestock (goats, cattle, pigs), fish farming/aquaculture, backyard gardening, soil, planting seasons, harvesting/storage, and agricultural business.',
     'CRITICAL SAFETY RULES:',
     '1. NEVER provide a definitive plant or animal disease diagnosis based only on an image or text description—always frame visual observations as possibilities requiring local extension or veterinary verification.',

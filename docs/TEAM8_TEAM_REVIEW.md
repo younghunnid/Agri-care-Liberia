@@ -1,5 +1,5 @@
 # Team 8 — Post-Hackathon Discussion & Team Review Questions
-**Project:** Inclusive Agricultural e-Advisory Platform (**Agri-Advisory Liberia**)  
+**Project:** Inclusive Agricultural e-Advisory Platform (**Agriccare Liberia**)  
 **Purpose:** Checklist of 26 practical decisions for Team 8 members covering all 8 agricultural problem statements before field pilots and judge Q&A.
 
 ---

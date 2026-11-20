@@ -1,5 +1,5 @@
 # Team 8 — Post-Hackathon Future Roadmap
-**Project:** **Agri-Advisory Liberia** (Inclusive Agricultural e-Advisory Platform)  
+**Project:** **Agriccare Liberia** (Inclusive Agricultural e-Advisory Platform)  
 **Guiding Principle:** Build farmer and Ministry trust through agronomy validation, transparent simulation labels, and low-bandwidth rural reliability.
 
 ---

@@ -543,7 +543,7 @@ export const LanguageLabPage: React.FC = () => {
               className="mt-1 w-4 h-4 accent-[#16803C]"
             />
             <span className="text-xs text-[#183B2B]/85 leading-relaxed">
-              <strong>Speaker Consent Confirmed:</strong> The speaker voluntarily consents for Team 8 to store and replay this agricultural voice clip inside the Agri-Advisory Liberia prototype and language dataset review.
+              <strong>Speaker Consent Confirmed:</strong> The speaker voluntarily consents for Team 8 to store and replay this agricultural voice clip inside the Agriccare Liberia prototype and language dataset review.
             </span>
           </label>
 

@@ -35,7 +35,7 @@ export function WorkspaceScaffold({title, subtitle, navItems, actions, children}
     return () => {document.removeEventListener('keydown', key);document.body.style.overflow = overflow;previous?.focus({preventScroll: true});};
   }, [open]);
   const navigation = () => <>
-    <Link to="/" className="flex min-h-[64px] items-center gap-3 border-b border-emerald-100 px-5 font-display text-base font-extrabold text-[#183B2B]"><span className="rounded-xl bg-[#16803C] p-2 text-white"><Sprout className="h-5 w-5" aria-hidden /></span><span>Agri-Advisory<span className="block text-xs font-medium text-[#52665B]">Liberia · Team 8</span></span></Link>
+    <Link to="/" className="flex min-h-[64px] items-center gap-3 border-b border-emerald-100 px-5 font-display text-base font-extrabold text-[#183B2B]"><span className="rounded-xl bg-[#16803C] p-2 text-white"><Sprout className="h-5 w-5" aria-hidden /></span><span>Agriccare<span className="block text-xs font-medium text-[#52665B]">Liberia · Team 8</span></span></Link>
     <div className="px-5 pt-6 pb-3 text-xs font-bold uppercase tracking-wider text-[#52665B]">Ministry workspace</div>
     <nav aria-label="Ministry workspace" className="space-y-1 px-3 pb-4">{navItems.map(({icon: Icon, label, to, end}) => <NavLink key={to} to={{pathname:to, search}} end={end} onClick={() => setOpen(false)} className={({isActive}) => `flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold ${isActive ? 'bg-[#16803C] text-white shadow-sm' : 'text-[#40554A] hover:bg-emerald-50 hover:text-[#0F5C2A]'}`}>
       {Icon && <Icon className="h-5 w-5 shrink-0" aria-hidden />}<span>{label}</span>

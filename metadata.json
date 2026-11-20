@@ -1,5 +1,5 @@
 {
-  "name": "Agri-Advisory Liberia",
+  "name": "Agriccare Liberia",
   "description": "Team 8 Inclusive Agricultural e-Advisory Platform providing timely, accessible farm advice for Liberian farmers online, offline, and across local languages.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

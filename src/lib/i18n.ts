@@ -47,7 +47,7 @@ export const LANGUAGE_OPTIONS: LanguageOption[] = [
 ];
 
 const EN_STRINGS = {
-  brandName: 'Agri-Advisory Liberia',
+  brandName: 'Agriccare Liberia',
   navHome: 'Home',
   navAsk: 'Advisor',
   navGuides: 'Knowledge',

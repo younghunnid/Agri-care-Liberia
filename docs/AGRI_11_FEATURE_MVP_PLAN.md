@@ -1,4 +1,4 @@
-# Agri-Advisory Liberia (Team 8) — 11-feature hackathon MVP plan
+# Agriccare Liberia (Team 8) — 11-feature hackathon MVP plan
 
 Status: **assessment and plan for approval. Nothing implemented.** Branch `feature/offline-first`, base commit `612cb17`.
 Scope: hackathon prototype, not a commercial platform. Separate from AgriConnect Liberia. The PHP/MySQL migration roadmap (M4 not started, M11 not started) is **unchanged** by this plan.

@@ -1,8 +1,8 @@
-# Phase 1 Architecture — Agri-Advisory Liberia (Team 8)
+# Phase 1 Architecture — Agriccare Liberia (Team 8)
 
 ## System Overview
 
-Agri-Advisory Liberia uses a decoupled client-server architecture with strict isolation from any external marketplace systems:
+Agriccare Liberia uses a decoupled client-server architecture with strict isolation from any external marketplace systems:
 
 1. **Frontend SPA + PWA (`src/`, `vite.config.ts`)**
    - Built with React 19, TypeScript, React Router, Tailwind CSS v4, Lucide icons, and `vite-plugin-pwa` (Workbox).

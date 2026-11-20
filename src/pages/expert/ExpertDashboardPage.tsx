@@ -1,9 +1,10 @@
-import React, {useEffect, useState} from 'react';
+import React from 'react';
 import {Link} from 'react-router-dom';
-import {CheckCircle2, Clock, MessageSquare} from 'lucide-react';
 import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
+import {useResource} from '../../lib/useResource';
 import {WorkspaceShell} from '../../components/WorkspaceShell';
+import {MetricCard, PanelState, SectionCard} from '../../components/workspace/DashboardBits';
 
 export const EXPERT_NAV = [
   {to: '/expert', label: 'Expert Overview', end: true},
@@ -17,77 +18,52 @@ interface ExpertQuestion {
   title: string;
   county: string;
   crop_name: string | null;
+  updated_at?: string;
 }
+
+const isDone = (status: string) => status === 'Answered' || status === 'Closed';
 
 export const ExpertDashboardPage: React.FC = () => {
   const {user} = useApp();
-  const [questions, setQuestions] = useState<ExpertQuestion[]>([]);
-
-  useEffect(() => {
-    apiFetch<{questions: ExpertQuestion[]}>('/expert/questions')
-      .then((res) => setQuestions(res.questions))
-      .catch(() => undefined);
-  }, []);
-
-  const pending = questions.filter((q) => q.status !== 'Answered' && q.status !== 'Closed').length;
-  const answered = questions.filter((q) => q.status === 'Answered' || q.status === 'Closed').length;
+  const {data, loading, error, reload} = useResource(() => apiFetch<{questions: ExpertQuestion[]}>('/expert/questions').then((r) => r.questions), []);
+  const questions = data ?? [];
+  const waiting = questions.filter((q) => !isDone(q.status));
+  const byStatus = questions.reduce<Record<string, number>>((acc, q) => ({...acc, [q.status]: (acc[q.status] ?? 0) + 1}), {});
+  const initial = loading && !data;
 
   return (
     <WorkspaceShell
       kicker={`Expert account · ${user?.expertSpecialty || 'Agronomy'}`}
       title={`Expert Workspace — ${user?.displayName}`}
-      subtitle="Review assigned farmer questions and issue clear, low-risk agricultural guidance."
+      subtitle="Review assigned farmer questions and issue clear, low-risk agricultural guidance. Farmer contact details are not shown here."
       navItems={EXPERT_NAV}
     >
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 space-y-2">
-            <Clock className="w-6 h-6 text-[#F5B942]" aria-hidden="true" />
-            <p className="font-display text-2xl font-extrabold tabular-nums">{pending}</p>
-            <p className="text-sm font-semibold">Awaiting Expert Response</p>
-          </div>
-          <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 space-y-2">
-            <CheckCircle2 className="w-6 h-6 text-[#16803C]" aria-hidden="true" />
-            <p className="font-display text-2xl font-extrabold tabular-nums">{answered}</p>
-            <p className="text-sm font-semibold">Answered Consultations</p>
-          </div>
-          <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 space-y-2">
-            <MessageSquare className="w-6 h-6 text-[#16803C]" aria-hidden="true" />
-            <p className="font-display text-2xl font-extrabold tabular-nums">{questions.length}</p>
-            <p className="text-sm font-semibold">Total Assigned Cases</p>
-          </div>
-        </div>
+      {error && <PanelState kind="error" title="Your assigned questions could not be loaded" onRetry={reload}>{error}</PanelState>}
 
-        <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold">Recent Assigned Questions</h2>
-            <Link to="/expert/questions" className="text-sm font-semibold text-[#16803C] hover:underline">
-              Open Full Queue
-            </Link>
-          </div>
-          {questions.length === 0 ? (
-            <p className="text-sm text-[#183B2B]/75">No farmer questions are currently assigned to you.</p>
-          ) : (
-            <div className="divide-y divide-[#183B2B]/10">
-              {questions.slice(0, 5).map((q) => (
-                <div key={q.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs text-[#183B2B]/65">
-                      {q.status} · {q.crop_name || 'General'} · {q.county} County
-                    </p>
-                    <p className="font-semibold text-sm text-[#183B2B]">{q.title}</p>
-                  </div>
-                  <Link
-                    to={`/expert/questions/${q.id}`}
-                    className="min-h-[44px] inline-flex items-center px-4 py-2 rounded-xl bg-[#DDEFE0] text-xs font-semibold text-[#183B2B] hover:bg-[#16803C] hover:text-white transition-colors shrink-0"
-                  >
-                    Review &amp; Answer
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      <section aria-label="Summary" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard label="Awaiting your response" loading={initial} value={data ? waiting.length : undefined} source="Questions assigned to you" note="Not yet answered or closed." />
+        <MetricCard label="Answered consultations" loading={initial} value={data ? questions.length - waiting.length : undefined} source="Questions assigned to you" note="Answered or closed." />
+        <MetricCard label="Total assigned cases" loading={initial} value={data ? questions.length : undefined} source="Questions assigned to you" note="Only cases assigned to your account are counted." />
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <SectionCard title="Needs a response" description="Oldest activity is not guessed; the list follows the order the server returns." actions={<Link to="/expert/questions" className="text-sm font-semibold text-[#16803C] hover:underline">Open full queue</Link>}>
+          {initial ? <PanelState kind="loading" title="Loading assigned questions…" />
+            : error && !data ? <PanelState kind="unavailable" title="Questions unavailable">Use “Try again” above once you are online.</PanelState>
+            : waiting.length === 0 ? <PanelState kind="empty" title="Nothing is waiting for you">No farmer questions are currently assigned to you that still need an answer.</PanelState>
+            : <ul className="divide-y divide-[#183B2B]/10">{waiting.slice(0, 6).map((q) => (
+                <li key={q.id} className="flex flex-col justify-between gap-2 py-3 sm:flex-row sm:items-center">
+                  <div className="min-w-0"><p className="text-xs text-[#52665B]">{q.status} · {q.crop_name || 'General'} · {q.county} County</p><p className="truncate text-sm font-semibold">{q.title}</p></div>
+                  <Link to={`/expert/questions/${q.id}`} className="inline-flex min-h-[44px] shrink-0 items-center rounded-xl bg-[#DDEFE0] px-4 text-xs font-semibold hover:bg-[#16803C] hover:text-white">Review &amp; answer</Link>
+                </li>))}</ul>}
+        </SectionCard>
+
+        <SectionCard title="Cases by status">
+          {initial ? <PanelState kind="loading" title="Loading…" />
+            : questions.length === 0 ? <PanelState kind="empty" title="No cases yet">Statuses appear here once questions are assigned to you.</PanelState>
+            : <table className="w-full text-sm"><caption className="sr-only">Assigned cases by status</caption><thead className="text-left text-xs text-[#52665B]"><tr><th scope="col" className="py-1">Status</th><th scope="col" className="py-1 text-right">Cases</th></tr></thead>
+                <tbody>{Object.entries(byStatus).map(([status, n]) => <tr key={status} className="border-t border-[#183B2B]/10"><th scope="row" className="py-2 text-left font-semibold">{status}</th><td className="py-2 text-right tabular-nums">{n}</td></tr>)}</tbody></table>}
+        </SectionCard>
       </div>
     </WorkspaceShell>
   );

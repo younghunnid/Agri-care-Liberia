@@ -53,7 +53,7 @@ Status: **prepared, not deployed.** Nothing in this document has been run on Hos
 
    Leave `GEMINI_API_KEY` unset (the model id in `server/ai.ts` is wrong; see remaining blockers). Do not set `SIMULATED_INBOX`/`DEMO_OPERATOR_TOKEN` unless you want the presenter inbox.
 4. **Production-like variant** (real farmers, no demo labels): `APP_ENV` unset, `SMS_PROVIDER=none`, no `ENABLE_DEMO_SEED`, no `DEMO_*`. New-device sign-in and SMS recovery then fail closed (503) until a real provider is approved; **do not use this variant for real farmers until that exists.**
-5. Deploy. In the logs expect one line `Agri-Advisory Liberia server running on http://…:<port>` and `[auth] …`. A line starting `Invalid deployment configuration:` names the setting to fix (never a value).
+5. Deploy. In the logs expect one line `Agriccare Liberia server running on http://…:<port>` and `[auth] …`. A line starting `Invalid deployment configuration:` names the setting to fix (never a value).
 
 ## 4. Staging test procedure (all with the diagnostics token; use `curl`, replace `<host>` and `$TOKEN`)
 Header for every call: `-H "X-Staging-Token: $TOKEN"`. Responses contain no secrets or account data (only a user count).

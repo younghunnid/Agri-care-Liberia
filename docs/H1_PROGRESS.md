@@ -1,4 +1,4 @@
-# H1 / H1.1 progress report — Agri-Advisory Liberia (Team 8 hackathon prototype)
+# H1 / H1.1 progress report — Agriccare Liberia (Team 8 hackathon prototype)
 
 Sections 1–5 are the original H1 report (commit `82bf584`). **Section 6 is the H1.1 stabilization (this commit) and supersedes the H1 limitations 1–3 and 6.**
 

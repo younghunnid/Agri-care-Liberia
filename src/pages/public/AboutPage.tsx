@@ -12,7 +12,7 @@ export const AboutPage: React.FC = () => {
           Inclusive Agricultural e-Advisory Platform
         </h1>
         <p className="text-base text-[#183B2B]/85 leading-relaxed max-w-3xl">
-          <strong>Agri-Advisory Liberia</strong> is built by Team 8 to solve a practical challenge across Liberia’s 15 counties: helping smallholder farmers get timely, clear, and trustworthy agricultural guidance—even on low-connectivity farms or across local language preferences.
+          <strong>Agriccare Liberia</strong> is built by Team 8 to solve a practical challenge across Liberia’s 15 counties: helping smallholder farmers get timely, clear, and trustworthy agricultural guidance—even on low-connectivity farms or across local language preferences.
         </p>
       </div>
 

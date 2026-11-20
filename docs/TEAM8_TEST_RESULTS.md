@@ -1,5 +1,5 @@
 # Team 8 — Verified Test & Readiness Results (Marketplace Direct-Calling Update)
-**Project:** **Agri-Advisory Liberia** (Inclusive Agricultural e-Advisory Platform)  
+**Project:** **Agriccare Liberia** (Inclusive Agricultural e-Advisory Platform)  
 **Verification Run Date:** November 18, 2026  
 
 ---
