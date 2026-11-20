@@ -47,7 +47,7 @@ export const ExpertDashboardPage: React.FC = () => {
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <SectionCard title="Needs a response" description="Oldest activity is not guessed; the list follows the order the server returns." actions={<Link to="/expert/questions" className="text-sm font-semibold text-[#16803C] hover:underline">Open full queue</Link>}>
+        <SectionCard title="Needs a response" description="Oldest activity is not guessed; the list follows the order the server returns." actions={<Link to="/expert/questions" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-[#16803C] hover:underline">Open full queue</Link>}>
           {initial ? <PanelState kind="loading" title="Loading assigned questions…" />
             : error && !data ? <PanelState kind="unavailable" title="Questions unavailable">Use “Try again” above once you are online.</PanelState>
             : waiting.length === 0 ? <PanelState kind="empty" title="Nothing is waiting for you">No farmer questions are currently assigned to you that still need an answer.</PanelState>

@@ -51,7 +51,7 @@ export const AdminOverviewPage: React.FC = () => {
         ))}
       </section>
 
-      <SectionCard title="Recent audit activity" description="The latest recorded administrative and security actions. Open Reports & Audit Logs for the full trail." actions={<Link to="/admin/reports" className="text-sm font-semibold text-[#16803C] hover:underline">Full audit log</Link>}>
+      <SectionCard title="Recent audit activity" description="The latest recorded administrative and security actions. Open Reports & Audit Logs for the full trail." actions={<Link to="/admin/reports" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-[#16803C] hover:underline">Full audit log</Link>}>
         {initial ? <PanelState kind="loading" title="Loading audit activity…" />
           : !data ? <PanelState kind="unavailable" title="Audit activity unavailable">It could not be loaded. Nothing is shown rather than a made-up empty list.</PanelState>
           : data.recentAudits.length === 0 ? <PanelState kind="empty" title="No audit events recorded yet" />

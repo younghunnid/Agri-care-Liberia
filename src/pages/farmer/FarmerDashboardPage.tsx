@@ -61,7 +61,7 @@ export const FarmerDashboardPage: React.FC = () => {
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <SectionCard title="Recent expert questions" description="Your latest questions and where they stand." actions={<Link to="/farmer/questions" className="text-sm font-semibold text-[#16803C] hover:underline">View all</Link>}>
+        <SectionCard title="Recent expert questions" description="Your latest questions and where they stand." actions={<Link to="/farmer/questions" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-[#16803C] hover:underline">View all</Link>}>
           {loading ? <PanelState kind="loading" title="Loading your questions…" />
             : !isOnline ? <PanelState kind="offline" title="Questions need a connection">Reconnect to see the status of your questions.</PanelState>
             : !d || d.questions.length === 0 ? <PanelState kind="empty" title="No questions yet"><Link className="font-semibold text-[#16803C] underline" to="/farmer/expert-requests">Ask an expert</Link> when you need advice for your farm.</PanelState>
