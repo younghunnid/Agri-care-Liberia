@@ -68,6 +68,30 @@ Large keys (12 digit keys at least 52 px, function keys 52 px), 7:1 contrast on 
 ## 8. Tests and verification
 `tests/phase2b.test.ts` (14, `npm run test:phase2b`): an exhaustive walk of **every reachable screen** (over 900 per market state) and its error variant against the 182-character limit; pagination loses nothing; the seven main menu items; invalid input; Back/Home/Cancel and typed 0/00 equivalence; the session state machine with a fake clock; advice equals the Crops Library and Phase 2A for all nine crops and twelve months; all 162 symptom-check combinations equal the app; offline behaviour and "no private field"; "NOTHING WAS SENT" on the first screen of the demo-only flows; languages; no short code, no operator names, no phone field; keyboard, labels, focus, touch targets, contrast; routes, navigation and the walkthrough. Removing the warning or the timeout makes tests fail (checked by hand). Browser (desktop Chrome, disposable server; 320, 360, 375, 412 and desktop widths measured in same-origin frames, not on real devices): real keyboard and tap paths, online live list, real offline, 5-second timeout and restart, Tab focus ring, no console errors, no horizontal overflow.
 
+### Continuation verification — 20 November 2026
+
+The existing Phase 2B implementation was committed as `bf9f446`, following Phase 2A `b90c45a`. Review found one UI timeout defect: the phone screen expired, but the entry line retained typed digits and the status still said the session was open. The timer now applies the engine's expiry transition to React state as well as updating the clock, clearing the entry and displaying the ended status and restart control without another key press.
+
+Verification passed:
+
+| Check | Result |
+|---|---|
+| `npm run test:phase2b` | 14 passed |
+| `npm run test:phase2a` | 12 passed |
+| `npm run test:offline` | 31 passed across advice, cache and inventory |
+| `npm run test:triage` | 21 passed |
+| `npm run test:harvest` | 17 passed, including client tests |
+| `npm run test:hardening` | 11 passed |
+| `npm run test:ministry` | 15 passed |
+| `npm run lint` | TypeScript passed |
+| `npm run build` | Client, service worker and server built; bundle-size and mixed-import warnings remain |
+
+The Phase 2B and Phase 2A suites, TypeScript and production build were repeated after the timeout correction. Headless Chrome checked the rebuilt production app using its own temporary profile and disposable SQLite database on an unused port: no horizontal overflow at 320, 360 or 375 px; typed input cleared on a five-second timeout; ended status and fresh restart; numeric keyboard selection, Enter and Escape; invalid selection and Cancel. Service-worker reload and bundled planting/storage advice worked with the disposable server stopped. These browser flows produced no uncaught JavaScript exceptions or non-GET requests. Browser checks are desktop emulation, not physical-device or screen-reader certification.
+
+Timeout regression for presenters: open `/ussd-demo?timeout=5`, start a session, open a submenu, type a digit without sending it, then wait six seconds. Confirm that the screen says timed out, the entry is empty, the status says the session ended and **Start a session** appears. Press Send and confirm a fresh main menu with the next session number.
+
+The existing server on port 3000 was identified as Node PID `33070`, running `server.ts` from this project, and `/ussd-demo` returned HTTP 200. It was not stopped or restarted. All server tests used disposable databases; the development database was not reset or migrated. Existing untracked documents and the nested project copy were left untouched.
+
 ## 9. Presenter demonstration (steps 3 and 4 of the walkthrough)
 1. Open `/ussd-demo` (also linked from **My farm today** and Farm Tools). Point at the label and the legend.
 2. **Send** -> `1` Send (crops) -> `1` Send (rice) -> `1` Send (planting months). Say: same text as the app, built in, works offline. Press `0` Send to go Back and `00` Send for Home.

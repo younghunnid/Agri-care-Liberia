@@ -3,7 +3,7 @@ import {Link} from 'react-router-dom';
 import {ArrowLeft, ArrowRight, Delete, Home, PhoneCall, PhoneOff, RotateCcw, Wifi, WifiOff} from 'lucide-react';
 import {useApp} from '../../context/AppContext';
 import {harvestClient} from '../../lib/triageApp';
-import {DEFAULT_TIMEOUT_S, DEMO_CALLER, DEMO_LABEL, newSession, press, view, type Key, type MarketEnv, type Session, type UssdEnv} from '../../lib/ussd/engine';
+import {DEFAULT_TIMEOUT_S, DEMO_CALLER, DEMO_LABEL, newSession, press, tick, view, type Key, type MarketEnv, type Session, type UssdEnv} from '../../lib/ussd/engine';
 
 const DIGITS: Key[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
 const SPOKEN: Record<string, string> = {'*': 'Star', '#': 'Hash'};
@@ -24,7 +24,11 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
     void harvestClient.load().then((r) => { if (alive) setMarket({source: r.source, asOf: r.asOf ?? null, listings: r.listings.map((l) => ({code: l.code, cropSlug: l.cropSlug, quantityKg: l.quantityKg, pricePerKgLrd: l.pricePerKgLrd, county: l.county, status: l.status}))}); }).catch(() => undefined);
     return () => { alive = false; };
   }, [isOnline]);
-  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
+  // Persist expiry as well as rendering it, so the input, session status and restart control agree with the screen.
+  useEffect(() => {
+    const t = setInterval(() => { const at = Date.now(); setSession((s) => tick(s, at, timeoutSeconds)); setNow(at); }, 1000);
+    return () => clearInterval(t);
+  }, [timeoutSeconds]);
 
   const env: UssdEnv = useMemo(() => ({online: isOnline, market, now: new Date(now), timeoutSeconds}), [isOnline, market, now, timeoutSeconds]);
   const envRef = useRef(env); envRef.current = env;
