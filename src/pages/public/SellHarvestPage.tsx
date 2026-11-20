@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {Wifi, WifiOff} from 'lucide-react';
 import {LIBERIA_COUNTIES} from '../../../server/constants';
@@ -32,6 +32,11 @@ export const SellHarvestPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [consent, setConsent] = useState(false);
   const [msg, setMsg] = useState<{kind: 'ok' | 'err'; text: string} | null>(null);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [invalidField, setInvalidField] = useState<string | null>(null);
+  const invalid = (id: string) => ({'aria-invalid': invalidField === id || undefined, 'aria-describedby': invalidField === id ? 'sell-message' : undefined});
+  const reject = (text: string, id: string) => { setMsg({kind: 'err', text}); setInvalidField(id); requestAnimationFrame(() => document.getElementById(id)?.focus()); };
   const [convos, setConvos] = useState<Record<number, Convo[]>>({});
   const [replies, setReplies] = useState<Record<number, string>>({});
 
@@ -48,16 +53,17 @@ export const SellHarvestPage: React.FC = () => {
   useEffect(() => { if (isOnline) void loadConvos(); }, [isOnline, mine.length, loadConvos]);
 
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault(); setMsg(null);
+    e.preventDefault(); if (savingRef.current) return; setMsg(null); setInvalidField(null);
     const h = validateHarvestFields({cropSlug: crop, quantityKg: kg, harvestDate: date});
-    if (!h.ok) { setMsg({kind: 'err', text: h.error}); return; }
+    if (!h.ok) { reject(h.error, h.error.startsWith('Quantity') ? 'h-kg' : h.error.includes('crop') ? 'h-crop' : 'h-date'); return; }
     const data: ListingData = {
       sellerType: 'farmer', sellerName: name.trim() || 'Farmer', farmName: '', category: h.crop.category, productName: h.crop.label, quantity: String(h.quantityKg), unit: 'kg',
       priceLrd: price, county, town, availabilityStatus: status, description: desc.trim(), photoDataUrl: '', sellerPhone: consent ? phone : '', phoneConsent: consent,
       cropSlug: crop, quantityKg: h.quantityKg, harvestDate: h.harvestDate,
     };
     const problem = validateListing(data);
-    if (problem) { setMsg({kind: 'err', text: problem}); return; }
+    if (problem) { reject(problem, !Number.isFinite(Number(price)) || Number(price) <= 0 ? 'h-price' : !county ? 'h-county' : town.trim().length < 2 ? 'h-town' : 'h-phone'); return; }
+    savingRef.current = true; setSaving(true);
     try {
       const rec = await saveListingDraft(data);
       await queueRecord('listing', rec.localId);
@@ -65,6 +71,7 @@ export const SellHarvestPage: React.FC = () => {
       setMsg({kind: 'ok', text: isOnline ? 'Saved on this phone. Sending now...' : 'Saved on this phone. It will be sent when you are online. You can close the app.'});
       syncSoon();
     } catch (err) { setMsg({kind: 'err', text: (err as Error).message}); }
+    finally { savingRef.current = false; setSaving(false); }
   };
 
   const changeStatus = async (rec: ListingRecord, next: HarvestStatus) => {
@@ -89,27 +96,28 @@ export const SellHarvestPage: React.FC = () => {
         </p>
       </header>
 
-      <div aria-live="polite" role="status" className={`min-h-[1.5rem] text-base font-bold ${msg?.kind === 'err' ? 'text-[#7A1010]' : 'text-[#0F5C2A]'}`} data-testid="sell-message">{msg?.text}</div>
+      <div id="sell-message" aria-live={msg?.kind === 'err' ? 'assertive' : 'polite'} role={msg?.kind === 'err' ? 'alert' : 'status'} className={`min-h-[1.5rem] text-base font-bold ${msg?.kind === 'err' ? 'text-[#7A1010]' : 'text-[#0F5C2A]'}`} data-testid="sell-message">{msg?.text}</div>
 
       <form onSubmit={submit} className={`${card} space-y-4`} data-testid="sell-form" noValidate>
         <h2 className="text-xl font-extrabold text-[#183B2B]">New harvest listing</h2>
+        <p className="text-sm text-[#183B2B]/80">Crop, quantity, price, county, town and harvest date are required. Contact details are optional. Use invented demonstration data only.</p>
         <div><label htmlFor="h-crop" className="block text-base font-bold text-[#183B2B] mb-1">Crop</label>
-          <select id="h-crop" value={crop} onChange={(e) => setCrop(e.target.value)} className={field} data-testid="h-crop">{HARVEST_CROPS.map((c) => <option key={c.slug} value={c.slug}>{c.label}</option>)}</select></div>
+          <select id="h-crop" {...invalid('h-crop')} required value={crop} onChange={(e) => setCrop(e.target.value)} className={field} data-testid="h-crop">{HARVEST_CROPS.map((c) => <option key={c.slug} value={c.slug}>{c.label}</option>)}</select></div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div><label htmlFor="h-kg" className="block text-base font-bold text-[#183B2B] mb-1">Quantity (kilograms)</label>
-            <input id="h-kg" inputMode="numeric" value={kg} onChange={(e) => setKg(e.target.value.replace(/[^0-9]/g, ''))} placeholder="for example 500" className={field} data-testid="h-kg" /></div>
+            <input id="h-kg" {...invalid('h-kg')} required inputMode="numeric" value={kg} onChange={(e) => setKg(e.target.value.replace(/[^0-9]/g, ''))} placeholder="for example 500" className={field} data-testid="h-kg" /></div>
           <div><label htmlFor="h-price" className="block text-base font-bold text-[#183B2B] mb-1">Price per kilogram (LRD)</label>
-            <input id="h-price" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ''))} placeholder="for example 60" className={field} data-testid="h-price" /></div>
+            <input id="h-price" {...invalid('h-price')} required inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, ''))} placeholder="for example 60" className={field} data-testid="h-price" /></div>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div><label htmlFor="h-county" className="block text-base font-bold text-[#183B2B] mb-1">County</label>
-            <select id="h-county" value={county} onChange={(e) => setCounty(e.target.value)} className={field} data-testid="h-county">{LIBERIA_COUNTIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
+            <select id="h-county" {...invalid('h-county')} required value={county} onChange={(e) => setCounty(e.target.value)} className={field} data-testid="h-county">{LIBERIA_COUNTIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
           <div><label htmlFor="h-town" className="block text-base font-bold text-[#183B2B] mb-1">Town or community</label>
-            <input id="h-town" value={town} onChange={(e) => setTown(e.target.value)} maxLength={80} className={field} data-testid="h-town" /></div>
+            <input id="h-town" {...invalid('h-town')} required value={town} onChange={(e) => setTown(e.target.value)} maxLength={80} className={field} data-testid="h-town" /></div>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div><label htmlFor="h-date" className="block text-base font-bold text-[#183B2B] mb-1">Harvest date</label>
-            <input id="h-date" type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} className={field} data-testid="h-date" /></div>
+            <input id="h-date" {...invalid('h-date')} required type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} className={field} data-testid="h-date" /></div>
           <div><label htmlFor="h-status" className="block text-base font-bold text-[#183B2B] mb-1">Status</label>
             <select id="h-status" value={status} onChange={(e) => setStatus(e.target.value as HarvestStatus)} className={field} data-testid="h-status">{HARVEST_STATUSES.map((s) => <option key={s}>{s}</option>)}</select></div>
         </div>
@@ -121,10 +129,10 @@ export const SellHarvestPage: React.FC = () => {
           <legend className="px-1 font-bold text-[#183B2B]">Phone number (optional)</legend>
           <label className="flex items-start gap-3 cursor-pointer"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="w-6 h-6 mt-0.5 accent-[#16803C]" data-testid="h-consent" />
             <span className="text-base text-[#183B2B]">Show my phone number to buyers. If this is empty, buyers can only send you a question and your number stays private.</span></label>
-          {consent && <div><label htmlFor="h-phone" className="block text-base font-bold text-[#183B2B] mb-1">Phone number</label><input id="h-phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={field} data-testid="h-phone" />
+          {consent && <div><label htmlFor="h-phone" className="block text-base font-bold text-[#183B2B] mb-1">Phone number</label><input id="h-phone" {...invalid('h-phone')} required inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={field} data-testid="h-phone" />
             <p className="text-sm text-[#183B2B]/75 mt-1">On the demonstration site only synthetic test numbers beginning +23177000 are allowed.</p></div>}
         </fieldset>
-        <button type="submit" className="w-full min-h-[56px] rounded-2xl bg-[#16803C] text-white text-lg font-extrabold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#16803C]" data-testid="h-submit">Save my listing</button>
+        <button type="submit" disabled={saving} aria-busy={saving} className="w-full disabled:opacity-60 min-h-[56px] rounded-2xl bg-[#16803C] text-white text-lg font-extrabold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#16803C]" data-testid="h-submit">{saving ? 'Saving on this phone…' : 'Save my listing'}</button>
       </form>
 
       <section aria-labelledby="mine-h" className="space-y-3" data-testid="my-listings">
@@ -154,7 +162,7 @@ export const SellHarvestPage: React.FC = () => {
                         <p className="text-base text-[#183B2B]"><strong>{c.buyerName}</strong> ({c.buyerCounty}): {c.message}</p>
                         {c.buyerPhone && <p className="text-sm text-[#183B2B]/85">Buyer phone (shared with consent): {c.buyerPhone}</p>}
                         {c.farmerReply ? <p className="text-base font-bold text-[#0F5C2A]">Your reply: {c.farmerReply}</p> : (
-                          <div className="flex gap-2"><label htmlFor={`rp-${c.id}`} className="sr-only">Reply to {c.buyerName}</label>
+                          <div className="flex flex-col sm:flex-row gap-2"><label htmlFor={`rp-${c.id}`} className="sr-only">Reply to {c.buyerName}</label>
                             <input id={`rp-${c.id}`} value={replies[c.id] ?? ''} onChange={(e) => setReplies((r) => ({...r, [c.id]: e.target.value}))} className={field} placeholder="Type your reply" data-testid="reply-input" />
                             <button type="button" onClick={() => void sendReply(l, c)} className="min-h-[48px] rounded-xl bg-[#16803C] text-white font-bold px-4" data-testid="reply-send">Reply</button></div>)}
                       </div>))}

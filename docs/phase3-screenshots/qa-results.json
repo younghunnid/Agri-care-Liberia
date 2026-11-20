@@ -1,0 +1,692 @@
+{
+  "date": "2026-11-20",
+  "auditBase": "8e3269b",
+  "environment": "Isolated headless Chrome, production build, disposable SQLite, separate farmer and buyer profiles",
+  "automatedTests": 273,
+  "contractRequests": 63,
+  "mobileWidths": [
+    320,
+    360,
+    375,
+    412
+  ],
+  "mobileChecks": [
+    {
+      "page": "/",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Practical farming help, online or offline.",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Practical farming help, online or offline.",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Practical farming help, online or offline.",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Practical farming help, online or offline.",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/today",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Good afternoon",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/today",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Good afternoon",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/today",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Good afternoon",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/today",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Good afternoon",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/guidance",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Planting and storage guidance",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/guidance",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Planting and storage guidance",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/guidance",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Planting and storage guidance",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/guidance",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Planting and storage guidance",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/check-my-crop",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Check my crop",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/check-my-crop",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Check my crop",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/check-my-crop",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Check my crop",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/check-my-crop",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Check my crop",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/harvest/sell",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Sell my harvest",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/harvest/sell",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Sell my harvest",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/harvest/sell",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Sell my harvest",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/harvest/sell",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Sell my harvest",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/harvest",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Find harvest",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/harvest",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Find harvest",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/harvest",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Find harvest",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/harvest",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Find harvest",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/ussd-demo",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Basic phone demonstration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/ussd-demo",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Basic phone demonstration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/ussd-demo",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Basic phone demonstration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/ussd-demo",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Basic phone demonstration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/ministry-analytics",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Ministry & Extension View (Demo)",
+      "overflow": [
+        {
+          "tag": "TABLE",
+          "text": "Synthetic production by county and crop. Select a row to see its illus"
+        },
+        {
+          "tag": "THEAD",
+          "text": "CountyCropPlanted (ha)Expected (MT)Actual (MT)Actual vs expectedDemo i"
+        },
+        {
+          "tag": "TR",
+          "text": "CountyCropPlanted (ha)Expected (MT)Actual (MT)Actual vs expectedDemo i"
+        },
+        {
+          "tag": "TH",
+          "text": "Expected (MT)"
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Expected (MT)"
+        },
+        {
+          "tag": "TH",
+          "text": "Actual (MT)"
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Actual (MT)"
+        },
+        {
+          "tag": "TH",
+          "text": "Actual vs expected"
+        }
+      ],
+      "unlabelled": []
+    },
+    {
+      "page": "/ministry-analytics",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Ministry & Extension View (Demo)",
+      "overflow": [
+        {
+          "tag": "TABLE",
+          "text": "Synthetic production by county and crop. Select a row to see its illus"
+        },
+        {
+          "tag": "THEAD",
+          "text": "CountyCropPlanted (ha)Expected (MT)Actual (MT)Actual vs expectedDemo i"
+        },
+        {
+          "tag": "TR",
+          "text": "CountyCropPlanted (ha)Expected (MT)Actual (MT)Actual vs expectedDemo i"
+        },
+        {
+          "tag": "TH",
+          "text": "Expected (MT)"
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Expected (MT)"
+        },
+        {
+          "tag": "TH",
+          "text": "Actual (MT)"
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Actual (MT)"
+        },
+        {
+          "tag": "TH",
+          "text": "Actual vs expected"
+        }
+      ],
+      "unlabelled": []
+    },
+    {
+      "page": "/ministry-analytics",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Ministry & Extension View (Demo)",
+      "overflow": [
+        {
+          "tag": "TABLE",
+          "text": "Synthetic production by county and crop. Select a row to see its illus"
+        },
+        {
+          "tag": "THEAD",
+          "text": "CountyCropPlanted (ha)Expected (MT)Actual (MT)Actual vs expectedDemo i"
+        },
+        {
+          "tag": "TR",
+          "text": "CountyCropPlanted (ha)Expected (MT)Actual (MT)Actual vs expectedDemo i"
+        },
+        {
+          "tag": "TH",
+          "text": "Expected (MT)"
+        },
+        {
+          "tag": "TH",
+          "text": "Actual (MT)"
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Actual (MT)"
+        },
+        {
+          "tag": "TH",
+          "text": "Actual vs expected"
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Actual vs expected"
+        }
+      ],
+      "unlabelled": []
+    },
+    {
+      "page": "/ministry-analytics",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Ministry & Extension View (Demo)",
+      "overflow": [
+        {
+          "tag": "TABLE",
+          "text": "Synthetic production by county and crop. Select a row to see its illus"
+        },
+        {
+          "tag": "THEAD",
+          "text": "CountyCropPlanted (ha)Expected (MT)Actual (MT)Actual vs expectedDemo i"
+        },
+        {
+          "tag": "TR",
+          "text": "CountyCropPlanted (ha)Expected (MT)Actual (MT)Actual vs expectedDemo i"
+        },
+        {
+          "tag": "TH",
+          "text": "Actual (MT)"
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Actual (MT)"
+        },
+        {
+          "tag": "TH",
+          "text": "Actual vs expected"
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Actual vs expected"
+        },
+        {
+          "tag": "TH",
+          "text": "Demo index"
+        }
+      ],
+      "unlabelled": []
+    },
+    {
+      "page": "/demo/farm-to-market",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Farmer-to-market demonstration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/demo/farm-to-market",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Farmer-to-market demonstration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/demo/farm-to-market",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Farmer-to-market demonstration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/demo/farm-to-market",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Farmer-to-market demonstration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/advisor",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Ask Agricultural Advisor",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/advisor",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Ask Agricultural Advisor",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/advisor",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Ask Agricultural Advisor",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/advisor",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Ask Agricultural Advisor",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/guides",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Farming Knowledge & Guides",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/guides",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Farming Knowledge & Guides",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/guides",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Farming Knowledge & Guides",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/guides",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Farming Knowledge & Guides",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/experts",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Ask an Agricultural Expert",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/experts",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Ask an Agricultural Expert",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/experts",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Ask an Agricultural Expert",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/experts",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Ask an Agricultural Expert",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/login",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Sign In",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/login",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Sign In",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/login",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Sign In",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/login",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Sign In",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/register",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "Farmer Registration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/register",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "Farmer Registration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/register",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "Farmer Registration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/register",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "Farmer Registration",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/not-a-page",
+      "width": 320,
+      "scrollWidth": 320,
+      "h1": "We could not find that page",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/not-a-page",
+      "width": 360,
+      "scrollWidth": 360,
+      "h1": "We could not find that page",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/not-a-page",
+      "width": 375,
+      "scrollWidth": 375,
+      "h1": "We could not find that page",
+      "overflow": [],
+      "unlabelled": []
+    },
+    {
+      "page": "/not-a-page",
+      "width": 412,
+      "scrollWidth": 412,
+      "h1": "We could not find that page",
+      "overflow": [],
+      "unlabelled": []
+    }
+  ],
+  "journey": {
+    "checkpoints": [
+      {
+        "name": "Homepage"
+      },
+      {
+        "name": "County and crops persist"
+      },
+      {
+        "name": "Planting guidance"
+      },
+      {
+        "name": "Simulated crop check",
+        "detail": " RED: urgent, contact an officer"
+      },
+      {
+        "name": "Harvest and storage"
+      },
+      {
+        "name": "Required-field error and focus"
+      },
+      {
+        "name": "Offline listing stored once, not submitted"
+      },
+      {
+        "name": "Offline reload of guidance"
+      },
+      {
+        "name": "Previously unvisited lazy route opens offline"
+      },
+      {
+        "name": "USSD offline advice, invalid input, timeout, restart and cancel"
+      },
+      {
+        "name": "Reconnect auto-sync, one server listing and reference",
+        "detail": "SELL-2026-000012"
+      },
+      {
+        "name": "Buyer discovery, validation and authorized inquiry"
+      },
+      {
+        "name": "Farmer reads and replies"
+      },
+      {
+        "name": "Buyer reads reply"
+      },
+      {
+        "name": "Buyer saved snapshot offline"
+      },
+      {
+        "name": "Ministry labels and suppression notice"
+      },
+      {
+        "name": "Drawer focus trap, Escape, focus restoration"
+      }
+    ],
+    "exceptions": []
+  },
+  "notVerified": [
+    "Physical phones",
+    "TalkBack/VoiceOver",
+    "Native audio across devices",
+    "Hostinger or production deployment",
+    "Field impact"
+  ]
+}

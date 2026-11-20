@@ -11,6 +11,7 @@ import {
 import {
   AudioError,
   deleteAudio,
+  deleteAllAudio,
   downloadAudio,
   formatAudioSize,
   formatDuration,
@@ -324,7 +325,6 @@ export const OfflineAudioManager: React.FC = () => {
         <button
           type="button"
           onClick={async () => {
-            const {deleteAllAudio} = await import('../lib/audioStore');
             const freed = await deleteAllAudio();
             setMsg(`All audio deleted. ${formatAudioSize(freed)} freed.`);
           }}

@@ -35,6 +35,7 @@ import {SafeImage} from '../../components/SafeImage';
 import {SpeakButton} from '../../components/SpeakButton';
 import {getOfflineGuides} from '../../lib/offlineStorage';
 import {HomeGroups} from '../../components/HomeGroups';
+import {StatusLabel} from '../../components/StatusLabel';
 import {PWAInstallButton} from '../../components/PWAInstallButton';
 import {LANGUAGE_OPTIONS, type LanguageCode} from '../../lib/i18n';
 import {
@@ -90,12 +91,24 @@ export const HomePage: React.FC = () => {
                   text={`${tr('heroTitle')} ${tr('heroSubtitle')}`}
                 />
               </div>
-              <h1 className="font-display text-3xl sm:text-4xl lg:text-[42px] font-extrabold text-[#183B2B] leading-tight text-balance">
+              <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#183B2B] leading-tight text-balance">
                 {tr('heroTitle')}
               </h1>
               <p className="text-base sm:text-lg text-[#183B2B]/85 max-w-2xl leading-relaxed">
                 {tr('heroSubtitle')}
               </p>
+              <p className="text-sm text-[#183B2B]/80 max-w-xl">For farmers making planting, storage and selling decisions with limited internet access. Read practical guidance, keep work on your phone and reconnect when you can.</p>
+              <div className="flex flex-wrap gap-2" aria-label="Prototype status">
+                <StatusLabel kind="working" text="Offline-ready tools" />
+                <StatusLabel kind="simulated" text="Hackathon demonstration" />
+                <StatusLabel kind="draft" text="Advice awaiting expert review" />
+              </div>
+              {/* FARMER HOME SCREEN */}
+              <Link to="/today" data-testid="home-today" className="group flex items-center justify-between gap-4 rounded-3xl bg-[#183B2B] text-white p-5 shadow-md min-h-[88px]">
+                <span className="space-y-1"><span className="block font-display text-xl font-extrabold">My farm today</span><span className="block text-sm text-white/85">Choose your county and crops. See planting reminders, saved work and your next step.</span></span>
+                <ArrowRight className="w-6 h-6 shrink-0 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+              </Link>
+
             </div>
 
             {!lowBandwidth && (
@@ -111,12 +124,6 @@ export const HomePage: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* FARMER HOME SCREEN */}
-          <Link to="/today" data-testid="home-today" className="group flex items-center justify-between gap-4 rounded-3xl bg-[#183B2B] text-white p-5 shadow-md min-h-[88px]">
-            <span className="space-y-1"><span className="block font-display text-xl font-extrabold">My farm today</span><span className="block text-sm text-white/85">Five quick actions, reminders for your crops, and what is waiting to send. Works offline.</span></span>
-            <ArrowRight className="w-6 h-6 shrink-0 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
-          </Link>
 
           {/* 4 PROMINENT PRIMARY HOMEPAGE ACTIONS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -135,7 +142,7 @@ export const HomePage: React.FC = () => {
                   Ask Agricultural Advisor
                 </h2>
                 <p className="text-xs sm:text-sm text-white/85 leading-snug">
-                  Chat by text, voice, or optional crop photo for safe guidance.
+                  Ask a farming question. Bundled text guidance works offline; no photo diagnosis.
                 </p>
               </div>
             </Link>
@@ -164,7 +171,7 @@ export const HomePage: React.FC = () => {
             </button>
 
             <Link
-              to="/marketplace"
+              to="/harvest"
               className="group rounded-3xl bg-white border border-[#183B2B]/15 p-5 shadow-xs hover:border-[#16803C] transition-colors flex flex-col justify-between gap-4 min-h-[148px]"
             >
               <div className="flex items-center justify-between">
@@ -175,10 +182,10 @@ export const HomePage: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <h2 className="font-display text-lg font-extrabold text-[#183B2B] leading-snug">
-                  Agricultural Marketplace
+                  Find harvest
                 </h2>
                 <p className="text-xs sm:text-sm text-[#183B2B]/75 leading-snug">
-                  Post farm produce in LRD or connect with local buyers—no payments required.
+                  Browse harvest by crop and county. Questions and replies work; no payments.
                 </p>
               </div>
             </Link>
@@ -198,11 +205,23 @@ export const HomePage: React.FC = () => {
                   Get Expert Help
                 </h2>
                 <p className="text-xs sm:text-sm text-white/80 leading-snug">
-                  Send a farm question with photo or voice note to an extension officer.
+                  Send a farm question with an optional photo. Expert responses in this demo are simulated.
                 </p>
               </div>
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="start-heading" className="max-w-7xl mx-auto px-4 sm:px-6 space-y-4">
+        <div><p className="text-sm font-bold text-[#0F5C2A]">One platform, connected tasks</p><h2 id="start-heading" className="font-display text-2xl font-extrabold">Start with what you need</h2></div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            {to: '/today', label: 'For farmers', title: 'Plan your next farm task', note: 'County, crops, guidance and saved work.'},
+            {to: '/harvest', label: 'For buyers', title: 'Find a harvest', note: 'Browse demonstration listings and ask the seller.'},
+            {to: '/expert', label: 'For experts', title: 'Open your workspace', note: 'Sign in with an authorized expert account.'},
+            {to: '/ministry-analytics', label: 'For Ministry viewers', title: 'Explore aggregate insights', note: 'Privacy-protected counts and labelled synthetic data.'},
+          ].map((item) => <Link key={item.to} to={item.to} className="rounded-2xl bg-white border border-[#183B2B]/15 p-5 space-y-2 hover:border-[#16803C] min-h-[128px]"><p className="text-sm font-bold text-[#0F5C2A]">{item.label}</p><h3 className="font-display text-lg font-bold">{item.title}</h3><p className="text-sm text-[#183B2B]/80">{item.note}</p></Link>)}
         </div>
       </section>
 
@@ -219,12 +238,12 @@ export const HomePage: React.FC = () => {
               Guided Demo Scenarios for Judges
             </h2>
             <p className="text-sm text-[#183B2B]/80 leading-relaxed">
-              Walk through 4 clear hackathon journeys—listening to cassava advice, simulating a Bassa/Mano button-phone call, posting to the farmer &amp; supplier marketplace, and inspecting the Ministry food security dashboard.
+              Follow a farmer from crop guidance to an offline harvest listing, a buyer’s question and privacy-protected aggregate insights. Each step identifies working tools and simulated content.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              to="/demo"
+              to="/demo/farm-to-market"
               className="min-h-[44px] inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#16803C] text-white text-sm font-bold hover:bg-[#116630]"
             >
               <Presentation className="w-4 h-4" aria-hidden="true" />
@@ -242,22 +261,22 @@ export const HomePage: React.FC = () => {
         <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 flex flex-col justify-between gap-4">
           <div className="space-y-2">
             <p className="text-xs font-semibold text-[#16803C]">
-              Inclusive Access · No Smartphone Needed
+              Inclusive Access · Basic-Phone Simulations
             </p>
             <h2 className="font-display text-xl sm:text-2xl font-extrabold text-[#183B2B]">
-              {tr('askExpertTitle')}
+              Try the basic-phone experience
             </h2>
             <p className="text-sm text-[#183B2B]/80 leading-relaxed">
-              {tr('askExpertDesc')}
+              Choose numbers on a simulated phone to read the same bundled farming guidance. This browser demonstration has no telecom connection; English is available and other languages are planned.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              to="/phone-simulator"
+              to="/ussd-demo"
               className="min-h-[44px] inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#F5B942] text-[#183B2B] text-sm font-bold hover:bg-[#f7c55f]"
             >
               <PhoneCall className="w-4 h-4" aria-hidden="true" />
-              <span>Try Button-Phone Simulator</span>
+              <span>Try USSD Simulator</span>
             </Link>
             <Link
               to="/language-lab"
@@ -392,10 +411,10 @@ export const HomePage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
             <h2 id="language-section-heading" className="font-display text-2xl font-bold text-[#183B2B]">
-              Local Language Support (Bassa, Mano &amp; Kpelle Priority)
+              Language access: English now, more planned
             </h2>
             <p className="text-sm text-[#183B2B]/75 mt-1">
-              Select a language below or visit the Local Language AI Lab to record and review native-speaker clips.
+              English is available. Other language choices are previews or planned; they do not provide complete translations or reviewed local-language recordings.
             </p>
           </div>
           <Link

@@ -157,7 +157,7 @@ test('10. routes, navigation and the farmer screen: five real quick actions, emp
   assert.ok(iSel > 0 && iSel < iTab && iTab < iBan && iBan < iCard, 'on a phone the crop choice comes first, and the demonstration label sits directly above the guidance it labels');
   const adv = NAV_GROUPS.find((g) => g.id === 'advice')!.items; assert.ok(adv.some((i) => i.to === '/guidance' && i.kinds.includes('draft')) && adv.some((i) => i.to === '/guidance?tab=storage' && i.kinds.includes('draft')));
   assert.ok(NAV_GROUPS.find((g) => g.id === 'tools')!.items.some((i) => i.to === '/today'));
-  assert.match(read('src/components/Layout.tsx'), /to="\/today"[\s\S]{0,200}<span>Today<\/span>/); assert.match(read('src/pages/public/HomePage.tsx'), /to="\/today"[\s\S]{0,120}data-testid="home-today"/);
+  assert.match(read('src/components/Layout.tsx'), /<Link\b[^>]*to="\/today"[^>]*data-testid="tab-today"[^>]*>[\s\S]*?<span>Today<\/span>/); assert.match(read('src/pages/public/HomePage.tsx'), /to="\/today"[\s\S]{0,120}data-testid="home-today"/);
   const crops = read('src/pages/public/CropsLibraryPage.tsx'); assert.ok(crops.includes('<PlantingGuidanceCard slug={selectedCrop.slug} />') && crops.includes('<StorageGuidanceCard slug={selectedCrop.slug} />') && crops.includes('<GuidanceBanner />'), 'integrated into the existing crop guide');
 });
 

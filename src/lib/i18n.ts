@@ -56,7 +56,7 @@ const EN_STRINGS = {
   navPests: 'Pests',
   navExperts: 'Experts',
   navOffline: 'Offline',
-  heroTitle: 'Simple, trusted farming help—online or offline.',
+  heroTitle: 'Practical farming help, online or offline.',
   heroSubtitle:
     'Ask our agricultural advisor, listen to clear step-by-step advice, explore crops, livestock, and fish farming, or connect with buyers and experts.',
   tapToSpeak: 'Ask Agricultural Advisor',
@@ -69,7 +69,7 @@ const EN_STRINGS = {
   cardGuidesTitle: 'Agricultural Marketplace',
   cardGuidesDesc: 'List farm harvest in LRD or connect with local buyers.',
   cardOfflineTitle: 'Get Expert Help',
-  cardOfflineDesc: 'Send a farm problem with optional photo or voice note.',
+  cardOfflineDesc: 'Send a farm problem with an optional photo. Demo replies are simulated.',
   popularCrops: 'Agricultural Categories',
   todaysTip: "Today's Farming Tip",
   askExpertTitle: 'Basic-Phone Voice Advisory',

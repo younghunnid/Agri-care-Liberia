@@ -71,9 +71,9 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
             <span aria-hidden className="text-xs" data-testid="ussd-timer">{active && screen.secondsLeft !== null ? `${screen.secondsLeft}s` : ''}</span>
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-2" role="group" aria-label="Phone function keys">
-          <button type="button" onClick={() => send('send')} aria-label="Send" data-testid="key-send" className={`${fn} bg-[#16A34A] text-white col-span-2`}><PhoneCall className="w-5 h-5" aria-hidden /> Send</button>
-          <button type="button" onClick={() => send('cancel')} aria-label="Cancel and end the session" data-testid="key-cancel" className={`${fn} bg-[#DC2626] text-white col-span-2`}><PhoneOff className="w-5 h-5" aria-hidden /> Cancel</button>
+        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Phone function keys">
+          <button type="button" onClick={() => send('send')} aria-label="Send" data-testid="key-send" className={`${fn} bg-[#16803C] text-white`}><PhoneCall className="w-5 h-5" aria-hidden /> Send</button>
+          <button type="button" onClick={() => send('cancel')} aria-label="Cancel and end the session" data-testid="key-cancel" className={`${fn} bg-[#DC2626] text-white`}><PhoneOff className="w-5 h-5" aria-hidden /> Cancel</button>
           <button type="button" onClick={() => send('back')} aria-label="Back one screen" data-testid="key-back" className={`${fn} bg-[#E8EDF3] text-[#10161D]`}><ArrowLeft className="w-5 h-5" aria-hidden /> Back</button>
           <button type="button" onClick={() => send('home')} aria-label="Home, the main menu" data-testid="key-home" className={`${fn} bg-[#E8EDF3] text-[#10161D]`}><Home className="w-5 h-5" aria-hidden /> Home</button>
           <button type="button" onClick={() => send('del')} aria-label="Delete the last digit" data-testid="key-del" className={`${fn} bg-[#E8EDF3] text-[#10161D] col-span-2`}><Delete className="w-5 h-5" aria-hidden /> Delete</button>

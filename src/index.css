@@ -33,6 +33,30 @@
     outline: 3px solid #16803C;
     outline-offset: 2px;
   }
+
+  /* Route headings receive programmatic focus for reading; interactive controls keep their visible ring. */
+  main h1[tabindex="-1"]:focus {
+    outline: none;
+  }
+
+  /* A focused control stays clear of the fixed mobile navigation. */
+  :where(a, button, input, select, textarea, [tabindex]) {
+    scroll-margin-block: 5rem 7rem;
+  }
+
+  :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@layer components {
+  .agri-button {
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-[#16803C] px-5 py-3 text-base font-bold text-white hover:bg-[#116630];
+  }
+  .agri-button-secondary {
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border-2 border-[#183B2B]/20 bg-white px-4 py-3 text-base font-bold text-[#183B2B] hover:bg-[#DDEFE0];
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

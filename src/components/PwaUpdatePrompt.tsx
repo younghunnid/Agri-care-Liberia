@@ -63,7 +63,7 @@ export const PwaUpdatePrompt: React.FC = () => {
             type="button"
             onClick={() => dismissPwaNotice('offlineReady')}
             aria-label="Dismiss"
-            className="min-h-[44px] min-w-[36px] flex items-center justify-center rounded-lg hover:bg-white/10"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-white/10"
           >
             <X className="w-4 h-4" />
           </button>

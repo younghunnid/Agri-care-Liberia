@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {RefreshCw, Wifi, WifiOff} from 'lucide-react';
 import {LIBERIA_COUNTIES} from '../../../server/constants';
@@ -25,9 +25,19 @@ export const HarvestMarketPage: React.FC = () => {
   const [idemKey, setIdemKey] = useState(() => crypto.randomUUID());
   const [note, setNote] = useState<{kind: 'ok' | 'err'; text: string} | null>(null);
   const [convos, setConvos] = useState<Convo[]>([]);
+  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
+  const noteRef = useRef<HTMLParagraphElement>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  useEffect(() => { if (note) noteRef.current?.focus(); }, [note]);
   const [code, setCode] = useState(''); const [codeResult, setCodeResult] = useState<string | null>(null);
 
-  const load = useCallback(async () => { setLoading(true); setData(await harvestClient.load()); setLoading(false); }, []);
+  const load = useCallback(async () => {
+    setLoading(true); setLoadError(null);
+    try { setData(await harvestClient.load()); }
+    catch { setLoadError('The list could not be opened. Your phone may have blocked storage. Try refreshing when connected.'); }
+    finally { setLoading(false); }
+  }, []);
   const loadConvos = useCallback(async () => { try { setConvos((await apiFetch<{inquiries: Convo[]}>('/harvest/inquiries', {headers: {'X-Requester-Key': getRequesterKey()}})).inquiries.filter((i) => (i as {role?: string}).role !== 'seller')); } catch { /* offline */ } }, []);
   useEffect(() => { void load(); void loadConvos(); }, [load, loadConvos]);
   useEffect(() => { if (isOnline) { void load(); void loadConvos(); } }, [isOnline, load, loadConvos]);
@@ -36,14 +46,15 @@ export const HarvestMarketPage: React.FC = () => {
   const shown = useMemo(() => filterListings(data.listings, filters), [data.listings, filters]);
 
   const ask = async (l: HarvestListing, e: React.FormEvent) => {
-    e.preventDefault(); setNote(null);
+    e.preventDefault(); if (sendingRef.current) return; setNote(null);
     if (form.name.trim().length < 2 || form.message.trim().length < 5) { setNote({kind: 'err', text: 'Enter your name and a question of at least 5 letters.'}); return; }
+    sendingRef.current = true; setSending(true);
     try {
       await apiFetch(`/marketplace/listings/${l.id}/inquiries`, {method: 'POST', headers: {'Idempotency-Key': idemKey}, body: JSON.stringify({buyerName: form.name.trim(), buyerCounty: form.county, message: form.message.trim(), requesterKey: getRequesterKey(), buyerToken: '', ...(form.consent && form.phone.trim() ? {buyerPhone: form.phone.trim(), buyerPhoneConsent: true} : {})})});
       setNote({kind: 'ok', text: 'Your question was sent to the seller. Their reply will appear under "My questions".'}); setForm({...form, message: '', phone: '', consent: false}); setIdemKey(crypto.randomUUID()); setOpen(null); void loadConvos();
     } catch (err) {
       setNote({kind: 'err', text: err instanceof ApiRequestError && err.status === 429 ? 'Too many questions just now. Please wait a little and try again.' : (err as Error).message || 'The question could not be sent.'});
-    }
+    } finally { sendingRef.current = false; setSending(false); }
   };
 
   const check = async (e: React.FormEvent) => {
@@ -68,8 +79,10 @@ export const HarvestMarketPage: React.FC = () => {
         <p className="text-base text-[#183B2B]/85">Harvest listings from farmers. There are <strong>no payments</strong> here. Send the seller a question; the seller's phone number is shown only if the seller agreed.</p>
         <p className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold ${isOnline ? 'bg-[#DDEFE0] text-[#0F5C2A]' : 'bg-amber-100 text-amber-900'}`}>{isOnline ? <Wifi className="w-4 h-4" aria-hidden /> : <WifiOff className="w-4 h-4" aria-hidden />}{isOnline ? 'Online' : 'Offline: showing the saved list'}</p>
         <div className="flex items-center gap-3"><p className={`text-base font-bold ${data.source === 'saved' ? 'text-[#4A2F00] bg-[#FFF1C2] rounded-xl px-3 py-2' : 'text-[#183B2B]'}`} role="status" data-testid="snapshot-banner" data-source={data.source}>{banner}</p>
-          <button type="button" onClick={() => void load()} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border-2 border-[#183B2B]/25 px-3" aria-label="Refresh the list" data-testid="refresh"><RefreshCw className="w-5 h-5" aria-hidden /></button></div>
+          <button type="button" onClick={() => void load()} className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border-2 border-[#183B2B]/25 px-3" aria-label="Refresh the list" data-testid="refresh" disabled={loading}><RefreshCw className="w-5 h-5" aria-hidden /></button></div>
       </header>
+
+      {loadError && <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-base text-[#7A1010]">{loadError}</p>}
 
       <section aria-labelledby="f-h" className="rounded-2xl bg-white border border-[#183B2B]/10 p-4 space-y-3" data-testid="filters">
         <h2 id="f-h" className="text-xl font-extrabold text-[#183B2B]">Filter</h2>
@@ -85,7 +98,7 @@ export const HarvestMarketPage: React.FC = () => {
 
       <section aria-labelledby="l-h" className="space-y-3">
         <h2 id="l-h" className="text-xl font-extrabold text-[#183B2B]" data-testid="result-count">{shown.length} listing{shown.length === 1 ? '' : 's'}</h2>
-        {note && <p role="status" className={`text-base font-bold ${note.kind === 'err' ? 'text-[#7A1010]' : 'text-[#0F5C2A]'}`} data-testid="ask-note">{note.text}</p>}
+        {note && <p ref={noteRef} tabIndex={-1} id="ask-note" role={note.kind === 'err' ? 'alert' : 'status'} className={`text-base font-bold ${note.kind === 'err' ? 'text-[#7A1010]' : 'text-[#0F5C2A]'}`} data-testid="ask-note">{note.text}</p>}
         <ul className="space-y-3">
           {shown.map((l) => (
             <li key={l.id} className="rounded-2xl bg-white border border-[#183B2B]/10 p-4 space-y-2" data-testid="harvest-item" data-code={l.code ?? ''}>
@@ -98,13 +111,13 @@ export const HarvestMarketPage: React.FC = () => {
               <p className="text-base" data-testid="item-contact">{l.phoneConsent && l.sellerPhone ? <>Seller phone (shared by the seller): <a className="font-bold underline" href={`tel:${l.sellerPhone}`}>{l.sellerPhone}</a></> : 'The seller has not shared a phone number. Send a question instead.'}</p>
               <button type="button" disabled={!isOnline} onClick={() => { setOpen(open === l.id ? null : l.id); setNote(null); }} className="min-h-[48px] rounded-xl bg-[#183B2B] text-white font-bold px-4 disabled:opacity-50" data-testid="ask-open" aria-expanded={open === l.id}>{isOnline ? 'Ask the seller a question' : 'Questions need a connection'}</button>
               {open === l.id && (
-                <form onSubmit={(e) => void ask(l, e)} className="space-y-3 rounded-xl bg-[#F3F8F0] p-3" data-testid="ask-form">
-                  <div><label htmlFor={`bn-${l.id}`} className="block font-bold text-[#183B2B] mb-1">Your name</label><input id={`bn-${l.id}`} value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} maxLength={80} className={field} data-testid="ask-name" /></div>
+                <form onSubmit={(e) => void ask(l, e)} className="space-y-3 rounded-xl bg-[#F3F8F0] p-3" data-testid="ask-form" noValidate>
+                  <div><label htmlFor={`bn-${l.id}`} className="block font-bold text-[#183B2B] mb-1">Your name</label><input id={`bn-${l.id}`} value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} maxLength={80} className={field} data-testid="ask-name" required aria-invalid={note?.kind === 'err' && form.name.trim().length < 2 || undefined} aria-describedby={note?.kind === 'err' ? 'ask-note' : undefined} /></div>
                   <div><label htmlFor={`bc-${l.id}`} className="block font-bold text-[#183B2B] mb-1">Your county</label><select id={`bc-${l.id}`} value={form.county} onChange={(e) => setForm({...form, county: e.target.value})} className={field}>{LIBERIA_COUNTIES.map((c) => <option key={c}>{c}</option>)}</select></div>
-                  <div><label htmlFor={`bm-${l.id}`} className="block font-bold text-[#183B2B] mb-1">Your question</label><textarea id={`bm-${l.id}`} value={form.message} onChange={(e) => setForm({...form, message: e.target.value})} rows={3} maxLength={600} className={`${field} py-2`} data-testid="ask-message" /></div>
+                  <div><label htmlFor={`bm-${l.id}`} className="block font-bold text-[#183B2B] mb-1">Your question</label><textarea id={`bm-${l.id}`} value={form.message} onChange={(e) => setForm({...form, message: e.target.value})} rows={3} maxLength={600} className={`${field} py-2`} data-testid="ask-message" required aria-invalid={note?.kind === 'err' && form.message.trim().length < 5 || undefined} aria-describedby={note?.kind === 'err' ? 'ask-note' : undefined} /></div>
                   <label className="flex items-start gap-3 cursor-pointer"><input type="checkbox" checked={form.consent} onChange={(e) => setForm({...form, consent: e.target.checked})} className="w-6 h-6 mt-0.5 accent-[#16803C]" data-testid="ask-consent" /><span className="text-base text-[#183B2B]">Let the seller see my phone number. If this is empty, the seller sees only my name, county and question.</span></label>
                   {form.consent && <div><label htmlFor={`bp-${l.id}`} className="block font-bold text-[#183B2B] mb-1">Your phone number</label><input id={`bp-${l.id}`} inputMode="tel" value={form.phone} onChange={(e) => setForm({...form, phone: e.target.value})} className={field} /><p className="text-sm text-[#183B2B]/75 mt-1">On the demonstration site only synthetic numbers beginning +23177000 are allowed.</p></div>}
-                  <button type="submit" className="w-full min-h-[52px] rounded-xl bg-[#16803C] text-white font-bold" data-testid="ask-send">Send question</button>
+                  <button type="submit" className="w-full min-h-[52px] rounded-xl bg-[#16803C] text-white font-bold" data-testid="ask-send" disabled={sending || !isOnline} aria-busy={sending}>{sending ? 'Sending…' : 'Send question'}</button>
                 </form>)}
             </li>))}
         </ul>

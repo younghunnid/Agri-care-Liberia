@@ -1,7 +1,7 @@
 import {PwaUpdatePrompt} from './PwaUpdatePrompt';
 import {SyncBanner} from './SyncStatus';
 import {DemoEnvironmentBanner} from './DemoEnvironmentBanner';
-import React, {useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Link, NavLink, useLocation, useNavigate} from 'react-router-dom';
 import {
   ArrowLeft,
@@ -69,6 +69,30 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const focusable = () => Array.from(drawerRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex="0"]') ?? []).filter((el) => el.getClientRects().length > 0);
+    focusable()[0]?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); setMenuOpen(false); }
+      if (event.key !== 'Tab') return;
+      const controls = focusable(); const first = controls[0]; const last = controls[controls.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !drawerRef.current?.contains(document.activeElement))) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => { document.removeEventListener('keydown', onKey, true); document.body.style.overflow = previousOverflow; previousFocus?.focus({preventScroll: true}); };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    window.scrollTo({top: 0, behavior: 'instant'});
+  }, [location.pathname]);
 
   const isExpert = Boolean(user?.roles.includes('expert'));
   const isAdmin = Boolean(user?.roles.includes('admin'));
@@ -96,6 +120,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
 
   return (
     <div className="min-h-screen min-h-dvh flex flex-col bg-[#F3F8F0] text-[#183B2B]">
+      <div className="contents" inert={menuOpen || undefined}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-xl focus:bg-[#16803C] focus:px-4 focus:py-3 focus:text-white focus:font-semibold"
@@ -129,8 +154,8 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
             <NavLink to="/guides" className={navLinkClass}>
               Knowledge
             </NavLink>
-            <NavLink to="/marketplace" className={navLinkClass}>
-              Marketplace
+            <NavLink to="/harvest" className={navLinkClass}>
+              Find harvest
             </NavLink>
             <NavLink to="/demo" className={navLinkClass}>
               Demo Mode
@@ -140,7 +165,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
           {/* Zone 3: Primary action + Menu drawer */}
           <div className="flex items-center gap-2.5 shrink-0">
             <Link
-              to={user ? (isAdmin ? '/admin' : isExpert ? '/expert' : '/farmer') : '/dashboard'}
+              to={user ? (isAdmin ? '/admin' : isExpert ? '/expert' : '/farmer') : '/today'}
               className="hidden sm:inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-[#16803C] text-white text-sm font-semibold hover:bg-[#116630] transition-colors whitespace-nowrap shrink-0"
             >
               <LayoutDashboard className="w-4 h-4" aria-hidden="true" />
@@ -151,6 +176,8 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
               type="button"
               onClick={() => setMenuOpen(true)}
               aria-label="Open navigation menu and accessibility tools"
+              aria-expanded={menuOpen}
+              aria-controls="platform-menu"
               className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border border-[#183B2B]/15 bg-white text-[#183B2B] hover:bg-[#DDEFE0] transition-colors"
             >
               <Menu className="w-5 h-5" aria-hidden="true" />
@@ -189,7 +216,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
             {isOnline ? (
               <>
                 <span className="w-2.5 h-2.5 rounded-full bg-[#16803C]" aria-hidden="true" />
-                <span className="sr-only sm:not-sr-only text-[#183B2B]/80">Online</span>
+                <span className="text-[#183B2B]/80">Online</span>
               </>
             ) : (
               <>
@@ -277,7 +304,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
       <PwaUpdatePrompt />
 
       {/* Main Content */}
-      <main id="main-content" className="flex-1 pb-28 md:pb-12">
+      <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 pb-28 md:pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3">
           <ListenModeBar />
         </div>
@@ -337,16 +364,17 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#183B2B]/10 pb-safe"
       >
         <div className="grid grid-cols-5 h-[4.25rem] items-center">
-          <Link to="/today" className={mobileTabClass(location.pathname.startsWith('/today'))} data-testid="tab-today">
+          <Link to="/today" aria-current={location.pathname === '/today' ? 'page' : undefined} className={mobileTabClass(location.pathname.startsWith('/today'))} data-testid="tab-today">
             <Home className="w-5 h-5 mb-0.5" aria-hidden="true" />
             <span>Today</span>
           </Link>
-          <Link to="/advisor" className={mobileTabClass(location.pathname.startsWith('/advisor'))}>
+          <Link to="/advisor" aria-current={location.pathname.startsWith('/advisor') ? 'page' : undefined} className={mobileTabClass(location.pathname.startsWith('/advisor'))}>
             <Mic className="w-5 h-5 mb-0.5" aria-hidden="true" />
             <span>Advisor</span>
           </Link>
           <Link
             to="/guides"
+            aria-current={location.pathname.startsWith('/guides') || location.pathname.startsWith('/pests') ? 'page' : undefined}
             className={mobileTabClass(
               location.pathname.startsWith('/guides') || location.pathname.startsWith('/pests')
             )}
@@ -354,7 +382,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
             <BookOpen className="w-5 h-5 mb-0.5" aria-hidden="true" />
             <span>Advice</span>
           </Link>
-          <Link to="/marketplace" className={mobileTabClass(location.pathname.startsWith('/marketplace'))}>
+          <Link to="/harvest" aria-current={location.pathname.startsWith('/harvest') ? 'page' : undefined} className={mobileTabClass(location.pathname.startsWith('/harvest') || location.pathname.startsWith('/marketplace'))}>
             <Store className="w-5 h-5 mb-0.5" aria-hidden="true" />
             <span>Market</span>
           </Link>
@@ -363,12 +391,15 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
             onClick={() => setMenuOpen(true)}
             className={mobileTabClass(menuOpen)}
             aria-label="Open full platform menu"
+            aria-expanded={menuOpen}
+            aria-controls="platform-menu"
           >
             <Menu className="w-5 h-5 mb-0.5" aria-hidden="true" />
             <span>More</span>
           </button>
         </div>
       </nav>
+      </div>
 
       {/* Accessible Slide-Over Drawer */}
       {menuOpen && (
@@ -377,8 +408,10 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
           role="dialog"
           aria-modal="true"
           aria-label="Platform menu"
+          id="platform-menu"
+          onClick={(event) => { if (event.target === event.currentTarget) setMenuOpen(false); }}
         >
-          <div className="w-full max-w-sm bg-white h-full overflow-y-auto p-5 flex flex-col justify-between shadow-2xl">
+          <div ref={drawerRef} className="w-full max-w-sm bg-white h-full overflow-y-auto overscroll-contain p-5 flex flex-col justify-between shadow-2xl">
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-[#183B2B]/10 pb-4">
                 <div className="flex items-center gap-2 font-display font-bold text-[#183B2B]">
@@ -395,73 +428,28 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
                 </button>
               </div>
 
-              {/* Accessibility Quick Switches */}
-              <div className="rounded-2xl bg-[#F3F8F0] p-4 space-y-3">
-                <div className="flex items-center justify-between text-sm font-medium">
-                  <span>Smart Listen Mode</span>
-                  <button
-                    type="button"
-                    onClick={toggleListenMode}
-                    className={`min-h-[44px] px-3 rounded-xl text-xs font-bold ${
-                      listenMode ? 'bg-[#16803C] text-white' : 'bg-white border border-[#183B2B]/15 text-[#183B2B]'
-                    }`}
-                  >
-                    {listenMode ? 'Enabled' : 'Turn On'}
-                  </button>
-                </div>
-                <div className="flex items-center justify-between text-sm font-medium">
-                  <span>Low-Bandwidth Mode</span>
-                  <button
-                    type="button"
-                    onClick={toggleLowBandwidth}
-                    className={`min-h-[44px] px-3 rounded-xl text-xs font-bold ${
-                      lowBandwidth ? 'bg-[#F5B942] text-[#183B2B]' : 'bg-white border border-[#183B2B]/15 text-[#183B2B]'
-                    }`}
-                  >
-                    {lowBandwidth ? 'On' : 'Off'}
-                  </button>
-                </div>
-                <PWAInstallButton />
-              </div>
-
-              {/* Language Switcher */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#183B2B]/70">
-                  <Globe className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
-                  <span>Language Preference</span>
-                </div>
-                <div className="grid grid-cols-1 gap-2">
-                  {LANGUAGE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.code}
-                      type="button"
-                      onClick={() => void setLanguage(opt.code)}
-                      className={`w-full text-left px-3.5 py-2.5 rounded-xl border min-h-[44px] transition-colors ${
-                        language === opt.code
-                          ? 'bg-[#DDEFE0] border-[#16803C] text-[#183B2B] font-semibold'
-                          : 'bg-white border-[#183B2B]/15 text-[#183B2B]/85 hover:bg-[#F3F8F0]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between text-sm">
-                        <span>
-                          {opt.shortCode} · {opt.name}
-                        </span>
-                        <span className="text-xs text-[#183B2B]/65">
-                          {opt.status === 'active'
-                            ? 'Active'
-                            : opt.status === 'preview'
-                            ? 'Prototype'
-                            : 'Soon'}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Grouped navigation: the eight problem-statement modules keep their numbers and names. */}
               <nav aria-label="All pages" className="space-y-4">
                 {[
+                  {
+                    title: 'Start here',
+                    items: [
+                      {to: '/today', label: 'Farmers: my farm today', icon: Home},
+                      {to: '/harvest', label: 'Buyers: find harvest', icon: Store},
+                      {to: '/harvest/sell', label: 'Farmers: sell my harvest', icon: Sprout},
+                      {to: '/expert', label: 'Experts: workspace (sign in)', icon: UserCheck},
+                      {to: '/ministry-analytics', label: 'Ministry: aggregate demonstration', icon: BarChart3},
+                      {to: '/demo/farm-to-market', label: 'Presenter walkthrough', icon: Presentation},
+                    ],
+                  },
+                  {
+                    title: 'Guidance & basic-phone demo',
+                    items: [
+                      {to: '/check-my-crop', label: 'Check my crop (simulated)', icon: Sprout},
+                      {to: '/guidance', label: 'Planting, harvest & storage', icon: BookOpen},
+                      {to: '/ussd-demo', label: 'Basic phone: USSD simulator', icon: PhoneCall},
+                    ],
+                  },
                   {
                     title: 'Learn',
                     items: [
@@ -531,6 +519,74 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
                   </div>
                 ))}
               </nav>
+
+              {/* Accessibility Quick Switches */}
+              <div className="rounded-2xl bg-[#F3F8F0] p-4 space-y-3">
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <span>Smart Listen Mode</span>
+                  <button
+                    type="button"
+                    onClick={toggleListenMode}
+                    aria-label="Smart Listen Mode"
+                    aria-pressed={listenMode}
+                    className={`min-h-[44px] px-3 rounded-xl text-xs font-bold ${
+                      listenMode ? 'bg-[#16803C] text-white' : 'bg-white border border-[#183B2B]/15 text-[#183B2B]'
+                    }`}
+                  >
+                    {listenMode ? 'Enabled' : 'Turn On'}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <span>Low-Bandwidth Mode</span>
+                  <button
+                    type="button"
+                    onClick={toggleLowBandwidth}
+                    aria-label="Low-Bandwidth Mode"
+                    aria-pressed={lowBandwidth}
+                    className={`min-h-[44px] px-3 rounded-xl text-xs font-bold ${
+                      lowBandwidth ? 'bg-[#F5B942] text-[#183B2B]' : 'bg-white border border-[#183B2B]/15 text-[#183B2B]'
+                    }`}
+                  >
+                    {lowBandwidth ? 'On' : 'Off'}
+                  </button>
+                </div>
+                <PWAInstallButton />
+              </div>
+
+              {/* Language Switcher */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[#183B2B]/70">
+                  <Globe className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
+                  <span>Language Preference</span>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {LANGUAGE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.code}
+                      type="button"
+                      onClick={() => void setLanguage(opt.code)}
+                      className={`w-full text-left px-3.5 py-2.5 rounded-xl border min-h-[44px] transition-colors ${
+                        language === opt.code
+                          ? 'bg-[#DDEFE0] border-[#16803C] text-[#183B2B] font-semibold'
+                          : 'bg-white border-[#183B2B]/15 text-[#183B2B]/85 hover:bg-[#F3F8F0]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-sm">
+                        <span>
+                          {opt.shortCode} · {opt.name}
+                        </span>
+                        <span className="text-xs text-[#183B2B]/65">
+                          {opt.status === 'active'
+                            ? 'Active'
+                            : opt.status === 'preview'
+                            ? 'Prototype'
+                            : 'Soon'}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* Account & Role Links */}
               <div className="space-y-1 border-t border-[#183B2B]/10 pt-4">
