@@ -1,0 +1,12 @@
+{
+  "checks": [
+    "Existing harvest workspace unchanged; ordinary synthetic fixture published on disposable database",
+    "Original named menu and full public read-only listing are reachable",
+    "New interactive marketplace still excludes ordinary public listings",
+    "Original full public snapshot survives offline route reload with stale label",
+    "Original selling practice and Help alias remain equivalent and submit nothing",
+    "Offline storage advice, expert practice and future-language notice preserved",
+    "Eight-option menu fits all four mobile widths"
+  ],
+  "exceptions": []
+}

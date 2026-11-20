@@ -19,7 +19,7 @@ export const DEFAULT_TIMEOUT_S = 90;
 export const DEMO_CALLER = '+231770009001';
 export const DEMO_LABEL = 'Demonstration only — no mobile network connection.';
 export const MAIN_TITLE = 'FARM ADVICE (DEMO)';
-export const MAIN_ITEMS = ['Crops & planting', 'Pests & disease', 'Buy & Sell Produce', 'Harvest & storage', 'Expert help', 'Language', 'Help & exit'] as const;
+export const MAIN_ITEMS = ['Crops & planting', 'Pests & disease', 'Buy & Sell Produce', 'Harvest & storage', 'Expert help', 'Language', 'Help & exit', 'Sell & market'] as const;
 const MAX_INPUT = 8;
 
 export type Key = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '*' | '#' | 'send' | 'back' | 'home' | 'cancel' | 'end' | 'del';
@@ -125,7 +125,7 @@ const cropMenu = (frame: Frame, head: string, to: (slug: string) => Frame): Buil
 function build(frame: Frame, env: UssdEnv): Built {
   const p = frame.p; const slug = p.slug ?? ''; const name = cName(slug); const crop = cropEntry(slug);
   switch (frame.id) {
-    case 'main': return menuBuilt(frame, MAIN_TITLE, [F('plant.crop'), F('pest.menu'), F('market.menu'), F('store.crop'), F('expert.menu'), F('lang.menu'), F('help.menu')].map((to, i) => ({label: MAIN_ITEMS[i], to})), {nav: false});
+    case 'main': return menuBuilt(frame, MAIN_TITLE, [F('plant.crop'), F('pest.menu'), F('market.menu'), F('store.crop'), F('expert.menu'), F('lang.menu'), F('help.menu'), F('market.legacy')].map((to, i) => ({label: MAIN_ITEMS[i], to})), {nav: false});
     // ---- crops and planting
     case 'plant.crop': return cropMenu(frame, 'Crops & planting: crop?', (s) => F('plant.menu', {slug: s}));
     case 'plant.menu': return menuBuilt(frame, `[DEMO] ${name} planting`, [['Planting months', 'plant.months'], ['How to plant', 'plant.how'], ['Soil & water', 'plant.soil'], ['Care of the crop', 'plant.care']].map(([label, id]) => ({label, to: F(id, {slug})})));
@@ -155,6 +155,8 @@ function build(frame: Frame, env: UssdEnv): Built {
     case 'store.watch': return textBuilt(frame, `${name}: watch for [General]`, src(storageGuide(slug)!.watchFor), {link: guideLink(slug, 'storage')});
     case 'store.sell': return textBuilt(frame, `${name}: before selling [General]`, [storageGuide(slug)!.sellTip.text], {link: guideLink(slug, 'storage')});
     // ---- selling and market information
+    // Original Phase 2B submenu: read-only browsing and no-submit selling practice remain grouped together.
+    case 'market.legacy': return menuBuilt(frame, 'Sell & market', [{label: 'Harvest for sale (net)', to: F('market.crop')}, {label: 'Try selling (demo only)', to: F('sell.crop')}]);
     case 'market.menu': {
       const m = menuBuilt(frame, 'Buy & Sell Produce', [
         {label: 'Buy Produce', to: F('trade.buy.crop')}, {label: 'Sell My Harvest', to: F('trade.sell.crop')},

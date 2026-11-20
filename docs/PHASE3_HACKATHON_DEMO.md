@@ -69,7 +69,7 @@ For a 9–10-minute version, replace the normal listing-entry portion with:
 1. Farmer phone: **3 Buy & Sell Produce → 2 Sell My Harvest**. Choose crop, kg, asking price, county and a labelled synthetic town. Read the date/contact/queue explanation on every review page.
 2. Disconnect and make the final numbered confirmation. Show Pending Sync and explain that the later sync is authorized by that confirmation. Reconnect and show **3 My Listings** with the actual server-issued SELL reference.
 3. Buyer profile: **3 → 1 Buy Produce**, select crop/county/listing, choose an inquiry template, review and confirm online. **4 My Inquiries** then shows the authorized conversation; the farmer replies through the existing harvest workspace.
-4. Close with the labels: no phone-number identity, no order/payment, no real telecom connection. Original selling practice is still under Help and submits nothing.
+4. Close with the labels: no phone-number identity, no order/payment, no real telecom connection. Original selling practice remains at **8 Sell & market → 2**, with its Help shortcut also retained; it submits nothing.
 
 If interaction is not configured, demonstrate the advice and legacy practice screens and describe the tested workflow from the evidence. Do not imply that a disabled confirmation submitted anything. See the [USSD setup and verification details](PHASE2B_USSD_SIMULATOR.md).
 

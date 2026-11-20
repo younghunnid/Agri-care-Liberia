@@ -46,7 +46,9 @@ export function createUssdMarketClient(d: MarketClientDeps) {
       await d.init();
       if (d.online()) await checkEnvironment();
       const market = await deadline(() => d.loadMarket());
-      state = {...state, source: market.source, asOf: market.asOf ?? null, listings: market.listings.filter(isDemo).map(publicDemo)};
+      state = {...state, source: market.source, asOf: market.asOf ?? null, listings: market.listings.filter(isDemo).map(publicDemo),
+        legacy: {source: market.source, asOf: market.asOf ?? null, listings: market.listings.map((l) => ({code: l.code, cropSlug: l.cropSlug, quantityKg: l.quantityKg, pricePerKgLrd: l.pricePerKgLrd, county: l.county, status: l.status}))},
+      };
       if (d.online() && verifiedDemo) {
         const local = d.records().filter(isOwnDemo); const ids = new Set([...state.listings.map((l) => l.id), ...local.flatMap((r) => r.serverId ? [r.serverId] : [])]);
         const key = d.requesterKey();

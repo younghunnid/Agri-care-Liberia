@@ -24,7 +24,7 @@ export const UssdDemoPage: React.FC = () => {
             <h2 id="menu-h" className="text-xl font-extrabold">The main menu</h2>
             <ol className="list-decimal pl-6 text-base space-y-1">{MAIN_ITEMS.map((m) => <li key={m}>{m}</li>)}</ol>
             <p className="text-base">On every screen: <strong>0</strong> = Back, <strong>00</strong> = Home. End or Cancel closes the session. After {timeout} seconds with no key it ends; press Send to restart.</p>
-            <p className="text-sm">Help also keeps the original selling practice and read-only market menus. They submit nothing.</p>
+            <p className="text-sm">8 Sell & market keeps both original Phase 2B options together: the read-only public harvest list and no-submit selling practice. The Help shortcuts remain available too.</p>
           </section>
           <section className="rounded-2xl bg-white border border-[#183B2B]/15 p-4 space-y-3" aria-labelledby="real-h" data-testid="ussd-status">
             <h2 id="real-h" className="text-xl font-extrabold">What happens when you confirm</h2>

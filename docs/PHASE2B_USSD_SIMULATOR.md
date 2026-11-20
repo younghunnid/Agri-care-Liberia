@@ -33,11 +33,36 @@ Call / Send → FARM ADVICE (DEMO)
     3 Exit
     4 Original selling practice (nothing submitted)
     5 Original read-only harvest list
+8 Sell & market (original Phase 2B submenu)
+    1 Harvest for sale (net)
+    2 Try selling (demo only)
 ```
 
 `0` = Back, `00` = Home. `99 More` paginates long menus; numbering restarts on each menu page. `1 Next` advances advice/review pages. A confirmation action only appears on the **last review page**. Enter on a focused key activates that key; elsewhere Enter sends, digits enter choices, Backspace deletes and Escape cancels. All keys are reachable with Tab. End/Cancel clear the session; Call / Send restarts it. The inactivity timeout remains 90 seconds, with `/ussd-demo?timeout=5` available for presenters (5–300 seconds).
 
 Screens retain the 182-character limit and word-boundary pagination. Invalid selections, oversized quantities/prices, disabled submissions, offline inquiries, loading, failures and uncertain delivery have explicit states. A late response cannot reopen a cancelled or expired session. **End, Cancel, Home or timeout cannot undo an action already confirmed.** Its outcome remains available through My Listings/My Inquiries.
+
+## Additive compatibility and original options
+
+Every original Phase 2B option remains reachable. The required new marketplace uses `3`; existing harvest/storage guidance moved to `4`, and the **original named Sell & market submenu is retained as `8`**. Its original two options and no-submit behavior are preserved together. The Help shortcuts introduced by the extension remain aliases.
+
+| Original option | Current location |
+|---|---|
+| Crops & planting, including all nine crops and all advice pages | `1`, unchanged |
+| Pests & disease and all symptom-check situations/questions/results | `2`, unchanged |
+| Harvest & storage and all five guidance sections | `4` (previously `3`) |
+| Sell & market → Harvest for sale | `8 → 1`; also `7 → 5` |
+| Sell & market → Try selling (demo only) | `8 → 2`; also `7 → 4`; never submits |
+| Expert help and question practice | `5`, unchanged; never submits |
+| Language and future-language notices | `6`, unchanged |
+| How to use, About, Exit | `7 → 1/2/3`, unchanged |
+| Back, Home, Cancel, Delete, numeric/keyboard input, timeout and restart | Preserved; End is an extra control |
+
+The original read-only harvest view uses the **complete existing public snapshot**, including ordinary app-created listings, with exactly the original safe fields (reference, crop, kg, price, county and availability). Its online/saved/offline behavior is preserved. Only the **new interactive** marketplace is narrowed to synthetic demo listings. No contact details, identity keys or new write actions are added to the original view.
+
+Verification before this compatibility correction: the **untouched original 14 Phase 2B tests** passed from an isolated Git snapshot of pre-enhancement `3b03a0f`; the then-current `5c98619` suite also passed **14/14**. Afterward, the Phase 2B suite passes **15/15**, including an added test for the original submenu and equivalent Help aliases. The marketplace tests also assert that filtering interactive demo rows cannot remove rows from the original read-only snapshot.
+
+The compatibility test confirms that original selling practice submits nothing even when interactive demo writes are enabled. Phase 2A (12 tests), the marketplace suite (13 tests), TypeScript and build also passed after the correction. Seven isolated browser checks verified the full public snapshot online and after offline reload, unchanged practice/Help aliases, storage guidance, expert/language notices and all four mobile widths.
 
 ## Buy, sell and private identity
 
@@ -72,7 +97,7 @@ The existing server on port 3000 remains running unchanged; its development mode
 - The service worker precaches the simulator route and all route chunks in a production build. First visit/installation still needs a connection; Vite development mode has no offline service worker.
 - Bundled planting, pest, harvest/storage and symptom guidance reuse the existing Crops Library, Phase 2A sentence builder, advice cards and triage rules. No agricultural claims or translations were invented.
 - Explicitly confirmed sales reuse `saveListingDraft` → `queueRecord('listing', ...)` → the existing `syncSoon`/reconnect processing. Existing auto-sync pause and retry rules still apply. A failed/draft record is never silently reported as published.
-- Public produce browsing reuses the existing saved harvest snapshot and labels it old. Only available demo listings enter this view.
+- New interactive produce browsing reuses the existing saved harvest snapshot and labels it old; only available demo listings enter that interactive view. The original read-only menu retains the complete public snapshot and its existing sold-out filtering.
 - Inquiries need a live connection and listing revalidation. Private inquiry lists remain in the current session's memory, are labelled previously loaded and need refresh for new replies; they are not newly persisted offline by this feature.
 - A queued listing survives session End/restart or page reload. Confirmation explicitly authorizes later sync. Clearing browser data can lose local drafts/private keys; no new recovery identity is invented.
 
@@ -91,7 +116,7 @@ Before printing: verify that the configured public address actually serves this 
 - Existing Phase 2B tests retain exhaustive advice/menu pagination, all crops/months, 162 symptom combinations, keyboard/labels, offline guidance, timeout/restart and untouched expert/practice simulations. Main-menu references were updated for marketplace `3` and harvest/storage `4`.
 - `npm run test:ussd-marketplace`: **13 tests** cover keypad sale and buy confirmation, actual disposable-backend listing/inquiry calls, ownership denial, seller reply, validation, storage failure, offline pending/reconnect, disabled gates, demo-only/phone-free projections, same-operation lost-response retry, stalled-request deadline, session boundaries, owned failed-draft retry, unstable requester storage, invalid QR destinations and QR decoding/link equality. Queue storage is injected in these contract tests; the real IndexedDB queue is verified in Chrome.
 - Browser: actual protected `APP_ENV=demo` runtime on a disposable SQLite database, temporary local HTTPS and isolated farmer/buyer profiles. **16 checkpoints passed**, including real IndexedDB offline save, reconnect auto-sync, one server listing/code, inquiry transport failure/retry, owner-authorized reply and keypad conversation retrieval. All four mobile widths (320/360/375/412) fit with no horizontal overflow; every key measured at least 44×44 px. Keyboard/invalid input and the unconfigured print poster also passed. No uncaught JavaScript exceptions.
-- **234 tests passed**: 221 existing tests across Phase 2B, Phase 2A, H1/H2, triage, harvest, offline, hardening, Ministry, API, harness and Phase 0/0B, plus the 13 new tests. All **63 contract requests** matched the unchanged golden snapshot. TypeScript and the production build passed. The main entry is about **444 kB** raw / **135 kB** gzip; the local QR module is about **24 kB** raw / **9 kB** gzip, and route chunks remain precached. No bundle-size or mixed-import warning remains. The final default-build browser check also passed the disabled write gate, QR/poster navigation, print generation, presenter QR setup, timeout/restart and inline PWA notice. No database or server route/schema/authentication change is part of this feature.
+- Initial extension verification: **234 tests passed**: 221 existing tests across Phase 2B, Phase 2A, H1/H2, triage, harvest, offline, hardening, Ministry, API, harness and Phase 0/0B, plus the 13 new tests. All **63 contract requests** matched the unchanged golden snapshot. TypeScript and the production build passed. The main entry is about **444 kB** raw / **135 kB** gzip; the local QR module is about **24 kB** raw / **9 kB** gzip, and route chunks remain precached. No bundle-size or mixed-import warning remains. The final default-build browser check also passed the disabled write gate, QR/poster navigation, print generation, presenter QR setup, timeout/restart and inline PWA notice. No database or server route/schema/authentication change is part of this feature.
 
 Not certified: real feature phones or telecom networks, physical-camera QR scans, screen-reader/native-audio compatibility, live public hosting, production security certification or qualified agricultural approval. English is the only USSD language; other languages and real expert submission remain future work. No actual payments or orders exist.
 
@@ -103,4 +128,4 @@ Not certified: real feature phones or telecom networks, physical-camera QR scans
 4. Disconnect, confirm, and show Pending Sync without a reference. Reconnect and use My Listings to read the actual server SELL reference.
 5. In a separate buyer profile: `3` → `1` Buy Produce → crop/county/listing → template → review → confirm online. Read the server confirmation, not a payment claim.
 6. My Inquiries shows each participant's authorized conversation. Reply through Sell my harvest, refresh and read it on the buyer phone.
-7. `6` shows English and future-language notices. `7` retains the original no-submit selling practice and expert demonstration. End, invalid selection and `?timeout=5` can be used for a brief session-control demonstration.
+7. `6` shows English and future-language notices. `8` retains the original Sell & market submenu and no-submit selling practice; Help shortcuts remain. Expert demonstration stays at `5`. End, invalid selection and `?timeout=5` can be used for a brief session-control demonstration.

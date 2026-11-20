@@ -115,7 +115,7 @@ test('a stalled inquiry reaches an unconfirmed state with a bounded deadline', a
 
 test('private phone numbers and non-demo listings never enter projections', async () => {
   const fixture = {id: 999, code: 'SELL-2026-000999', cropSlug: 'rice', quantityKg: 20, pricePerKgLrd: 4, county: 'Bong', town: 'Demo Town A', status: 'Available', description: 'ordinary listing', synthetic: false, sellerPhone: '+231770001111', phoneConsent: true} as HarvestListing;
-  const c = client({loadMarket: async () => ({source: 'server', listings: [fixture, {...fixture, id: 1000, synthetic: true}]})}); const s = await c.service.load(); assert.deepEqual(s.listings.map((l) => l.id), [1000]); assert.ok(!JSON.stringify(s).includes('+231')); assert.ok(!JSON.stringify(s).includes('sellerPhone'));
+  const c = client({loadMarket: async () => ({source: 'server', listings: [fixture, {...fixture, id: 1000, synthetic: true}]})}); const s = await c.service.load(); assert.deepEqual(s.listings.map((l) => l.id), [1000]); assert.equal(s.legacy?.listings.length, 2, 'original read-only market retains all public rows'); assert.deepEqual(Object.keys(s.legacy!.listings[0]).sort(), ['code', 'county', 'cropSlug', 'pricePerKgLrd', 'quantityKg', 'status']); assert.ok(!JSON.stringify(s).includes('+231')); assert.ok(!JSON.stringify(s).includes('sellerPhone'));
 });
 
 test('End, Home and timeout cannot reopen an old action or repeat its confirmation', () => {

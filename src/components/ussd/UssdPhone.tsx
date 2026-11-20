@@ -40,7 +40,7 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
     const t = setInterval(() => { const at = Date.now(); const next = tick(sessionRef.current, at, timeoutSeconds); sessionRef.current = next; setSession(next); setNow(at); }, 1000);
     return () => clearInterval(t);
   }, [timeoutSeconds]);
-  const env: UssdEnv = useMemo(() => ({online: isOnline, marketplace, market: {source: marketplace.source, asOf: marketplace.asOf, listings: marketplace.listings}, now: new Date(now), timeoutSeconds}), [isOnline, marketplace, now, timeoutSeconds]);
+  const env: UssdEnv = useMemo(() => ({online: isOnline, marketplace, market: marketplace.legacy ?? {source: marketplace.source, asOf: marketplace.asOf, listings: marketplace.listings}, now: new Date(now), timeoutSeconds}), [isOnline, marketplace, now, timeoutSeconds]);
   const envRef = useRef(env); envRef.current = env;
   const send = useCallback((key: Key) => {
     const next = press(sessionRef.current, key, envRef.current, Date.now());
@@ -73,7 +73,7 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
     document.addEventListener('keydown', onKey); return () => document.removeEventListener('keydown', onKey);
   }, [send]);
   const net = screen.internet;
-  const netText = !net.needed && !screen.frameId?.startsWith('trade.') ? 'Built into the app: works without internet.' : marketplace.source === 'saved' ? 'Saved demo market: may be out of date. Inquiries need internet.' : isOnline ? 'Browser marketplace uses the existing server. No telecom connection.' : 'Offline: confirmed harvest drafts wait to sync. Inquiries cannot be sent.';
+  const netText = screen.frameId === 'market.list' ? (env.market.source === 'saved' ? 'Read-only public harvest list: saved copy, may be old.' : env.market.source === 'server' ? 'Read-only public harvest list from the existing server.' : 'No saved public harvest list. Connect once to download it.') : !net.needed && !screen.frameId?.startsWith('trade.') ? 'Built into the app: works without internet.' : marketplace.source === 'saved' ? 'Saved demo market: may be out of date. Inquiries need internet.' : isOnline ? 'Browser marketplace uses the existing server. No telecom connection.' : 'Offline: confirmed harvest drafts wait to sync. Inquiries cannot be sent.';
   const key = `min-h-[56px] rounded-[0.85rem] border border-white/35 text-2xl font-extrabold bg-[#E8EDF3] text-[#10161D] active:bg-white shadow-[0_4px_0_#74808D] ${FOCUS}`;
   const fn = `min-h-[52px] rounded-xl text-base font-extrabold px-2 inline-flex items-center justify-center gap-1.5 ${FOCUS}`;
   return (

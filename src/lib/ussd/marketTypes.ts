@@ -16,6 +16,8 @@ export interface DemoInquiry {
 export interface MarketplaceEnv {
   allowed: boolean; reason: string; loading: boolean; error: string | null;
   source: 'server' | 'saved' | 'none'; asOf: string | null;
+  /** Original public read-only snapshot; never narrowed by the interactive demo filter and contains no private/contact fields. */
+  legacy?: {source: 'server' | 'saved' | 'none'; asOf: string | null; listings: Array<Pick<DemoListing, 'code' | 'cropSlug' | 'quantityKg' | 'pricePerKgLrd' | 'county' | 'status'>>};
   listings: DemoListing[]; own: OwnDemoListing[]; inquiries: DemoInquiry[];
 }
 export type MarketAction =

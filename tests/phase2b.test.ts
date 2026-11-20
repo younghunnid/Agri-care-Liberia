@@ -13,6 +13,7 @@ import {NAV_GROUPS} from '../src/data/navGroups.ts';
 import {evaluateTriage} from '../src/lib/triageRules.ts';
 import {DEFAULT_TIMEOUT_S, DEMO_CALLER, DEMO_LABEL, MAIN_ITEMS, SCREEN_MAX, newSession, paginate, press, tick, view, type Key, type MarketEnv, type Session, type UssdEnv} from '../src/lib/ussd/engine.ts';
 import {FARM_TO_MARKET_STEPS} from '../src/pages/public/FarmToMarketDemoPage.tsx';
+import {EMPTY_MARKETPLACE} from '../src/lib/ussd/marketTypes.ts';
 
 /** Phase 2B: the basic-phone (USSD-style) simulator. Pure engine tests (no browser, no network, no database) plus static checks of the screens. */
 const root = path.resolve(import.meta.dirname, '..');
@@ -69,10 +70,10 @@ test('2. text pages never cut a sentence or drop one: the pages read back as exa
 });
 
 // ------------------------------------------------------------------------------------------------------------------------ 2. navigation
-test('3. numbered menus: the main menu has the seven requested items and each leads where it says', () => {
-  assert.deepEqual([...MAIN_ITEMS], ['Crops & planting', 'Pests & disease', 'Buy & Sell Produce', 'Harvest & storage', 'Expert help', 'Language', 'Help & exit']);
+test('3. numbered menus: the main menu preserves all original functions and adds the interactive marketplace', () => {
+  assert.deepEqual([...MAIN_ITEMS], ['Crops & planting', 'Pests & disease', 'Buy & Sell Produce', 'Harvest & storage', 'Expert help', 'Language', 'Help & exit', 'Sell & market']);
   const main = go([]).text; assert.equal(main, ['FARM ADVICE (DEMO)', ...MAIN_ITEMS.map((m, i) => `${i + 1} ${m}`)].join('\n'));
-  const lands: [string, RegExp][] = [['1', /^Crops & planting: crop\?/], ['2', /^Pests & disease/], ['3', /^Buy & Sell Produce/], ['4', /^Harvest & storage: crop\?/], ['5', /^Expert help \(demo\)/], ['6', /^Language/], ['7', /^Help & exit/]];
+  const lands: [string, RegExp][] = [['1', /^Crops & planting: crop\?/], ['2', /^Pests & disease/], ['3', /^Buy & Sell Produce/], ['4', /^Harvest & storage: crop\?/], ['5', /^Expert help \(demo\)/], ['6', /^Language/], ['7', /^Help & exit/], ['8', /^Sell & market/]];
   for (const [d, re] of lands) assert.match(go(pick(d)).text, re, `option ${d}`);
   const rice = go(pick('1', '1')).text; assert.match(rice, /^\[DEMO\] Rice planting\n1 Planting months\n2 How to plant\n3 Soil & water\n4 Care of the crop/);
 });
@@ -241,4 +242,14 @@ test('14. routes, navigation, the Farmer Today link and the presenter walkthroug
   assert.deepEqual(FARM_TO_MARKET_STEPS.map((s) => s.n), Array.from({length: 16}, (_x, i) => i + 1)); for (const s of FARM_TO_MARKET_STEPS) assert.ok(routes.has(s.to.split('#')[0].split('?')[0]) || /^\/advice-cards\/ADV/.test(s.to), s.to);
   assert.ok(!fs.readdirSync(path.join(root, 'server/migrations')).some((f) => /^012_/.test(f)), 'Phase 2B adds no migration'); assert.ok(!fs.existsSync(path.join(root, 'server/routes/ussd.ts')), 'and no server route: the simulator is client-side only');
   for (const county of LIBERIA_COUNTIES) assert.ok(go([...pick('7', '4', '2', '650', '62')]).text.length > 0, county);
+});
+
+
+test('15. original Sell & market is preserved as a named submenu; both old Help aliases behave identically', () => {
+  assert.equal(go(pick('8')).text, 'Sell & market\n1 Harvest for sale (net)\n2 Try selling (demo only)\n0 Back  00 Home');
+  assert.equal(go(pick('8', '1', '1')).text, go(pick('7', '5', '1')).text);
+  const original = go(pick('8', '2', '2', '650', '62', '4'), env({marketplace: {...EMPTY_MARKETPLACE, allowed: true}}));
+  assert.equal(original.text, go(pick('7', '4', '2', '650', '62', '4')).text);
+  assert.match(original.text, /NOTHING WAS SENT or saved/); assert.equal(original.s.pending, null);
+  assert.equal(go(pick('8', '1', '1'), env({online: false, market: SAVED})).text, go(pick('7', '5', '1'), env({online: false, market: SAVED})).text);
 });
