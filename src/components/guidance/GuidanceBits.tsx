@@ -3,7 +3,7 @@ import {Link} from 'react-router-dom';
 import {CalendarDays, Info, Warehouse, WifiOff} from 'lucide-react';
 import {StatusLabel} from '../StatusLabel';
 import {
-  COMMON_STORAGE_CHECKS, GUIDANCE_BANNER, OFFLINE_NOTE, PROVENANCE_LABEL, REGIONAL_LIMIT, countyGuidance, cropEntry, monthName, periodText, plantingEntry, plantingStatus, storageGuide,
+  COMMON_STORAGE_CHECKS, GUIDANCE_BANNER, OFFLINE_NOTE, PROVENANCE_LABEL, REGIONAL_LIMIT, countyGuidance, cropEntry, monthName, periodText, plantingEntry, plantingSentence, plantingStatus, storageGuide,
   type GuidanceItem, type Provenance,
 } from '../../data/farmGuidance';
 
@@ -28,9 +28,7 @@ const Bullets: React.FC<{items: GuidanceItem[]}> = ({items}) => (
 export const PlantingGuidanceCard: React.FC<{slug: string; county?: string; now?: Date; className?: string}> = ({slug, county = '', now, className = ''}) => {
   const entry = plantingEntry(slug); const crop = cropEntry(slug); if (!entry || !crop) return null;
   const d = now ?? new Date(); const month = d.getMonth() + 1; const st = plantingStatus(slug, month)!; const cg = county ? countyGuidance(county) : null;
-  const sentence = st.state === 'open' ? `The usual planting months are running now (${st.open.map((p) => `${p.label}: ${periodText(p)}`).join('; ')}).`
-    : st.state === 'soon' ? `The usual months start in ${st.monthsUntilNext === 1 ? 'one month' : `${st.monthsUntilNext} months`} (${st.next!.label}: ${periodText(st.next!)}).`
-    : `The usual months are further away. The next ones are ${periodText(st.next!)} (${st.next!.label}).`;
+  const sentence = plantingSentence(st);
   return (
     <section className={`rounded-2xl bg-white border border-[#183B2B]/15 p-4 sm:p-5 space-y-3 ${className}`} data-testid="planting-card" data-state={st.state} aria-labelledby={`pl-${slug}`}>
       <h2 id={`pl-${slug}`} className="font-display text-xl font-extrabold text-[#183B2B] flex items-center gap-2"><CalendarDays className="w-6 h-6 text-[#16803C]" aria-hidden /> Planting months: {crop.name}</h2>

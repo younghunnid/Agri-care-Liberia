@@ -161,7 +161,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
 
       {/* Compact utility strip: one row on phones (icon buttons, 44 px targets); labels appear from sm up. */}
       <div className="bg-white/80 border-b border-[#183B2B]/10">
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 py-1.5 flex items-center gap-1 sm:gap-2">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 py-1.5 flex flex-wrap items-center gap-1 sm:gap-2">
           {!isHome && (
             <>
               <button

@@ -33,7 +33,8 @@
     "test:triage": "tsx --test tests/triage.test.ts",
     "test:harvest": "tsx --test tests/harvest.test.ts tests/harvest-client.test.ts",
     "test:hardening": "tsx --test tests/hardening.test.ts",
-    "test:phase2a": "tsx --test tests/phase2a.test.ts"
+    "test:phase2a": "tsx --test tests/phase2a.test.ts",
+    "test:phase2b": "tsx --test tests/phase2b.test.ts"
   },
   "dependencies": {
     "@google/genai": "^3.4.0",

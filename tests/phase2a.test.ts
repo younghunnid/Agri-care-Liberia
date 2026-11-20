@@ -173,10 +173,10 @@ test('11. offline: guidance is bundled (no network call in the data, logic or gu
 });
 
 test('12. the demonstration walkthrough starts at the farmer screen, includes the planting and storage guidance, and labels working, simulated, draft and future honestly', () => {
-  assert.equal(FARM_TO_MARKET_STEPS.length, 14); assert.deepEqual(FARM_TO_MARKET_STEPS.map((s) => s.n), Array.from({length: 14}, (_x, i) => i + 1));
+  assert.equal(FARM_TO_MARKET_STEPS.length, 16, 'Phase 2B added two basic-phone steps after the Phase 2A steps'); assert.deepEqual(FARM_TO_MARKET_STEPS.map((s) => s.n), Array.from({length: 16}, (_x, i) => i + 1));
   assert.equal(FARM_TO_MARKET_STEPS[0].to, '/today'); assert.ok(FARM_TO_MARKET_STEPS[0].kinds.includes('working') && FARM_TO_MARKET_STEPS[0].kinds.includes('simulated')); assert.match(FARM_TO_MARKET_STEPS[0].note, /SAMPLE weather \(not live, not a forecast\)/);
   assert.equal(FARM_TO_MARKET_STEPS[1].to, '/guidance'); assert.deepEqual(FARM_TO_MARKET_STEPS[1].kinds, ['draft']); assert.match(FARM_TO_MARKET_STEPS[1].note, /not reviewed by an agronomist or the Ministry/);
   for (const s of FARM_TO_MARKET_STEPS) assert.ok(routes.has(s.to.split('#')[0].split('?')[0]) || /^\/advice-cards\/ADV/.test(s.to), `${s.to} is a route`);
-  const demo = read('src/pages/public/FarmToMarketDemoPage.tsx'); assert.match(demo, /Fourteen steps/); assert.ok(!/Twelve steps/.test(demo));
+  const demo = read('src/pages/public/FarmToMarketDemoPage.tsx'); assert.match(demo, /Sixteen steps/); assert.ok(!/Twelve steps|Fourteen steps/.test(demo));
   assert.ok(read('src/pages/public/FarmerTodayPage.tsx').includes('StatusLabel kind="future"'), 'future features are named as future');
 });

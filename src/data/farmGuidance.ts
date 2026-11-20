@@ -60,6 +60,13 @@ export function plantingStatus(slug: string, month: number): PlantingStatus | nu
   return {slug, state: n <= 2 ? 'soon' : 'later', open: [], next, monthsUntilNext: n};
 }
 
+/** The one sentence that says where this month sits against the Crops Library months. Used by the planting card and by the basic-phone (USSD) simulator, so they can never disagree. */
+export function plantingSentence(st: PlantingStatus): string {
+  return st.state === 'open' ? `The usual planting months are running now (${st.open.map((p) => `${p.label}: ${periodText(p)}`).join('; ')}).`
+    : st.state === 'soon' ? `The usual months start in ${st.monthsUntilNext === 1 ? 'one month' : `${st.monthsUntilNext} months`} (${st.next!.label}: ${periodText(st.next!)}).`
+    : `The usual months are further away. The next ones are ${periodText(st.next!)} (${st.next!.label}).`;
+}
+
 // ------------------------------------------------------------------------------------------------------------------------------------ counties
 export interface CountyGuidance {county: string; hasSample: boolean; region: string | null; note: string; sampleCrops: string[]; sample: CountyWeatherSample | null}
 /** County notes come from the bundled SAMPLE weather profiles (six counties). Other counties honestly say that nothing county-specific is bundled. */

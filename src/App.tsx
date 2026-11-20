@@ -14,6 +14,7 @@ import {HarvestMarketPage} from './pages/public/HarvestMarketPage';
 import {FarmToMarketDemoPage} from './pages/public/FarmToMarketDemoPage';
 import {FarmerTodayPage} from './pages/public/FarmerTodayPage';
 import {GuidancePage} from './pages/public/GuidancePage';
+import {UssdDemoPage} from './pages/public/UssdDemoPage';
 import {FarmCalculatorPage} from './pages/public/FarmCalculatorPage';
 import {VerifyCodePage} from './pages/public/VerifyCodePage';
 import {ForgotPasswordPage} from './pages/public/ForgotPasswordPage';
@@ -111,6 +112,7 @@ export default function App() {
             <Route path="/advice-cards/:ref" element={<AdviceCardPage />} />
             <Route path="/today" element={<FarmerTodayPage />} />
             <Route path="/guidance" element={<GuidancePage />} />
+            <Route path="/ussd-demo" element={<UssdDemoPage />} />
             <Route path="/harvest" element={<HarvestMarketPage />} />
             <Route path="/harvest/sell" element={<SellHarvestPage />} />
             <Route path="/demo/farm-to-market" element={<FarmToMarketDemoPage />} />

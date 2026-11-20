@@ -51,6 +51,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'tools', title: 'Farm Tools', blurb: 'Simple tools for your farm.',
     items: [
       {label: 'My farm today (home screen)', to: '/today', kinds: ['working', 'simulated'], note: 'Reminders use sample weather, not live. Works offline.'},
+      {label: 'Basic phone (USSD) demo', to: '/ussd-demo', kinds: ['simulated'], note: 'Demonstration only. No mobile network connection.'},
       {label: 'Sell my harvest', to: '/harvest/sell', kinds: ['working', 'simulated'], note: 'Save offline, sent when online. No payments.'},
       {label: 'Find harvest (buyers)', to: '/harvest', kinds: ['simulated'], note: 'Demonstration listings. No payments.'},
       {label: 'Farm cost and profit calculator', to: '/tools/calculator', kinds: ['working']},

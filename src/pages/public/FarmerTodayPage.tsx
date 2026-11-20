@@ -65,6 +65,8 @@ export const FarmerTodayPage: React.FC = () => {
           </Link>))}
       </nav>
 
+      <Link to="/ussd-demo" data-testid="go-ussd" className="min-h-[56px] flex items-center justify-between gap-3 rounded-2xl border-2 border-[#183B2B]/25 bg-white px-4 text-base font-extrabold text-[#183B2B]"><span>Basic phone demo (numbered menus)<span className="block text-sm font-semibold text-[#183B2B]/75">Demonstration only. No mobile network.</span></span><span aria-hidden>→</span></Link>
+
       <section className="rounded-2xl bg-white border-2 border-[#183B2B]/15 p-4 space-y-3" aria-labelledby="farm-h" data-testid="my-farm">
         <h2 id="farm-h" className="font-display text-xl font-extrabold text-[#183B2B] flex items-center gap-2"><UserCheck className="w-6 h-6 text-[#16803C]" aria-hidden /> My farm</h2>
         <label className="space-y-1 block"><span className="text-base font-bold text-[#183B2B]">My county</span>
