@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {chromium, type Page, type BrowserContext} from 'playwright';
+import {enterParticipantMenu} from './ussdBrowserHelpers.ts';
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'agriccare-codex-browser-'));
 const secret = () => crypto.randomBytes(32).toString('hex');
@@ -25,7 +26,7 @@ const launch = async () => {
   c.setDefaultNavigationTimeout(15000);
   return c;
 };
-const check = async (name: string, run: () => Promise<void>) => { await run(); results.push(name); console.log(`PASS ${name}`); };
+const check = async (name: string, run: () => Promise<void>) => { console.log(`CHECK ${name}`); await run(); results.push(name); console.log(`PASS ${name}`); };
 const screen = (p: Page) => p.getByTestId('ussd-text');
 const choose = async (p: Page, choice: string) => { for (const digit of choice) await p.getByTestId(`key-${digit}`).click(); await p.getByTestId('key-send').click(); };
 const review = async (p: Page) => { for (let n = 0; n < 30 && /\n1 Next\n/.test(await screen(p).innerText()); n++) await choose(p, '1'); };
@@ -65,7 +66,7 @@ try {
   });
   await check('keypad and keyboard: original option 8, invalid choice, Back, Home, Cancel, timeout and restart', async () => {
     await page.goto(base + '/ussd-demo?timeout=5');
-    await page.getByTestId('key-send').click();
+    await page.getByTestId('ussd-public-advice').click();
     await choose(page, '8'); await match(page, /Sell & market/);
     await page.getByTestId('key-back').click();
     await page.locator('h1').click();
@@ -83,10 +84,10 @@ try {
   });
   await context.setOffline(false);
   await page.goto(base + '/ussd-demo');
-  await page.getByTestId('ussd-write-status').filter({hasText: 'Interactive synthetic demo enabled'}).waitFor();
+  await enterParticipantMenu(page);
+    await page.getByTestId('ussd-write-status').filter({hasText: 'Interactive synthetic demo enabled'}).waitFor();
   await check('confirmed USSD sale persists offline and receives one server reference on reconnection', async () => {
     await context!.setOffline(true);
-    await page.getByTestId('key-send').click();
     for (const choice of ['3', '2', '4', '650', '62', '2', '1']) await choose(page, choice);
     await review(page); await choose(page, '1'); await match(page, /Listing status|Pending Sync/);
     await page.goto(base + '/harvest/sell');
@@ -108,9 +109,9 @@ try {
   });
   await check('offline buyer inquiry is refused without a queued or successful inquiry', async () => {
     await page.goto(base + '/ussd-demo');
+    await enterParticipantMenu(page);
     await page.getByTestId('ussd-write-status').filter({hasText: 'Interactive synthetic demo enabled'}).waitFor();
     await context!.setOffline(true);
-    await page.getByTestId('key-send').click();
     for (const choice of ['3', '1', '4', '2', '1']) await choose(page, choice);
     await review(page); await choose(page, '1'); await choose(page, '1');
     await review(page); await choose(page, '1');
@@ -124,8 +125,8 @@ try {
     try {
       const phone = await buyer.newPage();
       await phone.goto(base + '/ussd-demo');
+      await enterParticipantMenu(phone, '2');
       await phone.getByTestId('ussd-write-status').filter({hasText: 'Interactive synthetic demo enabled'}).waitFor();
-      await phone.getByTestId('key-send').click();
       for (const choice of ['3', '1', '4', '2', '1']) await choose(phone, choice);
       await review(phone); await choose(phone, '1'); await choose(phone, '1');
       await review(phone); await choose(phone, '1');
@@ -143,10 +144,29 @@ try {
       assert.match(transcript, /Synthetic QA harvest is ready/);
     } finally { await buyer.close(); }
   });
+  await check('redialing keeps operation tokens distinct for two confirmed sales in the same page', async () => {
+    await page.goto(base + '/ussd-demo'); await enterParticipantMenu(page);
+    for (const kg of [701, 702]) {
+      if (kg === 702) { await page.getByTestId('ussd-identity').getByRole('button', {name: 'Dial again'}).click(); await enterParticipantMenu(page); }
+      for (const choice of ['3', '2', '4', String(kg), '62', '2', '1']) await choose(page, choice);
+      await review(page); await choose(page, '1');
+      await page.waitForFunction(async (quantity) => (await (await fetch('/api/v1/harvest/listings?includeSoldOut=1')).json()).listings.some((r: any) => r.quantityKg === quantity && r.description.startsWith('USSD DEMO:')), kg, {timeout: 45000});
+    }
+    const quantities = await page.evaluate(async () => (await (await fetch('/api/v1/harvest/listings?includeSoldOut=1')).json()).listings.filter((r: any) => [701, 702].includes(r.quantityKg) && r.description.startsWith('USSD DEMO:')).map((r: any) => r.quantityKg).sort());
+    assert.deepEqual(quantities, [701, 702]);
+  });
   assert.deepEqual(errors, [], 'no uncaught page errors');
   console.log(JSON.stringify({base, browser: 'Headless desktop Chrome; viewport and offline emulation only; no real device', results}, null, 2));
+} catch (error) {
+  console.error('Browser QA failed before cleanup:', error);
+  throw error;
 } finally {
-  await context?.close();
+  let closeTimer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([context?.close(), new Promise((_resolve, reject) => { closeTimer = setTimeout(() => reject(new Error('QA profile close timed out')), 5000); })]);
+  } catch (error) { console.error(error); }
+  finally { clearTimeout(closeTimer); }
+  server.closeAllConnections();
   await new Promise<void>((resolve) => server.close(() => resolve()));
   closeDb();
   fs.rmSync(temp, {recursive: true, force: true});

@@ -351,11 +351,12 @@ test('14. rate-limit bookkeeping does not grow without bound (rows older than 25
 });
 
 // ====================================================================================================================== 6. wording and labels
-test('15. no invented USSD short code appears anywhere in the interface or server code', () => {
+test('15. only the explicitly proposed browser-only USSD code is allowed; no telecom service is claimed', () => {
   const walk = (dir: string): string[] => fs.readdirSync(path.join(root, dir), {withFileTypes: true}).flatMap((e) => e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]);
   const files = [...walk('src'), ...walk('server'), 'index.html'].filter((f) => /\.(ts|tsx|html|json|md)$/.test(f));
   const pattern = /\*[0-9]{1,5}(\*[0-9]+)*#/;
-  for (const f of files) assert.ok(!pattern.test(fs.readFileSync(path.join(root, f), 'utf8')), `${f} contains a USSD-style short code`);
+  for (const f of files) { const source = fs.readFileSync(path.join(root, f), 'utf8'); const permitted = f === path.join('src', 'lib', 'ussd', 'enrollment.ts') ? source.replace("export const PROPOSED_USSD_CODE = '*440#';", '') : source; assert.ok(!pattern.test(permitted), `${f} contains an unapproved USSD-style short code`); }
+  const simulator = fs.readFileSync(path.join(root, 'src/pages/public/UssdDemoPage.tsx'), 'utf8'); assert.match(simulator, /not assigned or connected to a telecom network/);
   const page = fs.readFileSync(path.join(root, 'src/pages/public/PhoneSimulatorPage.tsx'), 'utf8');
   assert.match(page, /no telephone number, short code or telecom network is used/);
   assert.ok(!/useState\('\*/.test(page) && !/Dial \*/.test(page));

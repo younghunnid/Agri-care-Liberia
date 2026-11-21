@@ -168,8 +168,8 @@ test('11. offline: guidance is bundled (no network call in the data, logic or gu
   assert.ok(!/apiFetch|fetch\(/.test(page), 'the screen itself calls no API');
   assert.ok(!/localStorage\.|sessionStorage/.test(page), 'the profile goes through loadProfile/saveProfile only');
   const vite = read('vite.config.ts'); assert.match(vite, /globPatterns: \['\*\*\/\*\.\{js,css,html/); assert.match(vite, /navigateFallback: '\/index\.html'/);
-  // no migration or server change belongs to this phase
-  assert.ok(!fs.readdirSync(path.join(root, 'server/migrations')).some((f) => /^012_/.test(f)), 'Phase 2A adds no migration');
+  // Guidance itself remains bundled and independent of the later enrollment registry.
+  assert.ok(!read('src/data/farmGuidance.ts').includes('participant_registrations'), 'guidance does not depend on registry migrations');
 });
 
 test('12. the demonstration walkthrough starts at the farmer screen, includes the planting and storage guidance, and labels working, simulated, draft and future honestly', () => {
