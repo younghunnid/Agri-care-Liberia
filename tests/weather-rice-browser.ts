@@ -60,18 +60,18 @@ try {
     provider = 'down'; const fresh = await ctx(); await fresh.addInitScript(() => { try { localStorage.setItem('agri_weather_location_v1', JSON.stringify({kind: 'town', id: 'harper'})); } catch { /* opaque origin */ } }); const q = await fresh.newPage(); await q.goto(backend.baseUrl + '/weather'); await q.getByTestId('lw-none').waitFor(); const none = await q.getByTestId('live-weather').innerText();
     assert.match(none, /No weather numbers are shown/); assert.ok(!/\d+°C|Humidity|Chance of rain/.test(none), 'no weather values are invented'); provider = 'ok';
   });
-  await check('rice: Knowledge & Guides, Rice shows the exact question and answer, source and review status, offline note, and does not attach an unchecked recording', async () => {
+  await check('rice: Knowledge & Guides, Rice shows the exact question and answer, source and review status, offline note, and the Vai recording (Listen in Vai)', async () => {
     const c = await ctx(); const p = await c.newPage(); await p.goto(backend.baseUrl + '/guides'); await p.getByTestId('cq-rice').click(); const card = p.getByTestId('rice-advice-card'); await card.waitFor();
     assert.equal(await p.getByTestId('rice-crop').innerText(), 'Rice'); assert.equal(await p.getByTestId('rice-question').innerText(), 'My rice leaves are turning yellow. What could be the problem?');
     assert.equal(await p.getByTestId('rice-answer').innerText(), 'Yellow leaves may be caused by pests, diseases, lack of nutrients, or too much water. Check the plants carefully and contact an agricultural extension officer for proper advice.');
     assert.match(await p.getByTestId('rice-review').innerText(), /^Not reviewed/); assert.match(await p.getByTestId('rice-source').innerText(), /project team/); assert.match(await p.getByTestId('rice-offline').innerText(), /without internet/);
-    assert.equal(await p.getByTestId('recorded-advice').count(), 0, 'no player on this card'); assert.match(await p.getByTestId('rice-no-audio-here').innerText(), /has not been checked against this question/);
+    assert.equal(await p.getByTestId('recorded-advice').count(), 1); assert.equal(await p.getByTestId('rice-no-audio-here').count(), 0); await p.getByTestId('recording-play').filter({hasText: /^Listen in Vai$/}).waitFor(); assert.match(await p.getByTestId('recording-note').innerText(), /Vai.*Not yet reviewed by an agricultural expert/);
     assert.ok(!/approved by|Ministry of Agriculture approved/i.test(await card.innerText())); await noSideways(p, 'guides');
   });
-  await check('rice: the recording plays only after Play, pauses, resumes, replays; nothing autoplays; labels do not claim a language', async () => {
+  await check('rice: the recording plays only after Play, pauses, resumes, replays; nothing autoplays; button reads Listen in Vai', async () => {
     const c = await ctx(); const p = await c.newPage(); await p.goto(backend.baseUrl + '/crops/rice'); const rec = p.getByTestId('recorded-advice'); await rec.waitFor();
-    const note = await p.getByTestId('recording-note').innerText(); assert.match(note, /Language and topic not yet checked/); assert.ok(!/english|kpelle|bassa|mano/i.test(note), note);
-    await p.getByTestId('recording-play').filter({hasText: /^Play$/}).waitFor(); await p.waitForTimeout(1500);
+    const note = await p.getByTestId('recording-note').innerText(); assert.match(note, /Vai/); assert.match(note, /not reviewed by an agricultural expert|Not yet reviewed/i);
+    await p.getByTestId('recording-play').filter({hasText: /^Listen in Vai$/}).waitFor(); await p.waitForTimeout(1500);
     const idle = await p.evaluate(() => { const a = document.querySelector('[data-testid=recording-audio]') as HTMLAudioElement; return {paused: a.paused, t: a.currentTime}; }); assert.deepEqual(idle, {paused: true, t: 0}, 'nothing plays before a tap');
     await p.getByTestId('recording-play').click(); await p.waitForFunction(() => { const a = document.querySelector('[data-testid=recording-audio]') as HTMLAudioElement; return !a.paused && a.currentTime > 0.8; }, undefined, {timeout: 20000});
     await p.waitForFunction(() => document.querySelector('[data-testid=recorded-advice]')?.getAttribute('data-state') === 'playing'); await p.getByTestId('recording-play').filter({hasText: 'Pause'}).waitFor();

@@ -1,7 +1,6 @@
 import React from 'react';
-import {Link} from 'react-router-dom';
 import {FileCheck2, Sprout, WifiOff} from 'lucide-react';
-import {RECORDING_MATCHES_YELLOW_LEAVES, RICE_RECORDING, RICE_YELLOW_LEAVES, recordingLabel} from '../data/riceAdvice';
+import {LISTEN_LABEL, RECORDING_MATCHES_YELLOW_LEAVES, RICE_RECORDING, RICE_YELLOW_LEAVES, recordingLabel} from '../data/riceAdvice';
 import {RecordedAdvicePlayer} from './RecordedAdvicePlayer';
 
 /** The recording is shown with the question ONLY when someone has confirmed it answers it (see src/data/riceAdvice.ts). */
@@ -13,8 +12,8 @@ export const RiceAdviceCard: React.FC<{recordingMatches?: boolean}> = ({recordin
       <div><p className="text-sm font-bold uppercase tracking-wide">Question</p><h3 id="rice-q-h" className="text-2xl font-extrabold leading-snug" data-testid="rice-question">{q.question}</h3></div>
       <div><p className="text-sm font-bold uppercase tracking-wide">Answer in English</p><p className="text-xl leading-relaxed" data-testid="rice-answer">{q.answerEn}</p></div>
       {recordingMatches
-        ? <RecordedAdvicePlayer source={RICE_RECORDING} title="Play recorded advice" />
-        : <p className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-base font-semibold text-amber-950" data-testid="rice-no-audio-here">No recording is attached to this answer. The recording in the Rice section has not been checked against this question yet, so it is not shown here. <Link to="/crops/rice" className="underline font-bold">Go to the Rice recording</Link></p>}
+        ? <RecordedAdvicePlayer source={RICE_RECORDING} title="Recorded advice in Vai" playLabel={LISTEN_LABEL} note="Spoken in Vai. Confirmed by the project owner as the answer to this question. Not yet reviewed by an agricultural expert." />
+        : <p className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-base font-semibold text-amber-950" data-testid="rice-no-audio-here">No recording is attached to this answer.</p>}
       <dl className="space-y-2 rounded-2xl bg-[#F3F8F0] p-3 text-base">
         <div><dt className="flex items-center gap-2 font-extrabold"><FileCheck2 className="w-5 h-5" aria-hidden /> Source and review status</dt><dd data-testid="rice-source">{q.source} <strong data-testid="rice-review">{q.reviewStatus}</strong></dd></div>
         <div><dt className="flex items-center gap-2 font-extrabold"><WifiOff className="w-5 h-5" aria-hidden /> Offline</dt><dd data-testid="rice-offline">{q.offline}</dd></div>
@@ -23,11 +22,11 @@ export const RiceAdviceCard: React.FC<{recordingMatches?: boolean}> = ({recordin
   );
 };
 
-/** The Rice recording on its own, with honest labels about what has and has not been checked. */
+/** Facts about the recording. The player itself is in the question card above (one player per page, so two recordings can never play together). */
 export const RiceRecordingSection: React.FC = () => (
-  <section aria-labelledby="rice-rec-h" className="space-y-3" data-testid="rice-recording-section">
-    <h3 id="rice-rec-h" className="text-xl font-extrabold text-[#183B2B]">Recorded rice advice</h3>
-    <RecordedAdvicePlayer source={RICE_RECORDING} title="Play the recording" note={`${recordingLabel()} It plays exactly as recorded. The speaker's language and what it says have not been confirmed yet.`} />
-    <p className="text-sm text-[#183B2B]/80" data-testid="rice-recording-facts">Recording: {RICE_RECORDING.technical}. Original file: {RICE_RECORDING.originalFile}.</p>
+  <section aria-labelledby="rice-rec-h" className="space-y-2" data-testid="rice-recording-section">
+    <h3 id="rice-rec-h" className="text-xl font-extrabold text-[#183B2B]">About the Vai recording</h3>
+    <p className="text-base" data-testid="rice-recording-lang">{recordingLabel()} {RICE_RECORDING.verifiedBy}</p>
+    <p className="text-sm text-[#183B2B]/80" data-testid="rice-recording-facts">Recording: {RICE_RECORDING.technical}, {Math.floor(RICE_RECORDING.durationSec / 60)}:{String(Math.round(RICE_RECORDING.durationSec % 60)).padStart(2, '0')}. Original file: {RICE_RECORDING.originalFile}.</p>
   </section>
 );

@@ -15,7 +15,7 @@ let activePlayer: HTMLAudioElement | null = null;
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const btn = 'inline-flex min-h-[56px] min-w-[56px] items-center justify-center gap-2 rounded-2xl border-2 px-5 text-lg font-extrabold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16803C]/40 disabled:opacity-50';
 
-export const RecordedAdvicePlayer: React.FC<{source: RecordedAdviceSource; title: string; note?: string}> = ({source, title, note}) => {
+export const RecordedAdvicePlayer: React.FC<{source: RecordedAdviceSource; title: string; note?: string; playLabel?: string}> = ({source, title, note, playLabel = 'Play'}) => {
   const {isOnline, lowBandwidth, stopSpeech} = useApp();
   const audio = useRef<HTMLAudioElement | null>(null);
   const blobUrl = useRef<string | null>(null);
@@ -62,9 +62,9 @@ export const RecordedAdvicePlayer: React.FC<{source: RecordedAdviceSource; title
         onTimeUpdate={(e) => setPos((e.target as HTMLAudioElement).currentTime)} onError={() => { setState('error'); setMessage('This browser could not play the recording.'); }} />
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={onTap} disabled={state === 'loading'} className={`${btn} bg-[#16803C] border-[#16803C] text-white`} data-testid="recording-play"
-          aria-label={playing ? 'Pause the recorded advice' : state === 'ended' ? 'Play the recorded advice again' : state === 'idle' || state === 'error' ? 'Load the recorded advice' : 'Play the recorded advice'}>
+          aria-label={playing ? 'Pause the recorded advice' : state === 'ended' ? 'Play the recorded advice again' : state === 'idle' || state === 'error' ? 'Load the recorded advice' : playLabel === 'Play' ? 'Play the recorded advice' : playLabel}>
           {state === 'loading' ? <Loader2 className="w-6 h-6 animate-spin" aria-hidden /> : playing ? <Pause className="w-6 h-6" aria-hidden /> : <Play className="w-6 h-6" aria-hidden />}
-          {state === 'loading' ? 'Loading…' : playing ? 'Pause' : state === 'ended' ? 'Play again' : state === 'idle' ? `Load the recording (${(source.bytes / 1048576).toFixed(1)} MB)` : state === 'error' ? 'Try again' : state === 'paused' ? 'Continue' : 'Play'}
+          {state === 'loading' ? 'Loading…' : playing ? 'Pause' : state === 'ended' ? 'Play again' : state === 'idle' ? `Load the recording (${(source.bytes / 1048576).toFixed(1)} MB)` : state === 'error' ? 'Try again' : state === 'paused' ? 'Continue' : playLabel}
         </button>
         <button type="button" onClick={() => start(true)} disabled={!canPlay} className={`${btn} border-[#183B2B]/30 bg-white`} data-testid="recording-replay" aria-label="Replay the recorded advice from the start"><RotateCcw className="w-6 h-6" aria-hidden /> Replay</button>
       </div>

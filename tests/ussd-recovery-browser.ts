@@ -93,7 +93,7 @@ try {
       await page.setViewportSize({width, height: 812});
       for (const path of ['/ussd', '/ussd/', '/ussd?timeout=20']) {
         await page.goto(origin + path); await page.getByTestId('ussd-only-page').waitFor();
-        assert.equal(await page.locator('nav').count(), 0); assert.equal(await page.locator('header').count(), 1); assert.equal(await page.locator('footer').count(), 1);
+        assert.equal(await page.locator('nav').count(), 0); assert.equal(await page.locator('header').count(), 1); assert.equal(await page.locator('footer').count(), 0);
         assert.deepEqual(await page.locator('a').evaluateAll((links) => links.map((a) => a.getAttribute('href'))), ['/']);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
       }

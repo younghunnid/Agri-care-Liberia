@@ -39,6 +39,7 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number; compact?: boolean}> =
   const [working, setWorking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceNotice, setVoiceNotice] = useState('');
+  const [more, setMore] = useState(false);
   const [voiceInfo, setVoiceInfo] = useState('');
   const [voiceSpeed, setVoiceSpeedState] = useState<VoiceSpeed>(() => loadVoiceSpeed());
   const spokenScreenRef = useRef('');
@@ -137,41 +138,76 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number; compact?: boolean}> =
   }, [send, beginZero, endZero]);
   const net = screen.internet;
   const netText = screen.frameId === 'market.list' ? (env.market.source === 'saved' ? 'Read-only public harvest list: saved copy, may be old.' : env.market.source === 'server' ? 'Read-only public harvest list from the existing server.' : 'No saved public harvest list. Connect once to download it.') : !net.needed && !screen.frameId?.startsWith('trade.') ? 'Built into the app: works without internet.' : marketplace.source === 'saved' ? 'Saved demo market: may be out of date. Inquiries need internet.' : isOnline ? 'Browser marketplace uses the existing server. No telecom connection.' : 'Offline: confirmed harvest drafts wait to sync. Inquiries cannot be sent.';
-  const key = `min-h-[56px] rounded-[0.85rem] border border-white/35 text-2xl font-extrabold bg-[#E8EDF3] text-[#10161D] active:bg-white shadow-[0_4px_0_#74808D] ${FOCUS}`;
-  const fn = `min-h-[52px] rounded-xl text-base font-extrabold px-2 inline-flex items-center justify-center gap-1.5 ${FOCUS}`;
+  const key = `${compact ? 'h-full min-h-[40px] text-[clamp(1.1rem,3.4dvh,1.5rem)] leading-none' : 'min-h-[56px] text-2xl'} rounded-[0.85rem] border border-white/35 font-extrabold bg-[#E8EDF3] text-[#10161D] active:bg-white shadow-[0_4px_0_#74808D] ${FOCUS}`;
+  const cb = 'min-h-[40px] rounded-lg border-2 border-[#183B2B]/25 bg-white px-0.5 text-[clamp(11px,1.9dvh,13px)] font-bold leading-tight';
+  const fn = `${compact ? 'min-h-[40px] h-full text-[clamp(0.85rem,2.2dvh,1rem)]' : 'min-h-[52px] text-base'} rounded-xl font-extrabold px-1 inline-flex items-center justify-center gap-1.5 ${FOCUS}`;
   return (
-    <div className="mx-auto w-full max-w-[440px]" data-testid="ussd-phone">
-      <div className="ussd-handset rounded-[2.5rem] bg-gradient-to-b from-[#354150] via-[#1B2430] to-[#10161D] p-3 sm:p-5 space-y-3 shadow-xl border-4 border-[#10161D]">
-        <div className="flex items-center justify-center gap-2 py-1" aria-hidden><span className="w-2 h-2 rounded-full bg-[#10161D] border border-slate-500" /><span className="h-2 w-20 rounded-full bg-[#10161D] border border-slate-500" /></div>
-        <div className="flex flex-wrap items-center justify-between gap-1 text-sm font-bold text-[#E8EDF3]">
-          <span data-testid="ussd-caller">AGRICARE · DEMO</span>
+    <div className={`mx-auto w-full max-w-[440px] ${compact ? 'h-full flex flex-col' : ''}`} data-testid="ussd-phone">
+      <div className={`ussd-handset bg-gradient-to-b from-[#354150] via-[#1B2430] to-[#10161D] shadow-xl border-[#10161D] ${compact ? 'ussd-compact-handset rounded-[1.5rem] border-2 p-2' : 'rounded-[2.5rem] border-4 p-3 sm:p-5 space-y-3'}`}>
+        {!compact && <div className="flex items-center justify-center gap-2 py-1" aria-hidden><span className="w-2 h-2 rounded-full bg-[#10161D] border border-slate-500" /><span className="h-2 w-20 rounded-full bg-[#10161D] border border-slate-500" /></div>}
+        <div className={`u-caller flex items-center justify-between gap-1 font-bold text-[#E8EDF3] ${compact ? 'text-[12px]' : 'flex-wrap text-sm'}`}>
+          <span data-testid="ussd-caller">AGRICARE · DEMO</span>{compact && <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more} className="ml-auto min-h-[32px] rounded-md border border-slate-400 px-2 text-[12px] font-bold text-[#E8EDF3]" data-testid="ussd-more">{more ? 'Close' : 'More'}</button>}
           <span className="inline-flex items-center gap-1" data-testid="ussd-net" data-online={isOnline ? 'yes' : 'no'}>{isOnline ? <Wifi className="w-4 h-4" aria-hidden /> : <WifiOff className="w-4 h-4" aria-hidden />}{isOnline ? 'Internet' : 'Offline'}</span>
         </div>
-        <div className="rounded-xl bg-[#CFEAA8] border-4 border-[#0A1A0E] p-3 min-h-[250px] flex flex-col justify-between shadow-inner" data-testid="ussd-screen" data-frame={screen.frameId ?? 'idle'} data-kind={screen.kind} aria-busy={working}>
+        <div className={`u-screen rounded-xl bg-[#CFEAA8] border-[#0A1A0E] flex flex-col justify-between shadow-inner ${compact ? 'border-2 p-2 min-h-0 overflow-y-auto' : 'border-4 p-3 min-h-[250px]'}`} data-testid="ussd-screen" data-frame={screen.frameId ?? 'idle'} data-kind={screen.kind} aria-busy={working}>
           <div role="region" aria-label="Phone screen" aria-live="polite" aria-atomic="true">
-            <pre className="font-mono text-[16px] leading-snug text-[#0A1A0E] whitespace-pre-wrap break-words m-0" data-testid="ussd-text">{screen.text}</pre>
+            <pre className={`font-mono ${compact ? 'text-[clamp(12px,2.35dvh,16px)] leading-[1.25]' : 'text-[16px] leading-snug'} text-[#0A1A0E] whitespace-pre-wrap break-words m-0`} data-testid="ussd-text">{screen.text}</pre>
           </div>
-          <div className="mt-2 border-t-2 border-[#0A1A0E]/40 pt-1.5 flex items-center gap-2 font-mono text-[16px] text-[#0A1A0E]">
+          <div className={`border-t-2 border-[#0A1A0E]/40 flex items-center gap-2 font-mono text-[#0A1A0E] ${compact ? 'mt-1 pt-1 text-[clamp(12px,2.35dvh,16px)]' : 'mt-2 pt-1.5 text-[16px]'}`}>
             <span className="flex-1 min-w-0 break-all" data-testid="ussd-input" aria-label={`You typed ${typedInput || 'nothing'}`}>{`> ${typedInput}`}<span aria-hidden>_</span></span>
             <span aria-hidden className="text-xs" data-testid="ussd-timer">{active && screen.secondsLeft !== null ? `${screen.secondsLeft}s` : ''}</span>
-            <button type="button" onClick={() => send('del')} aria-label="Delete the last digit" data-testid="key-del" className={`min-h-[44px] min-w-[44px] rounded-lg border-2 border-[#0A1A0E]/50 inline-flex items-center justify-center ${FOCUS}`}><Delete className="w-5 h-5" aria-hidden /></button>
+            <button type="button" onClick={() => send('del')} aria-label="Delete the last digit" data-testid="key-del" className={`${compact ? 'min-h-[36px] min-w-[44px]' : 'min-h-[44px] min-w-[44px]'} rounded-lg border-2 border-[#0A1A0E]/50 inline-flex items-center justify-center ${FOCUS}`}><Delete className="w-5 h-5" aria-hidden /></button>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3" role="group" aria-label="Call and end keys">
+        <div className={`u-calls grid grid-cols-2 ${compact ? 'gap-1.5' : 'gap-3'}`} role="group" aria-label="Call and end keys">
           <button type="button" onClick={() => send('send')} aria-label="Send" data-testid="key-send" className={`${fn} bg-[#16803C] text-white`}><PhoneCall className="w-5 h-5 shrink-0" aria-hidden />{working ? <Loader2 className="w-5 h-5 animate-spin" aria-label="Working" /> : 'Call / Send'}</button>
           <button type="button" onClick={() => send('end')} aria-label="End the session" data-testid="key-end" className={`${fn} bg-[#B91C1C] text-white`}><PhoneOff className="w-5 h-5" aria-hidden /> End</button>
         </div>
-        <div className="grid grid-cols-3 gap-2" role="group" aria-label="Phone function keys">
+        <div className={`u-func grid grid-cols-3 ${compact ? 'gap-1.5' : 'gap-2'}`} role="group" aria-label="Phone function keys">
           <button type="button" onClick={() => send('back')} aria-label="Back one screen" data-testid="key-back" className={`${fn} bg-[#E8EDF3] text-[#10161D]`}>Back</button>
           <button type="button" onClick={() => send('home')} aria-label="Home, the main menu" data-testid="key-home" className={`${fn} bg-[#E8EDF3] text-[#10161D]`}>Home</button>
           <button type="button" onClick={() => send('cancel')} aria-label="Cancel and end the session" data-testid="key-cancel" className={`${fn} bg-[#E8EDF3] text-[#10161D]`}>Cancel</button>
         </div>
-        <div className="grid grid-cols-3 gap-3 pb-1" role="group" aria-label="Number keypad">
+        <div className={`u-keys grid grid-cols-3 ${compact ? 'gap-1.5 grid-rows-4' : 'gap-3 pb-1'}`} role="group" aria-label="Number keypad">
           {DIGITS.map((d) => <button key={d} type="button" onPointerDown={d === '0' ? (e) => { e.currentTarget.setPointerCapture(e.pointerId); beginZero(); } : undefined} onPointerUp={d === '0' ? endZero : undefined} onPointerCancel={d === '0' ? () => { endZero(); mutedByHold.current = true; } : undefined} onKeyDown={d === '0' ? (e) => { if (e.key === ' ' && !e.repeat) beginZero(); } : undefined} onKeyUp={d === '0' ? (e) => { if (e.key === ' ') endZero(); } : undefined} onContextMenu={d === '0' ? (e) => e.preventDefault() : undefined} onClick={() => { if (d === '0' && mutedByHold.current) { mutedByHold.current = false; return; } send(d); }} aria-label={`Digit ${SPOKEN[d] ?? d}`} aria-description={d === '0' ? 'Hold for 1.5 seconds to mute voice' : undefined} data-testid={`key-${d === '*' ? 'star' : d === '#' ? 'hash' : d}`} className={key}><span className="block leading-tight">{d}</span>{LETTERS[d]?.trim() && <span aria-hidden className="block text-[11px] leading-tight tracking-widest">{LETTERS[d]}</span>}</button>)}
         </div>
-        <p className="text-sm text-center text-[#E8EDF3]" data-testid="ussd-session">{active ? `Session ${session.no} is open.` : session.status === 'ended' ? `Session ${session.no} ended.` : 'No session yet.'} {!active && <button type="button" onClick={() => send('send')} className={`inline-flex items-center gap-1 min-h-[44px] font-bold underline ${FOCUS}`}><RotateCcw className="w-4 h-4" aria-hidden /> Start a session</button>}</p>
+        <p className={compact ? 'sr-only' : 'text-sm text-center text-[#E8EDF3]'} data-testid="ussd-session">{active ? `Session ${session.no} is open.` : session.status === 'ended' ? `Session ${session.no} ended.` : 'No session yet.'} {!active && !compact && <button type="button" onClick={() => send('send')} className={`inline-flex items-center gap-1 min-h-[44px] font-bold underline ${FOCUS}`}><RotateCcw className="w-4 h-4" aria-hidden /> Start a session</button>}</p>
       </div>
       {enrollment.state.stage === 'form' && enrollment.state.formMode && <UssdAccountForm mode={enrollment.state.formMode} county={enrollment.state.county} onBack={() => enrollment.handle('back')} />}
+      {compact && (
+        <div className="shrink-0 mt-1.5 space-y-1 text-[#183B2B]" data-testid="ussd-info">
+          <div className="grid grid-cols-5 gap-1" role="group" aria-label="Voice guidance">
+            <button type="button" className={cb} aria-pressed={voiceEnabled} onClick={() => voice(!voiceEnabled)} data-testid="ussd-voice-toggle">Voice {voiceEnabled ? 'on' : 'off'}</button>
+            <button type="button" className={cb} onClick={() => speaker.current!.read(spokenScreen)} data-testid="ussd-voice-repeat">Repeat</button>
+            {(['slow', 'normal', 'fast'] as const).map((id) => (
+              <button key={id} type="button" aria-pressed={voiceSpeed === id} aria-label={`Voice speed ${id}, ${VOICE_SPEEDS[id].toFixed(2)}`} data-testid={`ussd-speed-${id}`} className={`${cb} ${voiceSpeed === id ? '!border-[#16803C] !bg-[#DDEFE0]' : ''}`}
+                onClick={() => { setVoiceSpeedState(id); saveVoiceSpeed(id); speaker.current!.setSpeed(id); if (voiceEnabled) { lastRead.current = spokenScreenRef.current; speaker.current!.read(spokenScreenRef.current); } }}>
+                {id === 'slow' ? 'Slow' : id === 'normal' ? 'Normal' : 'Fast'}
+              </button>
+            ))}
+          </div>
+          <p className="u-hint text-center text-[11px] font-semibold leading-tight">Hold 0 for 1.5 s to mute the voice.</p>
+          {!inMenu && <button type="button" className={`${cb} w-full`} onClick={enrollment.publicAdvice} data-testid="ussd-public-advice">Browse public advice without registering</button>}
+          {voiceNotice && <p role="status" className="text-[11px] font-semibold leading-tight" data-testid="ussd-voice-notice">{voiceNotice}</p>}
+          {more && (
+            <div className="space-y-2 rounded-xl border-2 border-[#183B2B]/25 bg-white p-2 text-sm" data-testid="ussd-more-panel">
+              <button type="button" className="agri-button-secondary w-full" data-testid="ussd-voice-test" onClick={() => {
+                const synth = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
+                const voices = synth?.getVoices?.().length ?? 0;
+                setVoiceInfo(synth ? `Voice check: speech is available on this device (${voices} voice${voices === 1 ? '' : 's'} listed). If you hear nothing, raise the volume and turn off silent mode.` : 'Voice check: this browser has no speech support. The screen text stays visible.');
+                speaker.current!.read('Agricare voice test. If you can hear this sentence, screen reading works on this device.');
+              }}>Test voice on this device</button>
+              <button type="button" onClick={() => { void refresh(); refreshWeather(); }} disabled={refreshing || working} className="agri-button-secondary w-full" data-testid="market-refresh"><RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />{refreshing ? 'Refreshing demo market…' : 'Refresh market & inquiries'}</button>
+              {voiceInfo && <p role="status" data-testid="ussd-voice-info">{voiceInfo}</p>}
+              {marketplace.error && <p role="alert" className="font-bold text-[#7A1010]" data-testid="market-error">{marketplace.error}</p>}
+              {inMenu && <p data-testid="ussd-identity-full">{authorized ? `${enrollment.state.participant!.synthetic ? 'Synthetic' : 'Registered'} ${enrollment.state.participant!.category} · ${enrollment.state.participant!.county}. ${isOnline ? (enrollment.state.real ? 'Identified by your signed-in account. Your phone number is not verified.' : 'Identified by your browser key or signed-in account.') : 'Saved device registration; offline copy.'}` : 'Public advice only. No personalized registry information or marketplace submissions.'} <button type="button" className="min-h-[44px] underline" onClick={enrollment.restart}>Dial again</button></p>}
+            </div>
+          )}
+          {inMenu && !more && <p className="sr-only" data-testid="ussd-identity">{authorized ? `${enrollment.state.participant!.synthetic ? 'Synthetic' : 'Registered'} ${enrollment.state.participant!.category} · ${enrollment.state.participant!.county}` : 'Public advice'}</p>}
+          <p className="sr-only">{DEMO_LABEL}</p>
+        </div>
+      )}
+      {!compact && (
       <div className="mt-4 space-y-3 text-[#183B2B]" data-testid="ussd-info">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Screen reading controls">
           <button type="button" className="agri-button-secondary" aria-pressed={voiceEnabled} onClick={() => voice(!voiceEnabled)} data-testid="ussd-voice-toggle">Voice {voiceEnabled ? 'on' : 'off'}</button>
@@ -205,6 +241,7 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number; compact?: boolean}> =
         {!compact && screen.appLink && <Link to={screen.appLink.to} className="agri-button-secondary" data-testid="ussd-applink">{screen.appLink.label}</Link>}
         <p className="sr-only">{DEMO_LABEL}</p>
       </div>
+      )}
     </div>
   );
 };

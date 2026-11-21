@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import {RECORDING_MATCHES_YELLOW_LEAVES, RICE_RECORDING, RICE_YELLOW_LEAVES, recordingLabel} from '../src/data/riceAdvice.ts';
+import {LISTEN_LABEL, RECORDING_MATCHES_YELLOW_LEAVES, RICE_RECORDING, RICE_YELLOW_LEAVES, recordingLabel} from '../src/data/riceAdvice.ts';
 
 const root = process.cwd(); const read = (f: string) => fs.readFileSync(path.join(root, f), 'utf8');
 const sha = (f: string) => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
@@ -27,12 +27,13 @@ test('the recording is a byte-for-byte copy of the original; its facts match the
   const original = path.join(root, 'vie.m4a'); if (fs.existsSync(original)) assert.equal(sha(original), ORIGINAL_SHA, 'the original vie.m4a is unchanged');
   const head = fs.readFileSync(copy).subarray(0, 12); assert.equal(head.subarray(4, 8).toString('latin1'), 'ftyp'); assert.equal(head.subarray(8, 12).toString('latin1'), 'M4A ');
   assert.equal(RICE_RECORDING.mimeType, 'audio/mp4'); assert.ok(RICE_RECORDING.durationSec > 120 && RICE_RECORDING.durationSec < 140);
-  assert.equal(RICE_RECORDING.language, null); assert.equal(RICE_RECORDING.languageVerified, false); assert.equal(RICE_RECORDING.topicVerified, false);
-  assert.ok(!/english|kpelle|bassa|mano|liberian english/i.test(recordingLabel()), 'no language is named in the label');
+  assert.equal(RICE_RECORDING.language, 'Vai'); assert.equal(RICE_RECORDING.languageVerified, true); assert.match(RICE_RECORDING.verifiedBy, /project owner/);
+  assert.match(recordingLabel(), /Vai/); assert.match(recordingLabel(), /not reviewed by an agricultural expert/); assert.ok(!/approved by|verified by an? (expert|agronomist)/i.test(recordingLabel()));
+  assert.equal(LISTEN_LABEL, 'Listen in Vai');
 });
 
-test('the recording is NOT attached to the yellow-leaves question until a listener confirms it, and nothing plays by itself', () => {
-  assert.equal(RECORDING_MATCHES_YELLOW_LEAVES, false);
+test('the Vai recording is attached to the yellow-leaves question (owner-confirmed) and nothing plays by itself', () => {
+  assert.equal(RECORDING_MATCHES_YELLOW_LEAVES, true);
   const card = read('src/components/RiceAdviceCard.tsx'); const player = read('src/components/RecordedAdvicePlayer.tsx');
   assert.match(card, /recordingMatches = RECORDING_MATCHES_YELLOW_LEAVES/); assert.match(card, /data-testid="rice-no-audio-here"/);
   assert.ok(!/autoPlay|autoplay/i.test(player.replace(/no autoplay|never autoplay|nothing plays by itself/gi, '')), 'no autoplay attribute');

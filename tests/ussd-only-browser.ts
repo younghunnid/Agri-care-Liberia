@@ -22,11 +22,11 @@ try {
     assert.deepEqual(demoDestination('https://agricare.mpgmca.com'), {ok: true, url: 'https://agricare.mpgmca.com/ussd'});
     assert.deepEqual(demoDestination('https://agricare.mpgmca.com/ussd-demo'), {ok: true, url: 'https://agricare.mpgmca.com/ussd'});
   });
-  for (const [label, width, height] of [['phone 375', 375, 812], ['phone 320', 320, 640], ['tablet 768', 768, 1024], ['desktop 1280', 1280, 800]] as const) {
-    await check(`/ussd at ${label}px: only the brand, the phone and the back button; centered; nothing else on the page`, async () => {
+  for (const [label, width, height] of [['phone 375', 375, 812], ['phone 320', 320, 568], ['tablet 768', 768, 1024], ['desktop 1280', 1280, 800]] as const) {
+    await check(`/ussd at ${label}px: only the brand, the phone and the way back; centered; nothing else on the page`, async () => {
       const c = await profile(width, height); const p = await c.newPage(); await p.goto(backend.baseUrl + '/ussd'); await p.getByTestId('ussd-only-page').waitFor(); await p.getByTestId('ussd-phone').waitFor();
       // no website layout
-      assert.equal(await p.locator('header').count(), 1, 'only the small brand header'); assert.equal(await p.locator('footer').count(), 1, 'only the back-button footer');
+      assert.equal(await p.locator('header').count(), 1, 'only the small brand header (with the way back)'); assert.equal(await p.locator('footer').count(), 0, 'no footer');
       assert.equal(await p.locator('nav').count(), 0, 'no navigation'); assert.equal(await p.getByRole('banner').count(), 1);
       const text = await p.locator('body').innerText();
       for (const gone of ['Practical Farming Help', 'Common Farming Questions', 'Knowledge', 'Marketplace', 'Skip to main content', 'Demonstration environment', 'ready to work offline', 'Install', 'What happens when you confirm', 'The main menu', 'Keyboard']) assert.ok(!text.includes(gone), `${gone} must not appear`);
@@ -35,8 +35,7 @@ try {
       // fullscreen feel, centered, nothing below
       assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no sideways scroll');
       const box = (await p.getByTestId('ussd-phone').boundingBox())!; assert.ok(Math.abs(box.x + box.width / 2 - width / 2) <= 10, `phone centered: ${box.x + box.width / 2} vs ${width / 2}`); assert.ok(box.width <= 440 + 2);
-      const endsWithBack = await p.evaluate(() => { const f = document.querySelector('footer'); const all = [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().height > 0); const lowest = all.reduce((m, e) => Math.max(m, e.getBoundingClientRect().bottom), 0); return {footerBottom: f!.getBoundingClientRect().bottom, lowest}; });
-      assert.ok(endsWithBack.lowest <= endsWithBack.footerBottom + 1, 'nothing is rendered below the back button');
+      assert.ok(await p.evaluate(() => { const r = document.querySelector<HTMLElement>('[data-testid=ussd-only-page]')!; return r.scrollHeight <= r.clientHeight + 1; }), 'the page does not scroll');
       assert.equal(await p.getByTestId('ussd-write-status').count(), 0, 'no explanatory status block'); assert.equal(await p.getByTestId('ussd-net-note').count(), 0);
       assert.ok((await p.title()).includes('Agricare Liberia'));
     });

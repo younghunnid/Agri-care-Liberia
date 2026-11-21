@@ -40,6 +40,7 @@
     "test:ussd-enrollment-browser": "tsx tests/ussd-enrollment-browser.ts",
     "test:voice-mobile": "tsx tests/voice-mobile-emulation.ts",
     "test:ussd-only": "tsx tests/ussd-only-browser.ts",
+    "test:ussd-fit": "tsx tests/ussd-fit-browser.ts",
     "test:weather-rice-browser": "tsx tests/weather-rice-browser.ts",
     "test:ussd-recovery": "tsx tests/ussd-recovery-browser.ts",
     "test:sw-update": "tsx --test tests/sw-update.test.ts",
