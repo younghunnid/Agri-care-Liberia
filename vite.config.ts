@@ -83,8 +83,11 @@ export default defineConfig(() => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff2,jpg,jpeg,webp,m4a}'],
           cleanupOutdatedCaches: true,
           // Take control on the very first install so the first visit is already offline-capable.
-          // Updates still wait for the user's "Update now" tap (skipWaiting is NOT enabled).
+          // Current clients wait for "Update now"; the bridge below recovers legacy /ussd pages.
           clientsClaim: true,
+          // Recover legacy /ussd shells without force-reloading current forms or other pages.
+          importScripts: ['ussd-update-bridge.js'],
+          globIgnores: ['ussd-update-bridge.js'],
           navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
