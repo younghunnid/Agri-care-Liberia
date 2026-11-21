@@ -27,9 +27,9 @@ export const UssdOnlyPage: React.FC = () => {
       <main className="w-full max-w-[440px] flex-1 px-2 pb-3">
         <UssdPhone compact timeoutSeconds={timeout} />
       </main>
-      <footer className="w-full max-w-[440px] px-4 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <Link to="/" data-testid="ussd-back-to-site" className="mx-auto inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border-2 border-[#183B2B]/25 bg-white px-4 text-sm font-bold text-[#183B2B] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16803C]/40">
-          <ArrowLeft className="w-4 h-4" aria-hidden /> Back to website
+      <footer className="w-full max-w-[440px] flex justify-center px-4 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <Link to="/" data-testid="ussd-back-to-site" className="mx-auto inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border-2 border-[#183B2B]/25 bg-white px-4 text-sm font-bold text-[#183B2B] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#16803C]/40">
+          <ArrowLeft className="w-4 h-4" aria-hidden /> Back to Website
         </Link>
       </footer>
     </div>

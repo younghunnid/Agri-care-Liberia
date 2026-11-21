@@ -1,27 +1,46 @@
-/*
- * Service-worker update helper (imported by the generated sw.js through workbox `importScripts`).
- *
- * Problem it solves: a phone that already holds an OLD version of the app keeps serving that old version (and its old page list) until the new service worker
- * is allowed to take over. A new route such as /ussd then shows the old "We could not find that page" screen. With this file a new version takes over by itself
- * (sw.js is built with skipWaiting + clientsClaim) and every open page of the OLD version is reloaded once, so the visitor lands on the current app.
- *
- * It does nothing on the very first install (there is no old version to replace), so a first visit never reloads. Drafts and downloads live in
- * IndexedDB / Cache Storage and survive the reload.
+/* One-time migration for old /ussd pages trapped behind a cached application shell.
+ * Current clients acknowledge the probe, so active registration/forms are NOT reloaded.
+ * Other website pages keep the existing user-approved update flow.
+ * No storage is cleared and no account or draft data is read here.
  */
-let replacingAnOlderVersion = false;
-self.addEventListener('install', () => {
-  // At install time `registration.active` is the version being replaced (null on a first install).
-  replacingAnOlderVersion = Boolean(self.registration && self.registration.active);
-});
-self.addEventListener('activate', (event) => {
-  if (!replacingAnOlderVersion) return;
-  // IMPORTANT: do not wait for the navigations themselves. A reload is answered by THIS worker, which only starts answering requests once `activate`
-  // has finished: waiting for it here would deadlock. We only wait for claim + the list of pages, and start each reload without awaiting it.
-  event.waitUntil(self.clients.claim().then(() => self.clients.matchAll({type: 'window', includeUncontrolled: true})).then((pages) => {
-    pages.forEach((page) => {
-      page.navigate(page.url).catch(() => {                               // reload the page in place (Safari 11.1+, Chrome)
-        try { page.postMessage({type: 'AGRICARE_SW_UPDATED'}); } catch (e) { /* the page reloads at its next visit */ }
-      });
-    });
-  }));
-});
+(() => {
+  let replacingOlderVersion = false;
+  const PROBE = 'AGRICARE_USSD_CLIENT_PROBE';
+  const ACK = 'AGRICARE_USSD_CLIENT_READY';
+  const isHandset = (client) => {
+    try { const url = new URL(client.url); return url.origin === self.location.origin && /^\/ussd\/?$/.test(url.pathname); }
+    catch { return false; }
+  };
+  const aware = (client) => new Promise((resolve) => {
+    const channel = new MessageChannel();
+    let settled = false;
+    const finish = (answer) => {
+      if (settled) return;
+      settled = true; clearTimeout(timer); channel.port1.close(); channel.port2.close(); resolve(answer);
+    };
+    const timer = setTimeout(() => finish(false), 2500);
+    channel.port1.onmessage = (event) => { if (event.data?.type === ACK) finish(true); };
+    try { client.postMessage({type: PROBE}, [channel.port2]); }
+    catch { finish(true); } // a closed page needs no recovery
+  });
+  const legacyHandsets = async () => {
+    const clients = (await self.clients.matchAll({type: 'window', includeUncontrolled: true})).filter(isHandset);
+    const answers = await Promise.all(clients.map(async (client) => ({client, aware: await aware(client)})));
+    return answers.filter((answer) => !answer.aware).map((answer) => answer.client);
+  };
+  self.addEventListener('install', (event) => {
+    replacingOlderVersion = Boolean(self.registration.active);
+    if (!replacingOlderVersion) return; // first install activates normally
+    event.waitUntil((async () => { if ((await legacyHandsets()).length) await self.skipWaiting(); })());
+  });
+  self.addEventListener('activate', (event) => {
+    if (!replacingOlderVersion) return; // never navigate a brand-new visitor
+    event.waitUntil((async () => {
+      for (const client of await legacyHandsets()) {
+        // Do not hold activation open waiting for a navigation whose requests may
+        // themselves wait for this worker to finish activating (notably WebKit).
+        try { void client.navigate(client.url).catch(() => undefined); } catch { /* closed tab */ }
+      }
+    })());
+  });
+})();

@@ -124,7 +124,10 @@ test('3. the built server.js starts from another working directory, serves the a
     const home = await fetch(`${s.base}/`); const html = await home.text();
     assert.equal(home.status, 200); assert.match(html, /<div id="root">/);
     assert.equal((await fetch(`${s.base}/learn`)).status, 200, 'SPA routes fall back to index.html');
-    const sw = await fetch(`${s.base}/sw.js`); assert.equal(sw.status, 200); assert.match(sw.headers.get('cache-control') ?? '', /max-age=0/, 'the service worker must always be revalidated');
+    const sw = await fetch(`${s.base}/sw.js`); assert.equal(sw.status, 200); assert.equal(sw.headers.get('cache-control'), 'no-store', 'the service worker must bypass stale HTTP caches');
+    for (const route of ['/ussd', '/ussd/', '/index.html', '/sw-update.js']) {
+      const response = await fetch(`${s.base}${route}`); assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'no-store', route);
+    }
     const asset = /\/assets\/[^"']+\.js/.exec(html)?.[0]; assert.ok(asset, 'index.html references a hashed asset');
     const a = await fetch(`${s.base}${asset}`); assert.equal(a.status, 200); assert.match(a.headers.get('cache-control') ?? '', /max-age=31536000.*immutable/, 'hashed assets are cached for a year');
     assert.equal((await fetch(`${s.base}/assets/missing-file.js`)).status, 404, 'a missing asset is a 404, not the app');

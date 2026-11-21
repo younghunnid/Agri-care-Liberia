@@ -21,6 +21,11 @@ test('the recommended real-user environment loads: production, no demo, SMS off 
   assert.equal(r.cookieMode, 'first_party'); assert.equal(r.journalMode, 'wal'); assert.equal(r.dbPath, '/home/u123/agricare-data/agri.db');
 });
 
+test('explicit no-SMS settings accepted by the loaders match the deployment runbook', () => {
+  const {a, r} = loads(real({SMS_PROVIDER: 'none', AUTH_REQUIRE_SMS: '0', COOKIE_MODE: 'first_party'}));
+  assert.equal(a.requireSms, false); assert.equal(a.smsProvider, 'none'); assert.equal(r.cookieMode, 'first_party');
+});
+
 test('every demonstration leftover is refused (or identified) in real-user mode', () => {
   const refusedAuth = (extra: Record<string, string>) => assert.throws(() => loadAuthConfig(real(extra)), AuthConfigError, JSON.stringify(extra));
   const refusedRuntime = (extra: Record<string, string>) => assert.throws(() => loadRuntimeConfig(real(extra), APP), RuntimeConfigError, JSON.stringify(extra));

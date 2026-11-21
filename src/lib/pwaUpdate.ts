@@ -12,6 +12,8 @@ let state: PwaState = {needRefresh: false, offlineReady: false};
 const listeners = new Set<() => void>();
 let updateSW: ((reloadPage?: boolean) => Promise<void>) | null = null;
 let started = false;
+let registrationRef: ServiceWorkerRegistration | undefined;
+let updateRequested = false;
 
 function setState(patch: Partial<PwaState>): void {
   state = {...state, ...patch};
@@ -22,9 +24,24 @@ function setState(patch: Partial<PwaState>): void {
 export function initPwa(): void {
   if (started) return;
   started = true;
+  // Acknowledge before registration: the migration worker must not reload a current
+  // handset while its farmer is typing. Older cached bundles have no such handler.
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event: MessageEvent) => {
+      if (event.data?.type === 'AGRICARE_USSD_CLIENT_PROBE') {
+        event.ports?.[0]?.postMessage({type: 'AGRICARE_USSD_CLIENT_READY'});
+      }
+    });
+  }
   try {
     updateSW = registerSW({
       immediate: true,
+      onNeedReload() {
+        // Another legacy tab may activate the worker. Keep current forms intact
+        // unless this page's user explicitly chose to update.
+        if (updateRequested) window.location.reload();
+        else setState({needRefresh: true});
+      },
       onNeedRefresh() {
         setState({needRefresh: true});
       },
@@ -32,13 +49,16 @@ export function initPwa(): void {
         setState({offlineReady: true});
       },
       onRegisteredSW(_swUrl, registration) {
-        // Look for a new version right away (a visitor holding an old version gets the current one without waiting) and then hourly while the app stays open.
+        registrationRef = registration;
+        // Check on entry too: a QR visitor should not wait an hour for a route fix.
         if (registration) {
           if (navigator.onLine) void registration.update().catch(() => undefined);
-          // Safari only re-checks for a new version now and then: also check whenever the app comes back to the foreground (at most every 5 minutes).
+          // Retain Claude's foreground detection without activating/reloading forms.
           let lastCheck = Date.now();
           document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && navigator.onLine && Date.now() - lastCheck > 5 * 60 * 1000) { lastCheck = Date.now(); void registration.update().catch(() => undefined); }
+            if (document.visibilityState === 'visible' && navigator.onLine && Date.now() - lastCheck > 5 * 60 * 1000) {
+              lastCheck = Date.now(); void registration.update().catch(() => undefined);
+            }
           });
           setInterval(() => {
             if (navigator.onLine) void registration.update().catch(() => undefined);
@@ -49,12 +69,6 @@ export function initPwa(): void {
         // Registration can fail on insecure origins; the online app keeps working.
       },
     });
-    // public/sw-update.js reloads open pages itself; this is the fallback when the browser refuses that (the page is told instead), at most once per 20 seconds.
-    navigator.serviceWorker?.addEventListener('message', (event: MessageEvent) => {
-      if (event.data?.type !== 'AGRICARE_SW_UPDATED') return;
-      try { const last = Number(sessionStorage.getItem('agri_sw_reload_at') || 0); if (Date.now() - last < 20000) return; sessionStorage.setItem('agri_sw_reload_at', String(Date.now())); } catch { /* storage unavailable: reload anyway */ }
-      location.reload();
-    });
   } catch {
     // Service workers unsupported: nothing to do.
   }
@@ -62,7 +76,9 @@ export function initPwa(): void {
 
 /** Activates the waiting service worker and reloads. */
 export async function applyPwaUpdate(): Promise<void> {
-  if (updateSW) await updateSW(true);
+  updateRequested = true;
+  if (registrationRef?.active && !registrationRef.waiting) window.location.reload();
+  else if (updateSW) await updateSW(true);
 }
 
 export function dismissPwaNotice(kind: keyof PwaState): void {

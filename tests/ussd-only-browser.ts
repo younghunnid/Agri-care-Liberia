@@ -30,7 +30,7 @@ try {
       assert.equal(await p.locator('nav').count(), 0, 'no navigation'); assert.equal(await p.getByRole('banner').count(), 1);
       const text = await p.locator('body').innerText();
       for (const gone of ['Practical Farming Help', 'Common Farming Questions', 'Knowledge', 'Marketplace', 'Skip to main content', 'Demonstration environment', 'ready to work offline', 'Install', 'What happens when you confirm', 'The main menu', 'Keyboard']) assert.ok(!text.includes(gone), `${gone} must not appear`);
-      assert.match(text, /Agricare Liberia/); assert.match(text, /Phone simulation/); assert.match(text, /Back to website/);
+      assert.match(text, /Agricare Liberia/); assert.match(text, /Phone simulation/); assert.match(text, /Back to Website/);
       const links = await p.locator('a').evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).getAttribute('href'))); assert.deepEqual(links, ['/'], `the only link is the way back: ${links}`);
       // fullscreen feel, centered, nothing below
       assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no sideways scroll');

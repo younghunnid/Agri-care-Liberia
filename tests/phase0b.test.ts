@@ -180,7 +180,7 @@ test('2. a shared demo account is permanently flagged: changing its password (or
 });
 
 // ====================================================================================================================== 3. no-store
-test('3. API responses are Cache-Control: no-store (sessions, personal lists, errors); the static app shell is not', async () => {
+test('3. API responses are Cache-Control: no-store (sessions, personal lists, errors); the app shell and update scripts also bypass stale HTTP caches', async () => {
   const d = await boot(prodEnv());
   try {
     const jar = new Jar();
@@ -189,8 +189,8 @@ test('3. API responses are Cache-Control: no-store (sessions, personal lists, er
       assert.equal(r.headers.get('cache-control'), 'no-store', `${m} ${u}`);
     }
     const shell = await fetch(`${d.base}/`);
-    assert.notEqual(shell.headers.get('cache-control'), 'no-store', 'the app shell keeps its normal revalidation');
-    assert.match((await fetch(`${d.base}/sw.js`)).headers.get('cache-control') ?? '', /max-age=0/);
+    assert.equal(shell.headers.get('cache-control'), 'no-store', 'the app shell bypasses stale HTTP caches');
+    assert.equal((await fetch(`${d.base}/sw.js`)).headers.get('cache-control'), 'no-store');
   } finally { await d.stop(); }
 });
 

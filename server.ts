@@ -121,12 +121,19 @@ export async function createApp() {
     app.use(vite.middlewares);
   } else {
     const distDir = path.resolve(rt.appRoot, 'dist');
-    // Hashed build files never change: cache them for a year. Everything else (index.html, sw.js, manifest) is revalidated so updates are picked up.
+    // Hashed build files never change: cache them for a year. Shell and worker files bypass HTTP caches; other static resources are revalidated.
     app.use('/assets', express.static(path.join(distDir, 'assets'), {maxAge: '365d', immutable: true, fallthrough: false}));
-    app.use(express.static(distDir));
+    app.use(express.static(distDir, {setHeaders(res, file) {
+      // The shell and worker control files must not remain stale at the CDN/browser.
+      // Hashed /assets above retain their immutable cache policy.
+      if (['index.html', 'sw.js', 'sw-update.js'].includes(path.basename(file))) {
+        res.setHeader('Cache-Control', 'no-store');
+      }
+    }}));
     app.get('*', (_req, res) => {
       const indexFile = path.join(distDir, 'index.html');
       if (fs.existsSync(indexFile)) {
+        res.setHeader('Cache-Control', 'no-store');
         res.sendFile(indexFile);
       } else {
         res.status(404).send('Build output not found. Run npm run build.');

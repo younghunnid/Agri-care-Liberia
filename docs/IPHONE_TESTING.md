@@ -8,7 +8,7 @@ Automated tests cannot prove that audio, touch or the installed app behave on a 
 **Before deployment (your Mac and iPhone on the same Wi-Fi):** `docs/ANDROID_HTTPS_TESTING.md` explains the throw-away HTTPS proxy (`scripts/make-dev-cert.sh <Mac LAN IP>`, `npm run dev:https`, a disposable database on loopback). On the iPhone: AirDrop only `.dev-certs/ca.crt` (never `ca.key`), open it, Settings > Profile Downloaded > Install, then Settings > General > About > Certificate Trust Settings > switch the certificate **on**. Remove the profile and delete `.dev-certs` afterwards. Do not enable any insecure-origin setting.
 
 ## If the QR code shows the normal website or "We could not find that page"
-Your iPhone still holds an older version of the app (see `docs/PWA_UPDATES.md`). Open `https://agricare.mpgmca.com` once while online and wait a minute, or clear the site's data: Settings > Safari > Advanced > Website Data > search "agricare" > delete. Then scan again. Versions from the update fix onwards replace themselves.
+An older cached app may lack the route (see `docs/PWA_UPDATES.md`). Reconnect and allow an update check. Save work before applying an update or closing old tabs. Do not clear website data first: that removes offline drafts, downloaded content and pending synchronization work. A physical-device check is still required; a stale cache is not proof of every possible iPhone failure.
 
 ## The checks (tick each; write down anything odd)
 1. **Voice test button.** Open `/ussd-demo`, tap **Test voice on this device**. Expected: the line "speech is available (N voices listed)" and you hear the sentence. If silent: turn the ring/silent switch to ring, raise the volume, and try again (Safari plays speech only after a tap).
