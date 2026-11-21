@@ -1,4 +1,4 @@
-# Phase 1 Security Architecture — Agriccare Liberia
+# Phase 1 Security Architecture — Agricare Liberia
 
 ## Implemented Controls
 

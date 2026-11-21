@@ -17,7 +17,7 @@ export const VerificationBadge: React.FC<{v: CardLevelView}> = ({v}) => (
   </p>
 );
 
-export const AdviceCardView: React.FC<{card: CardFullView; source: CardSource; savedAt?: string; showHistory?: boolean}> = ({card, source, savedAt, showHistory = true}) => {
+export const AdviceCardView: React.FC<{card: CardFullView; source: CardSource; savedAt?: string; showHistory?: boolean; headingLevel?: 1 | 2}> = ({card, source, savedAt, showHistory = true, headingLevel = 2}) => {
   const spoken = `${card.title}. ${card.summary} ${card.steps.map((s, i) => `Step ${i + 1}. ${s}`).join(' ')} ${card.askWhen} ${card.verification.reviewed ? '' : 'This advice has not been reviewed by a qualified agronomist.'}`;
   return (
     <article className="rounded-3xl bg-white border border-[#183B2B]/10 p-5 sm:p-6 space-y-4" data-testid="advice-card" aria-labelledby={`card-${card.code}`}>
@@ -26,7 +26,7 @@ export const AdviceCardView: React.FC<{card: CardFullView; source: CardSource; s
         <span data-testid="advice-version">Version {card.version}</span>
       </div>
       <VerificationBadge v={card.verification} />
-      <h2 id={`card-${card.code}`} className="font-display text-2xl font-extrabold text-[#183B2B] leading-tight">{card.title}</h2>
+      {React.createElement(`h${headingLevel}`, {id: `card-${card.code}`, className: 'font-display text-2xl font-extrabold text-[#183B2B] leading-tight'}, card.title)}
       <p className="text-base text-[#183B2B]/90 leading-relaxed">{card.summary}</p>
       <SpeakButton id={`card-speak-${card.code}`} label="Listen to this advice" text={spoken} />
       <section aria-label="Safe first steps" className="space-y-2">

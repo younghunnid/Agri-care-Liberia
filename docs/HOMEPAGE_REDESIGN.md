@@ -1,4 +1,4 @@
-# Homepage redesign (Agriccare Liberia)
+# Homepage redesign (Agricare Liberia)
 
 Implements the approved "Design 2" mockup as an improvement to the existing site. No backend, database or route changes.
 
@@ -10,7 +10,7 @@ Implements the approved "Design 2" mockup as an improvement to the existing site
 5. `KnowledgeCta`: "Get Full Crop & Plant Guidance in Farming Knowledge & Guides" -> `/guides`.
 
 ## Replacing the hero photo
-Replace `public/images/home/hero-640.webp` and `hero-1280.webp` (same names), or edit `src/data/homeHero.ts`. The images are runtime-cached for offline reuse after the first visit.
+The hero is `assets-source/brand/hero.JPG` (1600x900). To use another photograph: replace that file and run `python3 scripts/generate-brand-assets.py` (needs Pillow). It writes four hashed WebP sizes into `src/assets/brand/`; `src/data/homeHero.ts` imports them, so no other change is needed. See `docs/AGRICARE_BRANDING_AND_QA.md`.
 
 ## Content moved to Farming Knowledge & Guides (`/guides`)
 `components/knowledge/KnowledgeResources.tsx`, rendered at the bottom of `GuidesLibraryPage`, now holds what used to fill the homepage: the eight module cards (marketplace, weather, pests, local language lab, Ministry view, soil, crops library, livestock & fish), language access, the "What do you need today?" directory, and new links (existing routes) to planting months & storage, advice cards, short lessons and the farm calculator. The 16 categories, 11 problems and crop guides were already the tabs of that page, so they were removed from the homepage rather than duplicated.

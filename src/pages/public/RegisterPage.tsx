@@ -1,3 +1,4 @@
+import {BrandLogo} from '../../components/BrandLogo';
 import React, {useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {UserPlus} from 'lucide-react';
@@ -74,6 +75,7 @@ export const RegisterPage: React.FC = () => {
     <div className="max-w-xl mx-auto px-4 sm:px-6 py-8">
       <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 sm:p-8 space-y-6 shadow-xs">
         <div className="space-y-1.5">
+          <BrandLogo className="mx-auto mb-2 h-20" />
           <p className="text-xs font-semibold text-[#16803C]">Optional Free Account</p>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#183B2B]">
             Farmer Registration

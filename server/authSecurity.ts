@@ -78,13 +78,16 @@ export function revokeAllDevices(userId: number, exceptId: number | null = null)
 // ------------------------------------------------------------------ password policy
 const COMMON = new Set(['password', 'password1', 'password12', 'password123', 'passw0rd123', 'qwertyuiop', 'qwerty12345', '1234567890', '12345678910', '0123456789', 'iloveyou12', 'liberia1234', 'monrovia123', 'agriadvisory', 'welcome123', 'letmein1234', 'abc1234567', 'changeme123', 'farmer12345', 'farmerdemo2026']);
 
+/** A very common password plus digits or symbols ("password1234", "Qwerty!2026") is still a very common password. Only the exact letter part is compared, so ordinary passwords are not affected. */
+const COMMON_BASES = new Set(['password', 'passw0rd', 'qwerty', 'qwertyuiop', 'iloveyou', 'letmein', 'welcome', 'changeme', 'admin', 'administrator', 'abcdefg', 'abcdef', 'monrovia', 'liberia', 'farmer', 'agricare', 'agriadvisory', 'agricareliberia', 'liberiafarmer']);
+
 /** Returns a message when the password is not acceptable, or null. */
 export function passwordProblem(password: unknown, ctx: {phone?: string; displayName?: string} = {}): string | null {
   const min = getAuthConfig().passwordMinLength;
   if (typeof password !== 'string' || password.length < min) return `Use a password of at least ${min} characters.`;
   if (password.length > 128) return 'Use a password of at most 128 characters.';
   const lower = password.toLowerCase();
-  if (COMMON.has(lower) || /^(.)\1+$/.test(password)) return 'That password is too easy to guess. Choose a less common one.';
+  if (COMMON.has(lower) || COMMON_BASES.has(lower.replace(/[^a-z]/g, '')) || /^(.)\1+$/.test(password)) return 'That password is too easy to guess. Choose a less common one.';
   const digits = (ctx.phone ?? '').replace(/\D/g, '');
   if (digits.length >= 7 && password.replace(/\D/g, '').includes(digits.slice(-7))) return 'Do not use your phone number in your password.';
   const name = (ctx.displayName ?? '').toLowerCase().replace(/[^a-z]/g, '');

@@ -43,6 +43,7 @@ import {
 import {useApp} from '../context/AppContext';
 import {LANGUAGE_OPTIONS, type LanguageCode} from '../lib/i18n';
 import {PWAInstallButton} from './PWAInstallButton';
+import {BrandLogo} from './BrandLogo';
 import {ListenModeBar} from './ListenModeBar';
 
 function useNarrowScreen(): boolean {
@@ -147,9 +148,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
             to="/"
             className="flex items-center gap-2 text-base sm:text-lg font-display font-bold tracking-tight text-[#183B2B] whitespace-nowrap shrink-0 min-h-[44px]"
           >
-            <span className="w-8 h-8 rounded-xl bg-[#16803C] text-white flex items-center justify-center shrink-0">
-              <Sprout className="w-5 h-5" aria-hidden="true" />
-            </span>
+            <BrandLogo className="h-9 shrink-0" decorative />
             <span>{tr('brandName')}</span>
           </Link>
 
@@ -355,10 +354,8 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
         <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-2 space-y-3">
             <div className="flex items-center gap-2.5 font-display font-bold text-lg text-[#183B2B]">
-              <span className="w-8 h-8 rounded-xl bg-[#16803C] text-white flex items-center justify-center">
-                <Sprout className="w-4 h-4" aria-hidden="true" />
-              </span>
-              <span>Agriccare Liberia</span>
+              <BrandLogo className="h-9" decorative />
+              <span>Agricare Liberia</span>
             </div>
             <p className="text-sm text-[#183B2B]/75 max-w-md leading-relaxed">
               Team 8 Inclusive Agricultural e-Advisory Platform (Liberia Agricultural Innovation Hackathon, November 20–22, 2026). Independent prototype separated from personal AgriConnect systems.
@@ -453,8 +450,8 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-[#183B2B]/10 pb-4">
                 <div className="flex items-center gap-2 font-display font-bold text-[#183B2B]">
-                  <Sprout className="w-5 h-5 text-[#16803C]" aria-hidden="true" />
-                  <span>Agriccare Menu</span>
+                  <BrandLogo className="h-8" decorative />
+                  <span>Agricare Menu</span>
                 </div>
                 <button
                   type="button"

@@ -47,11 +47,11 @@ export default defineConfig(() => {
         // 'prompt': a new service worker waits until the user taps "Update now", so an
         // update never reloads the page under a farmer who is mid-way through a form.
         registerType: 'prompt',
-        includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
+        includeAssets: ['favicon-16x16.png', 'favicon-32x32.png', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
           id: '/',
-          name: 'Agri-Advisory Liberia',
-          short_name: 'AgriLiberia',
+          name: 'Agricare Liberia',
+          short_name: 'Agricare',
           description: 'Inclusive agricultural e-advisory platform for Liberian farmers, online and offline.',
           theme_color: '#16803C',
           background_color: '#F3F8F0',
@@ -92,7 +92,7 @@ export default defineConfig(() => {
               // Matched on pathname: Workbox tests RegExp routes against the FULL URL (http://host/...),
               // so a `^/path` regex would never match same-origin requests.
               urlPattern: ({url}: {url: URL}) =>
-                url.pathname.startsWith('/src/assets/images/') || url.pathname.startsWith('/offline-img/') || url.pathname.startsWith('/images/home/'),
+                url.pathname.startsWith('/src/assets/images/') || url.pathname.startsWith('/offline-img/'),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'agri-local-images',

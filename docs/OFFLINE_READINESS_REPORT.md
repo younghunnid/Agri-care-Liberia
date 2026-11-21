@@ -1,4 +1,4 @@
-# Offline Readiness Report — Agriccare Liberia (Team 8)
+# Offline Readiness Report — Agricare Liberia (Team 8)
 
 Branch `feature/offline-first`. **Hackathon prototype, not a production system.**
 Testing so far was done in **desktop Chrome with simulations** (server stopped, `fetch` forced to fail, a 360/390 px iframe). **Nothing has been

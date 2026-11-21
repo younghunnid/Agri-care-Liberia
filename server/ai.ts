@@ -235,7 +235,7 @@ function buildTopicDemoFallback(params: {
     modelUsed: null,
     disclaimer: params.disclaimer,
     summary:
-      'Live AI generation is currently unavailable. Showing transparent Team 8 demonstration guidance and matching approved guides below.' +
+      'Live AI generation is currently unavailable. Showing transparent Team 8 demonstration guidance and matching demonstration guides (not reviewed by a qualified agronomist) below.' +
       imageWarning,
     possibleCauses: [
       'Live AI analysis requires an active server-side Gemini API key.',
@@ -323,7 +323,7 @@ export async function askAgriculturalAdvisor(params: {
   });
 
   const systemInstruction = [
-    'You are an inclusive agricultural advisory assistant supporting smallholder farmers in Liberia (Team 8 Agriccare Liberia).',
+    'You are an inclusive agricultural advisory assistant supporting smallholder farmers in Liberia (Team 8 Agricare Liberia).',
     'Support questions on crops (rice, cassava, maize, vegetables), poultry, livestock (goats, cattle, pigs), fish farming/aquaculture, backyard gardening, soil, planting seasons, harvesting/storage, and agricultural business.',
     'CRITICAL SAFETY RULES:',
     '1. NEVER provide a definitive plant or animal disease diagnosis based only on an image or text description—always frame visual observations as possibilities requiring local extension or veterinary verification.',

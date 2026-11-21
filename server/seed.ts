@@ -511,7 +511,7 @@ If plenty plant (more than 1 out of 10) get twist-twist yellow leaf on the new t
   const settingsCount = (db.prepare('SELECT COUNT(*) as cnt FROM platform_settings').get() as {cnt: number}).cnt;
   if (settingsCount === 0) {
     const insertSet = db.prepare('INSERT INTO platform_settings (key, value) VALUES (?, ?)');
-    insertSet.run('platform_name', 'Agri-Advisory Liberia');
+    insertSet.run('platform_name', 'Agricare Liberia');
     insertSet.run('anon_ai_daily_limit', '5');
     insertSet.run('auth_ai_hourly_limit', '30');
     insertSet.run('allow_public_registration', 'true');

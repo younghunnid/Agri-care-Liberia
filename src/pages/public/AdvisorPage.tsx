@@ -401,7 +401,7 @@ export const AdvisorPage: React.FC = () => {
                     <p className="text-xs font-semibold text-[#16803C]">
                       {turn.answer.providerMode === 'live_gemini'
                         ? `Live Gemini AI (${turn.answer.modelUsed})`
-                        : 'AI Unavailable Fallback — Verified Static Guidance'}
+                        : 'AI Unavailable Fallback — Demonstration Guidance (not reviewed)'}
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                       <SpeakButton

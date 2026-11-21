@@ -56,7 +56,7 @@ const IVR_TOPICS: Record<string, IvrTopic> = {
     key: '5',
     label: 'Harvest Storage & Buyers',
     spokenScript:
-      'Storage and Market Advice: Dry peppers, rice, and maize off bare soil, sort spoiled harvest separately, stack sacks on wooden pallets, and list produce on Agri-Advisory Marketplace to reach county buyers.',
+      'Storage and Market Advice: Dry peppers, rice, and maize off bare soil, sort spoiled harvest separately, stack sacks on wooden pallets, and list produce on Agricare Marketplace to reach county buyers.',
     bassaGloss: 'Bassa recorded script slot -> Clean grain drying & buyer preparation.',
     manoGloss: 'Mano recorded script slot -> Preventing weevil and damp storage rot.',
   },
@@ -120,7 +120,7 @@ export const PhoneSimulatorPage: React.FC = () => {
     playKeypadTone('1');
     setScreen('language_menu');
     speakPrompt(
-      'Welcome to Team 8 Agri-Advisory Voice Service for Liberia. This is a phone-call simulation. Press 1 for English. Press 2 for Bassa. Press 3 for Mano. Press 4 for Liberian English.'
+      'Welcome to the Agricare Voice Service for Liberia. This is a phone-call simulation. Press 1 for English. Press 2 for Bassa. Press 3 for Mano. Press 4 for Liberian English.'
     );
   };
 

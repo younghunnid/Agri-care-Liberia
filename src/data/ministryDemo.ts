@@ -114,11 +114,11 @@ export const AUDIENCE: Record<DemoCounty, Record<(typeof CAMPAIGN_CROPS)[number]
 export interface CampaignTemplate { id: string; label: string; crop: (typeof CAMPAIGN_CROPS)[number]; text: string }
 /** Team 8 DRAFT demo templates: general, non-chemical, no doses, no treatment claims, no short code. {county} is replaced. */
 export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
-  {id: 'cassava-leaves', label: 'Cassava: yellow or curled leaves', crop: 'Cassava', text: 'Agri-Advisory demo: Cassava leaves yellow or curled in {county}? Use clean cuttings next time and ask your extension officer.'},
-  {id: 'rice-rain', label: 'Rice: heavy rain', crop: 'Rice', text: 'Agri-Advisory demo: Heavy rain expected in {county}. Check drains and bunds around rice fields. Dry harvested grain on raised mats.'},
-  {id: 'pepper-dry', label: 'Pepper: dry days ahead', crop: 'Pepper', text: 'Agri-Advisory demo: Dry days ahead in {county}. Mulch young pepper and water early in the morning. Ask your extension officer before planting more.'},
-  {id: 'okra-harvest', label: 'Okra: harvest and storage', crop: 'Okra', text: 'Agri-Advisory demo: Harvest okra young and often in {county}. Keep picked pods in the shade and sell or use them the same day.'},
-  {id: 'goats-unwell', label: 'Goats: animals look unwell', crop: 'Goats', text: 'Agri-Advisory demo: Goats unwell in {county}? Keep sick animals apart from healthy ones and contact your district veterinary officer.'},
-  {id: 'poultry-unwell', label: 'Poultry: birds look unwell', crop: 'Poultry', text: 'Agri-Advisory demo: Chickens unwell in {county}? Keep sick birds apart and contact your district veterinary officer.'},
-  {id: 'storage-dry', label: 'Any crop: dry storage', crop: 'Cassava', text: 'Agri-Advisory demo: Keep harvested food dry. Use raised mats and put sacks on pallets away from damp walls in {county}.'},
+  {id: 'cassava-leaves', label: 'Cassava: yellow or curled leaves', crop: 'Cassava', text: 'Agricare demo: Cassava leaves yellow or curled in {county}? Use clean cuttings next time and ask your extension officer.'},
+  {id: 'rice-rain', label: 'Rice: heavy rain', crop: 'Rice', text: 'Agricare demo: Heavy rain expected in {county}. Check drains and bunds around rice fields. Dry harvested grain on raised mats.'},
+  {id: 'pepper-dry', label: 'Pepper: dry days ahead', crop: 'Pepper', text: 'Agricare demo: Dry days ahead in {county}. Mulch young pepper and water early in the morning. Ask your extension officer before planting more.'},
+  {id: 'okra-harvest', label: 'Okra: harvest and storage', crop: 'Okra', text: 'Agricare demo: Harvest okra young and often in {county}. Keep picked pods in the shade and sell or use them the same day.'},
+  {id: 'goats-unwell', label: 'Goats: animals look unwell', crop: 'Goats', text: 'Agricare demo: Goats unwell in {county}? Keep sick animals apart from healthy ones and contact your district veterinary officer.'},
+  {id: 'poultry-unwell', label: 'Poultry: birds look unwell', crop: 'Poultry', text: 'Agricare demo: Chickens unwell in {county}? Keep sick birds apart and contact your district veterinary officer.'},
+  {id: 'storage-dry', label: 'Any crop: dry storage', crop: 'Cassava', text: 'Agricare demo: Keep harvested food dry. Use raised mats and put sacks on pallets away from damp walls in {county}.'},
 ];

@@ -75,8 +75,9 @@ test('header: guest Login/Register and signed-in Dashboard/Logout use existing r
   const app = read('src/App.tsx'); for (const r of ['/login', '/register', '/farmer', '/admin', '/expert']) assert.ok(app.includes(`path="${r}"`), r);
 });
 
-test('hero image is replaceable from one file and has responsive WebP sources', () => {
-  const cfg = read('src/data/homeHero.ts'); assert.match(cfg, /HERO_IMAGE/);
-  for (const f of ['public/images/home/hero-640.webp', 'public/images/home/hero-1280.webp']) assert.ok(fs.statSync(new URL(`../${f}`, import.meta.url)).size < 200_000, f);
+test('hero uses the project photograph through Vite (hashed imports, responsive WebP set) and stays replaceable from one place', () => {
+  const cfg = read('src/data/homeHero.ts'); assert.match(cfg, /HERO_IMAGE/); assert.match(cfg, /from '\.\.\/assets\/brand\/hero-1600\.webp'/);
+  for (const w of [640, 960, 1280, 1600]) assert.ok(fs.statSync(new URL(`../src/assets/brand/hero-${w}.webp`, import.meta.url)).size < 260_000, `hero-${w}`);
   assert.match(read('src/components/home/HeroSection.tsx'), /srcSet=\{HERO_IMAGE\.srcSet\}/);
+  assert.ok(fs.existsSync(new URL('../assets-source/brand/hero.JPG', import.meta.url)), 'original kept');
 });

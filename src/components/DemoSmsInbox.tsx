@@ -62,7 +62,7 @@ export const DemoSmsInbox: React.FC<{enabled: boolean; online: boolean; refreshK
           const code = codeOf(m);
           return (
             <div key={m.id} data-testid="demo-message" className="rounded-2xl rounded-tl-sm bg-white border border-[#183B2B]/15 p-3 space-y-2">
-              <p className="text-xs font-semibold text-[#183B2B]/75">From Agri-Advisory · to {m.to} · {new Date(m.createdAt).toLocaleTimeString()}</p>
+              <p className="text-xs font-semibold text-[#183B2B]/75">From Agricare · to {m.to} · {new Date(m.createdAt).toLocaleTimeString()}</p>
               <p className="text-base text-[#183B2B]">{m.message}</p>
               {code && (
                 <>

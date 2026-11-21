@@ -1,3 +1,4 @@
+import {BrandLogo} from '../../components/BrandLogo';
 import React, {useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {LogIn} from 'lucide-react';
@@ -50,6 +51,7 @@ export const LoginPage: React.FC = () => {
     <div className="max-w-md mx-auto px-4 sm:px-6 py-10 space-y-6">
       <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 sm:p-8 space-y-6 shadow-xs">
         <div className="space-y-1.5">
+          <BrandLogo className="mx-auto mb-2 h-20" />
           <p className="text-xs font-semibold text-[#0F5C2A]">Account Access</p>
           <h1 className="font-display text-2xl font-extrabold text-[#183B2B]">Sign In</h1>
           <p className="text-sm text-[#183B2B]/75">Access your saved farming advice, question history, and expert consultations.</p>

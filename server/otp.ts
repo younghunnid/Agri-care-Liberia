@@ -66,7 +66,7 @@ export function maskPhone(phone: string): string {
   return m ? `+231 ••• ••• ${m[1].slice(-3)}` : 'No phone on file';
 }
 
-const smsText = (code: string): string => `Agriccare Liberia: your verification code is ${code}. It expires in 5 minutes. Never share it with anyone.`;
+const smsText = (code: string): string => `Agricare Liberia: your verification code is ${code}. It expires in 5 minutes. Never share it with anyone.`;
 
 function tx<T>(fn: () => T): T {
   const db = getDb();

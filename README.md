@@ -1,8 +1,8 @@
-# Agriccare Liberia — Team 8 Inclusive Agricultural e-Advisory Platform (Phase 1)
+# Agricare Liberia — Team 8 Inclusive Agricultural e-Advisory Platform (Phase 1)
 
 **Problem Statement:** Timely, accessible farm advice for Liberian farmers, including those offline or in local languages.
 
-**Isolation Notice:** This codebase (`Agriccare Liberia`) is completely independent—with its own schema, credentials, migrations, and routes, and zero marketplace, payment, or inventory modules.
+**Isolation Notice:** This codebase (`Agricare Liberia`) is completely independent—with its own schema, credentials, migrations, and routes, and zero marketplace, payment, or inventory modules.
 
 ## Quick Start (Live Node.js + React 19 Full-Stack Preview)
 

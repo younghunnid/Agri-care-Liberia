@@ -34,7 +34,7 @@ try {
   const ic = (chk.prepare('PRAGMA integrity_check').get() as {integrity_check: string}).integrity_check;
   if (ic !== 'ok') fail(`integrity check failed: ${ic}`);
   users = (chk.prepare('SELECT COUNT(*) AS c FROM users').get() as {c: number}).c;
-} catch (e) { fail(`not a valid Agri-Advisory backup (${(e as Error).message})`); } finally { chk.close(); }
+} catch (e) { fail(`not a valid Agricare backup (${(e as Error).message})`); } finally { chk.close(); }
 console.log(`backup verified: ${users} accounts, integrity ok${fs.existsSync(`${src}.sha256`) ? ', checksum ok' : ' (no checksum file)'}.`);
 if (dry) { console.log('dry run: nothing changed.'); process.exit(0); }
 

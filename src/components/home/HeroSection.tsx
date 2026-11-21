@@ -1,33 +1,42 @@
 import React from 'react';
 import {Link} from 'react-router-dom';
-import {ArrowRight, BookOpen, MessageSquare, Smartphone, Sprout} from 'lucide-react';
+import {ArrowRight, BookOpen, MessageSquare, Smartphone} from 'lucide-react';
 import {useApp} from '../../context/AppContext';
 import {HERO_IMAGE} from '../../data/homeHero';
+import {BrandLogo} from '../BrandLogo';
 
-/** Full-width hero. Low-Data Mode skips the photograph and keeps the gradient, so the page stays light on slow connections. */
+/**
+ * Full-width hero.
+ *  - Desktop and tablet (md and up): the photograph fills the section behind a dark-green gradient that is strongest under the text.
+ *  - Phones: the whole photograph is shown at the top (same ratio, never stretched) and fades into solid green, so the headline sits on a plain,
+ *    high-contrast background instead of on a busy picture.
+ *  - Low-Data Mode skips the photograph and keeps the green background.
+ */
 export const HeroSection: React.FC = () => {
   const {lowBandwidth} = useApp();
   return (
     <section aria-labelledby="home-hero-heading" className="relative isolate overflow-hidden bg-[#0B3D1E] text-white" data-testid="home-hero">
       {!lowBandwidth && (
-        <img
-          src={HERO_IMAGE.src}
-          srcSet={HERO_IMAGE.srcSet}
-          sizes={HERO_IMAGE.sizes}
-          alt={HERO_IMAGE.alt}
-          width={1280}
-          height={715}
-          fetchPriority="high"
-          decoding="async"
-          className="absolute inset-0 -z-20 h-full w-full object-cover"
-          style={{objectPosition: HERO_IMAGE.position}}
-        />
+        <>
+          <img
+            src={HERO_IMAGE.src}
+            srcSet={HERO_IMAGE.srcSet}
+            sizes={HERO_IMAGE.sizes}
+            alt={HERO_IMAGE.alt}
+            width={HERO_IMAGE.width}
+            height={HERO_IMAGE.height}
+            fetchPriority="high"
+            decoding="async"
+            className="absolute inset-x-0 top-0 -z-20 h-[58vw] w-full max-h-[430px] object-cover object-center md:inset-0 md:h-full md:max-h-none md:object-[60%_35%]"
+          />
+          <div aria-hidden className="absolute inset-x-0 top-0 -z-10 h-[58vw] max-h-[430px] bg-gradient-to-b from-[#0B3D1E]/20 via-transparent to-[#0B3D1E] md:hidden" />
+          <div aria-hidden className="absolute inset-0 -z-10 hidden bg-gradient-to-r from-[#0B3D1E]/95 via-[#0B3D1E]/80 to-[#0B3D1E]/10 md:block" />
+        </>
       )}
-      <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-[#0B3D1E]/95 via-[#0B3D1E]/75 to-[#0B3D1E]/25 max-md:from-[#0B3D1E]/90 max-md:via-[#0B3D1E]/80 max-md:to-[#0B3D1E]/60" />
-      <div className="mx-auto max-w-7xl px-4 pb-16 pt-10 sm:px-6 md:pb-20 md:pt-14 lg:pb-24 lg:pt-16">
-        <div className="max-w-3xl space-y-5 motion-safe:animate-[agri-fade-up_0.6s_ease-out_both]">
-          <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-sm font-bold backdrop-blur-sm">
-            <Sprout className="h-4 w-4 text-[#A8E86B]" aria-hidden /> Agriccare Liberia
+      <div className={`mx-auto max-w-7xl px-4 pb-14 sm:px-6 md:pb-20 md:pt-14 lg:pb-24 lg:pt-16 ${lowBandwidth ? 'pt-10' : 'pt-[min(52vw,390px)]'}`}>
+        <div className="max-w-xl space-y-5 motion-safe:animate-[agri-fade-up_0.6s_ease-out_both] lg:max-w-3xl">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white py-1 pl-2 pr-3 text-sm font-bold text-[#183B2B]">
+            <BrandLogo className="h-6" decorative /> Agricare Liberia
           </p>
           <h1 id="home-hero-heading" className="max-w-2xl font-display text-4xl font-extrabold leading-[1.1] text-balance sm:text-5xl lg:text-6xl">
             Practical Farming Help, <span className="text-[#A8E86B]">Online or Offline</span>

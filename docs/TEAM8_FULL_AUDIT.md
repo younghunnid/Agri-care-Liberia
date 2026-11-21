@@ -1,7 +1,7 @@
-# Team 8 — Complete Application Audit Report (`Agriccare Liberia`)
+# Team 8 — Complete Application Audit Report (`Agricare Liberia`)
 
 **Audit Mode:** Strictly Read-Only Inspection & Non-Destructive Verification  
-**Project:** Inclusive Agricultural e-Advisory Platform (`Agriccare Liberia`, Team 8)  
+**Project:** Inclusive Agricultural e-Advisory Platform (`Agricare Liberia`, Team 8)  
 **Audit Date:** 2026-11-17  
 
 ---

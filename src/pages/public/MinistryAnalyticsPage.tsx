@@ -345,7 +345,7 @@ export const MinistryAnalyticsPage: React.FC<{embedded?: boolean; view?: string}
               <p className="text-center text-xs font-bold text-[#F5B942]">DEMO PREVIEW · nothing is sent</p>
               {mode === 'sms' ? (
                 <div className="rounded-2xl bg-[#DDEFE0] p-3 min-h-[160px] text-[#183B2B] text-sm space-y-2" data-testid="sms-preview">
-                  <p className="font-mono text-xs font-bold">FROM: Agri-Advisory (demo)</p>
+                  <p className="font-mono text-xs font-bold">FROM: Agricare (demo)</p>
                   <p className="font-mono whitespace-pre-wrap break-words">{text || '(empty message)'}</p>
                   <p className="font-mono text-xs">{info.units} chars · {info.segments} segment{info.segments === 1 ? '' : 's'}</p>
                 </div>

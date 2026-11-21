@@ -1,4 +1,4 @@
-# Phase 1 Database Design — Agriccare Liberia
+# Phase 1 Database Design — Agricare Liberia
 
 ## Schema Isolation & Standards
 

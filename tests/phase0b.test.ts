@@ -384,11 +384,12 @@ test('10. anonymous photo/voice quotas: per-item caps, a global byte budget and 
 test('11. no farmer-facing text calls simulated advice approved or verified', () => {
   const walk = (dir: string): string[] => fs.readdirSync(path.join(root, dir), {withFileTypes: true}).flatMap((e) => e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]);
   const files = walk('src').filter((f) => /\.tsx$/.test(f) && !f.startsWith(path.join('src', 'pages', 'admin')));
-  const banned = [/Approved Expert Advice/, /approved crop guides/i, /approved agricultural specialist/i, /Approved Expert ·/, /Read approved guides/i, /Detailed Approved/i, /Approved crop guides/, /verified expert/i, /certified agronomist (has|have|approved)/i];
+  const banned = [/Approved Expert Advice/, /approved crop guides/i, /approved agricultural specialist/i, /Approved Expert ·/, /Read approved guides/i, /Detailed Approved/i, /Approved crop guides/, /verified expert/i, /certified agronomist (has|have|approved)/i, /Verified Static/i, /matching approved/i];
   for (const f of files) {
     const text = fs.readFileSync(path.join(root, f), 'utf8').replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
     for (const re of banned) assert.ok(!re.test(text), `${f} contains misleading wording ${re}`);
   }
   assert.match(fs.readFileSync(path.join(root, 'src/pages/farmer/MyQuestionsPage.tsx'), 'utf8'), /not verified agricultural advice/);
+  assert.ok(!/matching approved guides/i.test(fs.readFileSync(path.join(root, 'server/ai.ts'), 'utf8')), 'the advisor fallback must not call demonstration guides approved');
   assert.match(fs.readFileSync(path.join(root, 'src/pages/expert/ExpertDashboardPage.tsx'), 'utf8'), /Expert account ·/);
 });

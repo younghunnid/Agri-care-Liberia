@@ -21,7 +21,7 @@ export const AdviceCardPage: React.FC = () => {
       <div className="flex flex-wrap gap-2"><StatusLabel kind="draft" /><StatusLabel kind="simulated" text="Demonstration content" /></div>
       {state === 'loading' && <p className="text-base text-[#183B2B]/80" role="status">Loading the advice card...</p>}
       {state === 'missing' && <p className="text-base font-bold text-[#183B2B]" role="alert">There is no advice card with the reference "{ref}".</p>}
-      {typeof state === 'object' && <AdviceCardView card={state.card} source={state.source} savedAt={state.savedAt} />}
+      {typeof state === 'object' && <AdviceCardView card={state.card} source={state.source} savedAt={state.savedAt} headingLevel={1} />}
     </div>
   );
 };

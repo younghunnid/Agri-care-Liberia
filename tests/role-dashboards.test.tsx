@@ -59,8 +59,8 @@ test('marketplace dashboard reads only the allow-listed inquiry fields and never
   assert.match(s, /hasListingKey/);
 });
 
-test('official name is Agriccare Liberia in visible branding and metadata', () => {
-  assert.equal(JSON.parse(read('metadata.json')).name, 'Agriccare Liberia');
-  for (const f of ['index.html', 'src/lib/i18n.ts', 'src/components/Layout.tsx', 'src/components/workspace/WorkspaceScaffold.tsx']) assert.ok(/Agriccare/.test(read(f)), f);
+test('official name is Agricare Liberia in visible branding and metadata', () => {
+  assert.equal(JSON.parse(read('metadata.json')).name, 'Agricare Liberia');
+  for (const f of ['index.html', 'src/lib/i18n.ts', 'src/components/Layout.tsx', 'src/components/workspace/WorkspaceScaffold.tsx']) assert.ok(/Agricare/.test(read(f)), f);
   for (const f of ['index.html', 'src/lib/i18n.ts', 'src/components/Layout.tsx', 'src/components/PageBoundary.tsx']) assert.ok(!/Agri-Advisory Liberia|Agri-Care/.test(read(f)), f);
 });

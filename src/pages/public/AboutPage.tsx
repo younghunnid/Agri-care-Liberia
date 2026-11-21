@@ -2,17 +2,19 @@ import React from 'react';
 import {Link} from 'react-router-dom';
 import {Globe, Shield, Sprout, WifiOff} from 'lucide-react';
 import {LANGUAGE_OPTIONS} from '../../lib/i18n';
+import {BrandLogo} from '../../components/BrandLogo';
 
 export const AboutPage: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
       <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 sm:p-10 space-y-4">
+        <BrandLogo variant="full" />
         <p className="text-xs font-semibold text-[#16803C]">Team 8 · Phase 1 Hackathon Foundation</p>
         <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-[#183B2B]">
           Inclusive Agricultural e-Advisory Platform
         </h1>
         <p className="text-base text-[#183B2B]/85 leading-relaxed max-w-3xl">
-          <strong>Agriccare Liberia</strong> is built by Team 8 to solve a practical challenge across Liberia’s 15 counties: helping smallholder farmers get timely, clear, and trustworthy agricultural guidance—even on low-connectivity farms or across local language preferences.
+          <strong>Agricare Liberia</strong> is built by Team 8 to solve a practical challenge across Liberia’s 15 counties: helping smallholder farmers get timely, clear, and trustworthy agricultural guidance—even on low-connectivity farms or across local language preferences.
         </p>
       </div>
 

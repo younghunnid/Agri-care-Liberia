@@ -1,4 +1,4 @@
-# KPAA concepts vs. Agriccare Liberia — feature gap analysis
+# KPAA concepts vs. Agricare Liberia — feature gap analysis
 
 Status: **analysis for approval. Nothing implemented.** No database touched, no architecture change (React + TypeScript + Tailwind, PHP 8.2+ REST API, MySQL 8 / MariaDB, IndexedDB offline-first PWA, future USSD). M3 (PHP foundation) continues independently and is not affected by this document.
 

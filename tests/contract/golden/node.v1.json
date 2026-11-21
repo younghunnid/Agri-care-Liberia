@@ -1266,7 +1266,7 @@
               "title": "Cassava Yellow Leaves & Mosaic Awareness (Sample Guide)"
             }
           ],
-          "summary": "Live AI generation is currently unavailable. Showing transparent Team 8 demonstration guidance and matching approved guides below.",
+          "summary": "Live AI generation is currently unavailable. Showing transparent Team 8 demonstration guidance and matching demonstration guides (not reviewed by a qualified agronomist) below.",
           "uncertaintyNote": "This demonstration notice does not diagnose your crop or animal. Always verify field symptoms with an extension officer before applying pesticides or medicines.",
           "whenToSeekExpertHelp": [
             "If symptoms spread rapidly across more than 10% of your plot or flock, send a request on the Expert Support page."
@@ -3087,7 +3087,7 @@
           {
             "key": "platform_name",
             "updated_at": "<timestamp>",
-            "value": "Agri-Advisory Liberia"
+            "value": "Agricare Liberia"
           }
         ]
       }

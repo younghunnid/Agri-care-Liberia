@@ -93,7 +93,7 @@ export function buildExpertPrefill(county: string, symptomLabels: string[], poss
   const desc = [
     'Crop: cassava.',
     `What I see: ${symptomLabels.join('; ') || 'not sure'}.`,
-    possibleCauseNames.length ? `The Agri-Advisory guide listed these POSSIBLE causes (not confirmed): ${possibleCauseNames.join('; ')}.` : 'The guide could not match my problem.',
+    possibleCauseNames.length ? `The Agricare guide listed these POSSIBLE causes (not confirmed): ${possibleCauseNames.join('; ')}.` : 'The guide could not match my problem.',
     'Please advise me on what to check and what to do first.',
   ].join(' ');
   return {title: `Cassava problem: ${first}`.slice(0, 120), desc: desc.slice(0, 900), county, category: EXPERT_CATEGORY};

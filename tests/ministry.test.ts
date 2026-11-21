@@ -123,7 +123,7 @@ test('campaign messages: every approved template (every county) is safe; unsafe 
   for (const t of CAMPAIGN_TEMPLATES) for (const c of DEMO_COUNTIES) {
     const msg = fillTemplate(t, c);
     assert.deepEqual(validateCampaignMessage(msg), [], `${t.id} / ${c}`);
-    assert.ok(smsInfo(msg).segments <= 2 && msg.startsWith('Agri-Advisory demo:'));
+    assert.ok(smsInfo(msg).segments <= 2 && msg.startsWith('Agricare demo:'));
     assert.ok(!msg.includes('{county}'));
   }
   const bad: [string, RegExp][] = [
@@ -144,7 +144,7 @@ test('campaign messages: every approved template (every county) is safe; unsafe 
     ['a'.repeat(400), /too long/],
   ];
   for (const [m, re] of bad) assert.ok(validateCampaignMessage(m).some((p) => re.test(p)), `not refused: ${m}`);
-  assert.deepEqual(validateCampaignMessage('Agri-Advisory demo: Keep harvested rice dry on raised mats in Bong.'), []);
+  assert.deepEqual(validateCampaignMessage('Agricare demo: Keep harvested rice dry on raised mats in Bong.'), []);
 });
 test('campaigns are separate from sign-in codes: no shared code or imports, and codes in messages are blocked', () => {
   for (const f of ['src/lib/ministryAnalytics.ts', 'src/data/ministryDemo.ts', 'src/pages/public/MinistryAnalyticsPage.tsx', 'src/components/ministry/ExpectedActualChart.tsx']) {
@@ -152,7 +152,7 @@ test('campaigns are separate from sign-in codes: no shared code or imports, and 
     assert.ok(!/from ['"][^'"]*(server\/|otp|authSecurity|SecurityBits|DemoSmsInbox|verification)/i.test(src), `${f} imports auth code`);
     assert.ok(!/auth\/(login|verify|resend|forgot|demo-inbox)|dev\/simulated-sms/.test(src), `${f} calls an auth endpoint`);
   }
-  assert.ok(validateCampaignMessage('Agri-Advisory demo: your code is 482913, keep it private always').length > 0);
+  assert.ok(validateCampaignMessage('Agricare demo: your code is 482913, keep it private always').length > 0);
 });
 
 // ------------------------------------------------------------------ dispatch simulation and USSD preview
@@ -160,7 +160,7 @@ test('audience and simulated dispatch: deterministic, consistent, never random',
   assert.equal(audienceSize('Bong', 'Cassava'), 2340);
   assert.equal(audienceSize('All', 'Goats'), 420 + 530 + 940 + 280 + 210);
   for (const c of DEMO_COUNTIES) for (const k of CAMPAIGN_CROPS) assert.ok(AUDIENCE[c][k] > 0);
-  const input = {county: 'Bong' as const, crop: 'Cassava', text: 'Agri-Advisory demo: Cassava leaves yellow or curled in Bong? Use clean cuttings and ask your extension officer.', audience: 2340, sequence: 1};
+  const input = {county: 'Bong' as const, crop: 'Cassava', text: 'Agricare demo: Cassava leaves yellow or curled in Bong? Use clean cuttings and ask your extension officer.', audience: 2340, sequence: 1};
   const a = simulateDispatch(input); const b = simulateDispatch({...input});
   assert.deepEqual(a, b);
   assert.equal(a.status, 'SIMULATED'); assert.equal(a.id, 'SIM-0001'); assert.equal(a.delivered + a.failed, a.audience);

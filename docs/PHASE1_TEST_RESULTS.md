@@ -1,4 +1,4 @@
-# Phase 1 Test Results — Agriccare Liberia
+# Phase 1 Test Results — Agricare Liberia
 
 ## Executed Automated Checks
 

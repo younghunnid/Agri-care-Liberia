@@ -194,8 +194,8 @@ export function ussdScreen(path: string, ctx: {county: DemoCounty; advice: strin
   const cut = (s: string) => (s.length > USSD_MAX_CHARS ? `${s.slice(0, USSD_MAX_CHARS - 1)}…` : s);
   const mk = (kind: 'CON' | 'END', text: string, valid = true): UssdScreen => ({kind, text: cut(text), valid});
   switch (path) {
-    case '': return mk('CON', 'Agri-Advisory (demo)\n1. Advice\n2. Weather\n3. Report a problem\n0. Exit');
-    case '1': return mk('END', `Advice (draft):\n${ctx.advice.replace(/^Agri-Advisory demo:\s*/i, '')}`);
+    case '': return mk('CON', 'Agricare (demo)\n1. Advice\n2. Weather\n3. Report a problem\n0. Exit');
+    case '1': return mk('END', `Advice (draft):\n${ctx.advice.replace(/^Agricare demo:\s*/i, '')}`);
     case '2': return mk('END', w ? `${ctx.county} weather (demo data):\n${w.d3.tempC}C, ${w.d3.rainMm} mm rain in 3 days.\nSoil moisture ${w.d3.soilMoisture}%.\n${w.draftGuidance.replace(/^Draft:\s*/, 'Draft: ')}` : 'No demo forecast.');
     case '3': return mk('CON', 'Report a problem:\n1. Crop\n2. Animal\n0. Back');
     case '3*1': case '3*2': return mk('END', 'Demo only: no report was sent. In a real service an extension officer would review it.');

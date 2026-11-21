@@ -59,7 +59,7 @@ export const PWAInstallButton: React.FC<{compact?: boolean}> = ({compact = false
               <ol className="mt-3 space-y-2 text-sm text-[#183B2B]/85 list-decimal pl-5">
                 <li>Tap the <strong>Share</strong> button in the Safari toolbar.</li>
                 <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
-                <li>Open <strong>AgriLiberia</strong> from your home screen to read saved guides offline.</li>
+                <li>Open <strong>Agricare</strong> from your home screen to read saved guides offline.</li>
               </ol>
               <button
                 type="button"

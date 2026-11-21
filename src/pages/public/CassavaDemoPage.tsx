@@ -7,7 +7,7 @@ interface Step {n: number; text: string; to?: string; kinds: StatusKind[]; note:
 
 /** Presenter's script for the Bong County cassava farmer demonstration. Each step says honestly what is real and what is simulated. */
 export const DEMO_STEPS: Step[] = [
-  {n: 1, text: 'Open Agriccare Liberia on a phone', to: '/', kinds: ['working'], note: 'Home shows the four groups.'},
+  {n: 1, text: 'Open Agricare Liberia on a phone', to: '/', kinds: ['working'], note: 'Home shows the four groups.'},
   {n: 2, text: 'Select cassava (county: Bong)', to: '/advice/crop-problems?demo=1', kinds: ['working'], note: 'Rice, pepper, plantain and vegetables are shown as future.'},
   {n: 3, text: 'Report yellowing leaves (yellow-green, patchy, curled)', to: '/advice/crop-problems?demo=1', kinds: ['working'], note: 'The demo link pre-ticks this sign; the presenter can tick others.'},
   {n: 4, text: 'Read possible causes and first-response advice', to: '/advice/crop-problems?demo=1', kinds: ['working', 'draft'], note: 'Draft advice. NOT reviewed by an agricultural expert and NOT a diagnosis.'},

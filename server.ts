@@ -164,7 +164,7 @@ if (isDirectEntry) {
   createApp()
     .then((app) => {
       app.listen(port, host, () => {
-        console.log(`Agriccare Liberia server running on http://${host}:${port}`);
+        console.log(`Agricare Liberia server running on http://${host}:${port}`);
       });
     })
     .catch((e: Error) => {
