@@ -211,3 +211,7 @@ Pre-commit evidence: 40 focused registry/USSD tests passed, including the new un
 3. **Touch long-press** on key 0 on real touchscreens (pointer capture, no text-selection or context menu).
 4. **Offline reopen** of an installed app after a first online visit, and storage eviction on low-storage phones.
 5. The wording of the proposed `*440#` code with the team: it is not assigned or connected to any telecom service.
+
+
+## 10. Voice speed (default 0.75)
+The default speaking rate is **0.75** (`VOICE_RATE` in `src/lib/ussd/screenVoice.ts`). `speechText()` turns each screen line into its own sentence and adds an extra pause mark (an ellipsis) after every menu option, in ONE utterance per screen so activation stays inside the user gesture (needed on iPhone Safari). The privacy filter is unchanged. Whether the pauses sound right on each device voice needs a real-device check.

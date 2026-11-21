@@ -8,7 +8,7 @@ import {CookieJar, req} from './harness/http.ts';
 import {getDb, closeDb, runMigrations} from '../server/db.ts';
 import {PARTICIPANT_CATEGORIES, REGISTRY_CONSENT_VERSION} from '../src/lib/participantRegistry.ts';
 import {newEnrollment, enrollmentPress, enrollmentText, type EnrollmentState, PROPOSED_USSD_CODE} from '../src/lib/ussd/enrollment.ts';
-import {safeScreenSpeech, createScreenSpeaker} from '../src/lib/ussd/screenVoice.ts';
+import {safeScreenSpeech, createScreenSpeaker, speechText, VOICE_RATE} from '../src/lib/ussd/screenVoice.ts';
 import {registryAggregates} from '../server/participantRegistry.ts';
 import type {Key} from '../src/lib/ussd/engine.ts';
 import {SESSION_COOKIE_NAME, signSessionToken} from '../server/security.ts';
@@ -198,4 +198,19 @@ test('speech boundary omits credentials, private phone numbers and long device t
   const speech = safeScreenSpeech('FARM ADVICE\n1 Crops\nPIN 1234\nPassword abc\n+231 77 123 4567\n+44 7700 900123\n' + 'ab19df23847cde59'.repeat(4));
   assert.match(speech, /1 Crops/); assert.ok(!/1234|abc|4567|900123|ab19df/.test(speech));
   let notice = ''; createScreenSpeaker((s) => { notice = s; }).read('1 Crops'); assert.match(notice, /unavailable/);
+});
+
+test('voice speed defaults to 0.75 and every menu option is followed by a clear pause, without changing what is read', () => {
+  assert.equal(VOICE_RATE, 0.75);
+  const screen = 'FARM ADVICE (DEMO)\n1 Crops & planting\n2 Pests & disease\n3 Buy & Sell Produce\nPassword abc\n+231 77 123 4567';
+  const spoken = speechText(screen);
+  assert.equal(spoken, 'FARM ADVICE (DEMO). 1 Crops & planting. … 2 Pests & disease. … 3 Buy & Sell Produce. … Private information omitted. [private number omitted].'.replace('[private number omitted].', '[private number omitted].'));
+  assert.ok(!/abc|4567/.test(spoken), 'the privacy boundary still applies');
+  for (const line of ['1 Crops & planting', '2 Pests & disease', '3 Buy & Sell Produce']) assert.match(spoken, new RegExp(`${line.replace(/[&]/g, '\\&')}\\. … `));
+  assert.equal(speechText('0 Back 00 Home'), '0 Back 00 Home. …', 'a trailing option pause is trimmed, not dropped');
+  const g = globalThis as unknown as {window?: unknown}; const saved = g.window; const made: {text: string; rate: number}[] = [];
+  g.window = {speechSynthesis: {getVoices: () => [], cancel: () => undefined, speak: (u: {text: string; rate: number; onstart?: () => void}) => { made.push({text: u.text, rate: u.rate}); u.onstart?.(); }}, SpeechSynthesisUtterance: class { constructor(public text: string) {} rate = 1; lang = ''; voice = null; }};
+  const Utt = (g.window as {SpeechSynthesisUtterance: unknown}).SpeechSynthesisUtterance; const gg = globalThis as unknown as {SpeechSynthesisUtterance?: unknown}; const savedU = gg.SpeechSynthesisUtterance; gg.SpeechSynthesisUtterance = Utt;
+  try { createScreenSpeaker(() => undefined).read('1 Crops'); } finally { g.window = saved; gg.SpeechSynthesisUtterance = savedU; }
+  assert.equal(made.length, 1, 'one utterance per screen'); assert.equal(made[0].rate, 0.75); assert.equal(made[0].text, '1 Crops. …');
 });

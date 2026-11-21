@@ -25,8 +25,8 @@ const errors: string[] = []; const passed: string[] = []; const contexts: Browse
 const check = async (name: string, f: () => Promise<void>) => { await f(); passed.push(name); console.log('PASS ' + name); };
 async function profile(width = 375) {
   const c = await browser.newContext({viewport: {width, height: 812}, serviceWorkers: 'allow'}); contexts.push(c); c.setDefaultTimeout(20000);
-  await c.addInitScript({content: `window.__spoken = []; class U { constructor(t) { this.text = t; } } Object.defineProperty(window, 'SpeechSynthesisUtterance', {configurable: true, value: U});
-    Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: {getVoices: () => [], cancel: () => {}, speak: (u) => { window.__spoken.push(u.text); if (u.onstart) u.onstart(); if (u.onend) u.onend(); }}});`});
+  await c.addInitScript({content: `window.__spoken = []; window.__rates = []; class U { constructor(t) { this.text = t; } } Object.defineProperty(window, 'SpeechSynthesisUtterance', {configurable: true, value: U});
+    Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: {getVoices: () => [], cancel: () => {}, speak: (u) => { window.__rates.push(u.rate); window.__spoken.push(u.text); if (u.onstart) u.onstart(); if (u.onend) u.onend(); }}});`});
   c.on('page', (p) => p.on('pageerror', (e) => errors.push(e.message)));
   return c;
 }
@@ -48,6 +48,8 @@ try {
     const t = await screen(A).innerText(); assert.match(t, /1 Sign in\n2 Create account/); assert.match(t, /not detected or verified/);
     assert.equal(participants(), 0); assert.equal(users(), 0);
     assert.ok((await A.evaluate(() => (window as any).__spoken.length)) >= 2, 'screens are read automatically after voice was switched on');
+    assert.ok((await A.evaluate(() => (window as any).__rates as number[])).every((r) => r === 0.75), 'the default voice speed is 0.75');
+    const lastSpoken = await A.evaluate(() => (window as any).__spoken.at(-1) as string); assert.match(lastSpoken, /\. … /, 'pauses are marked between menu options'); assert.ok(!/\n/.test(lastSpoken));
   });
   await check('create an account in the secure form: privacy notice required, phone entered explicitly and NOT verified, handset continues to consent by itself', async () => {
     await choose(A, '2'); await waitFrame(A, 'enroll.form'); await A.getByTestId('ussd-account-form').waitFor();

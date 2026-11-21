@@ -9,7 +9,7 @@ Automated tests cannot prove that audio, touch or the installed app behave on a 
 
 ## The checks (tick each; write down anything odd)
 1. **Voice test button.** Open `/ussd-demo`, tap **Test voice on this device**. Expected: the line "speech is available (N voices listed)" and you hear the sentence. If silent: turn the ring/silent switch to ring, raise the volume, and try again (Safari plays speech only after a tap).
-2. **Dial and voice.** Tap the keypad: `*440#` then Send. On the welcome screen choose **1 Enable screen reading**. Expected: the screen is read aloud and every later screen is read automatically. Try **Repeat screen**.
+2. **Dial and voice.** Tap the keypad: `*440#` then Send. On the welcome screen choose **1 Enable screen reading**. Expected: the screen is read aloud and every later screen is read automatically. Try **Repeat screen**. Check the **speed** (slow, rate 0.75) and that there is a **clear pause after each menu option**. If the pauses are too short or too long on the iPhone voice, tell me which voice and what you heard.
 3. **Mute by long-press.** Hold **0** for about 1.5 seconds: speech stops, no extra digit is typed. A short tap on 0 still goes Back.
 4. **Lock and unlock** the phone and switch apps while speech plays: speech must not get stuck; **Repeat screen** recovers it.
 5. **Registration.** Pick a category and county, choose **2 Create account**. The secure form appears below the phone: type your name, phone number and a password with the iPhone keyboard (not the keypad), tick the privacy notice. Expected: the handset continues to the consent screens by itself; nothing says your number is verified. Agree. The main menu opens.

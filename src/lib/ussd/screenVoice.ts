@@ -6,6 +6,19 @@ export function safeScreenSpeech(text: string): string {
     return line.replace(/(?:\+|0|231)[\d ()-]{7,}\d/g, '[private number omitted]').replace(/\b[A-Za-z0-9_-]{32,}\b/g, '[private value omitted]');
   }).join('\n');
 }
+/** Default speaking speed: slow and clear (1 is the browser's normal speed). */
+export const VOICE_RATE = 0.75;
+/**
+ * The text actually handed to the speech engine: the same safe screen text, but every line is its own sentence, and menu options (lines such as
+ * "1 Crops & planting") are followed by an extra pause mark, so options are clearly separated when read slowly. Typed input is never part of it.
+ */
+export function speechText(text: string): string {
+  const lines = safeScreenSpeech(text).split('\n').map((l) => l.trim()).filter(Boolean);
+  return lines.map((line) => {
+    const base = line.replace(/[\s.…:;,]+$/, '') || line;
+    return /^\d{1,2}\s+\S/.test(line) ? `${base}. … ` : `${base}. `;
+  }).join('').trim();
+}
 export interface ScreenSpeaker {read(text: string): void; stop(): void}
 export function createScreenSpeaker(onNotice: (message: string) => void): ScreenSpeaker {
   let generation = 0; let timer: ReturnType<typeof setTimeout> | undefined;
@@ -14,8 +27,8 @@ export function createScreenSpeaker(onNotice: (message: string) => void): Screen
     stop(); const turn = generation;
     if (typeof window === 'undefined' || !window.speechSynthesis || !window.SpeechSynthesisUtterance) { onNotice('Screen reading is unavailable. All instructions remain visible; use the numbered keys.'); return; }
     try {
-      const speech = window.speechSynthesis; const u = new SpeechSynthesisUtterance(safeScreenSpeech(text));
-      u.lang = 'en-US'; u.rate = 0.9;
+      const speech = window.speechSynthesis; const u = new SpeechSynthesisUtterance(speechText(text));
+      u.lang = 'en-US'; u.rate = VOICE_RATE;
       const voices = speech.getVoices(); u.voice = voices.find((v) => v.localService && /^en\b/i.test(v.lang)) ?? voices.find((v) => /^en\b/i.test(v.lang)) ?? null;
       u.onstart = () => { if (generation === turn) { clearTimeout(timer); onNotice(''); } };
       u.onend = () => { if (generation === turn) clearTimeout(timer); };

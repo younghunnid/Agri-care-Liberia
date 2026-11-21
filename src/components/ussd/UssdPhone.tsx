@@ -180,7 +180,7 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
             speaker.current!.read('Agricare voice test. If you can hear this sentence, screen reading works on this device.');
           }}>Test voice on this device</button>
         </div>
-        <p className="text-sm">Hold 0 for about 1.5 seconds to mute. A short press still enters 0. Browser speech may need an installed voice; no telecom voice service is connected.</p>
+        <p className="text-sm">The voice speaks slowly (speed 0.75) with a pause after each option. Hold 0 for about 1.5 seconds to mute. A short press still enters 0. Browser speech may need an installed voice; no telecom voice service is connected.</p>
         {voiceNotice && <p role="status" data-testid="ussd-voice-notice">{voiceNotice}</p>}
         {voiceInfo && <p role="status" className="text-sm" data-testid="ussd-voice-info">{voiceInfo}</p>}
         {!inMenu && <button type="button" className="agri-button-secondary" onClick={enrollment.publicAdvice} data-testid="ussd-public-advice">Browse public advice without registering</button>}

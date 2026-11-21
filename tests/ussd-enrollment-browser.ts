@@ -8,7 +8,7 @@ import {chromium, type BrowserContext, type Page} from 'playwright';
 import {startBackend} from './harness/backend.ts';
 import {CookieJar, req} from './harness/http.ts';
 import {getDb} from '../server/db.ts';
-import {safeScreenSpeech} from '../src/lib/ussd/screenVoice.ts';
+import {speechText} from '../src/lib/ussd/screenVoice.ts';
 import {choosePhone as choose, readPhonePages as review, enterParticipantMenu, phoneText as screen} from './ussdBrowserHelpers.ts';
 assert.ok(!process.env.API_BASE_URL, 'browser enrollment QA requires its own disposable backend');
 const backend = await startBackend();
@@ -21,10 +21,11 @@ async function profile(speech = true) {
   // Literal browser script avoids TypeScript runner helper functions leaking into the page.
   await c.addInitScript({content: `
     window.__spoken = [];
+    window.__rates = [];
     window.__speechCancels = 0;
     class Utterance { constructor(text) { this.text = text; } }
     Object.defineProperty(window, 'SpeechSynthesisUtterance', {configurable: true, value: Utterance});
-    Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: ${speech ? "{getVoices: () => [], cancel: () => { window.__speechCancels++; }, speak: (u) => { window.__spoken.push(u.text); if(u.onstart)u.onstart(); if(u.onend)u.onend(); }}" : "undefined"}});
+    Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: ${speech ? "{getVoices: () => [], cancel: () => { window.__speechCancels++; }, speak: (u) => { window.__rates.push(u.rate); window.__spoken.push(u.text); if(u.onstart)u.onstart(); if(u.onend)u.onend(); }}" : "undefined"}});
   `});
   c.on('page', (p) => p.on('pageerror', (e) => errors.push(e.message)));
   return c;
@@ -32,9 +33,10 @@ async function profile(speech = true) {
 const stage = async (p: Page, value: string) => p.getByTestId('ussd-screen').filter({has: screen(p)}).and(p.locator(`[data-frame="${value}"]`)).waitFor();
 const count = () => (getDb().prepare('SELECT count(*) n FROM participant_registrations').get() as {n: number}).n;
 const automaticallyRead = async (p: Page) => {
-  const expected = safeScreenSpeech(await screen(p).innerText());
+  const expected = speechText(await screen(p).innerText());
   await p.waitForFunction((text) => (window as any).__spoken.at(-1) === text, expected);
   assert.equal(await p.getByTestId('ussd-voice-toggle').getAttribute('aria-pressed'), 'true');
+  assert.ok((await p.evaluate(() => (window as any).__rates as number[])).every((r) => r === 0.75), 'every utterance is spoken at the slow default rate 0.75');
 };
 try {
   const context = await profile(); const page = await context.newPage();
