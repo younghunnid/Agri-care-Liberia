@@ -15,6 +15,7 @@ import {adviceRouter} from './advice.ts';
 import {harvestRouter} from './harvest.ts';
 import {participantsRouter} from './participants.ts';
 import {recoveryRouter} from './recovery.ts';
+import {weatherRouter} from './weather.ts';
 import {PRIVACY_VERSION} from '../../src/lib/privacy.ts';
 import {
   CHALLENGE_COOKIE, CLAIM_COOKIE, DEVICE_COOKIE, challengeCookieOptions, clearHold, findTrustedDevice, getSessionVersion, hasPhoneOnFile, passwordProblem, resolvePhoneForRegistration,
@@ -61,6 +62,7 @@ v1Router.use(adviceRouter);
 v1Router.use(harvestRouter);
 v1Router.use(participantsRouter);
 v1Router.use(recoveryRouter);
+v1Router.use(weatherRouter);
 
 // 1. Health & CSRF
 v1Router.get('/health', (_req, res) => {

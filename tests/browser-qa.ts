@@ -70,7 +70,7 @@ try {
     await choose(page, '8'); await match(page, /Sell & market/);
     await page.getByTestId('key-back').click();
     await page.locator('h1').click();
-    await page.keyboard.press('9'); await page.keyboard.press('Enter'); await match(page, /Invalid choice/);
+    await page.keyboard.press('0'); await page.keyboard.press('Enter'); await match(page, /Invalid choice/); // 0 is invalid on the main menu (9 is now Weather)
     await page.keyboard.press('1'); await page.keyboard.press('Enter'); await match(page, /Crops & planting/);
     await page.keyboard.press('2'); await page.keyboard.press('Backspace');
     assert.match(await page.getByTestId('ussd-input').innerText(), /^>\s*_?$/);

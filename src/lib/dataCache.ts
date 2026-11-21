@@ -29,7 +29,7 @@ export interface CachedSnapshot<T> {
 export const MINISTRY_SUMMARY_KEY = 'ministry:summary';
 export const weatherKey = (county: string): string => `weather:${county}`;
 
-const ALLOWED_KEY = /^(ministry:summary|weather:[A-Za-z ]{2,40})$/;
+const ALLOWED_KEY = /^(ministry:summary|weather:[A-Za-z ]{2,40}|liveweather:[a-z0-9-]{2,40})$/;
 
 export function isCacheableKey(key: string): boolean {
   return ALLOWED_KEY.test(key);

@@ -71,16 +71,16 @@ test('2. text pages never cut a sentence or drop one: the pages read back as exa
 
 // ------------------------------------------------------------------------------------------------------------------------ 2. navigation
 test('3. numbered menus: the main menu preserves all original functions and adds the interactive marketplace', () => {
-  assert.deepEqual([...MAIN_ITEMS], ['Crops & planting', 'Pests & disease', 'Buy & Sell Produce', 'Harvest & storage', 'Expert help', 'Language', 'Help & exit', 'Sell & market']);
+  assert.deepEqual([...MAIN_ITEMS], ['Crops & planting', 'Pests & disease', 'Buy & Sell Produce', 'Harvest & storage', 'Expert help', 'Language', 'Help & exit', 'Sell & market', 'Weather']); // option 9 is APPENDED: the original eight keep their numbers
   const main = go([]).text; assert.equal(main, ['FARM ADVICE (DEMO)', ...MAIN_ITEMS.map((m, i) => `${i + 1} ${m}`)].join('\n'));
-  const lands: [string, RegExp][] = [['1', /^Crops & planting: crop\?/], ['2', /^Pests & disease/], ['3', /^Buy & Sell Produce/], ['4', /^Harvest & storage: crop\?/], ['5', /^Expert help \(demo\)/], ['6', /^Language/], ['7', /^Help & exit/], ['8', /^Sell & market/]];
+  const lands: [string, RegExp][] = [['1', /^Crops & planting: crop\?/], ['2', /^Pests & disease/], ['3', /^Buy & Sell Produce/], ['4', /^Harvest & storage: crop\?/], ['5', /^Expert help \(demo\)/], ['6', /^Language/], ['7', /^Help & exit/], ['8', /^Sell & market/], ['9', /^Weather: /]];
   for (const [d, re] of lands) assert.match(go(pick(d)).text, re, `option ${d}`);
   const rice = go(pick('1', '1')).text; assert.match(rice, /^\[DEMO\] Rice planting\n1 Planting months\n2 How to plant\n3 Soil & water\n4 Care of the crop/);
 });
 
 test('4. invalid input: wrong numbers, empty Send, letters-like symbols and too many digits are refused with a message and change nothing', () => {
   const base = go(pick('1', '1')); const before = view(base.s, env(), base.t).text;
-  for (const bad of [['9'], ['5'], ['99'], ['12'], ['*'], ['#'], ['0', '0', '0']] as string[][]) { const r = run([...bad, 'send'], env(), base.s, base.t); const v = view(r.s, env(), r.t); const k = bad.join(''); if (k === '000') continue; assert.match(v.text, /^Invalid choice\. Try again\.\n/, `entry ${k}`); assert.equal(v.text.split('\n').slice(1).join('\n'), before, 'the same menu stays on screen'); assert.equal(r.s.frames.length, base.s.frames.length); assert.equal(r.s.input, '', 'the entry line is cleared'); }
+  for (const bad of [['10'], ['5'], ['99'], ['12'], ['*'], ['#'], ['0', '0', '0']] as string[][]) { const r = run([...bad, 'send'], env(), base.s, base.t); const v = view(r.s, env(), r.t); const k = bad.join(''); if (k === '000') continue; assert.match(v.text, /^Invalid choice\. Try again\.\n/, `entry ${k}`); assert.equal(v.text.split('\n').slice(1).join('\n'), before, 'the same menu stays on screen'); assert.equal(r.s.frames.length, base.s.frames.length); assert.equal(r.s.input, '', 'the entry line is cleared'); }
   assert.match(view(run(['send'], env(), base.s, base.t).s, env(), 1).text, /^Type a number, then press Send\./, 'empty Send');
   const many = run(['1', '2', '3'], env(), base.s, base.t); assert.match(view(many.s, env(), many.t).text, /^Too many digits/); assert.equal(many.s.input, '12');
   // main menu: 0 and 00 are not offered

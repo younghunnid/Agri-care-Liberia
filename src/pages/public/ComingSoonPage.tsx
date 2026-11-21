@@ -20,7 +20,7 @@ export const ComingSoonPage: React.FC = () => {
           Coming Soon Agricultural Innovations
         </h1>
         <p className="text-sm sm:text-base text-white/85 max-w-3xl leading-relaxed">
-          Every feature below is honestly labeled <strong>Coming Soon</strong>. Team 8 does not simulate live weather feeds, livestock prescriptions, verified daily market prices, or automated Bassa/Mano speech AI without real partnerships.
+          Every feature below is honestly labeled <strong>Coming Soon</strong>. Team 8 does not simulate rainfall alerts by SMS or voice, livestock prescriptions, verified daily market prices, or automated Bassa/Mano speech AI without real partnerships.
         </p>
       </div>
 

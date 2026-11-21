@@ -11,6 +11,7 @@ import {useEnrollment} from '../../lib/ussd/useEnrollment';
 import {VOICE_SPEEDS, createScreenSpeaker, loadVoiceSpeed, saveVoiceSpeed, type VoiceSpeed} from '../../lib/ussd/screenVoice';
 import {UssdAccountForm} from './UssdAccountForm';
 import {useEnvironment} from '../../lib/useEnvironment';
+import {useUssdWeather} from '../../lib/weather/useUssdWeather';
 
 const DIGITS: Key[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
 const SPOKEN: Record<string, string> = {'*': 'Star', '#': 'Hash'};
@@ -27,7 +28,8 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number; compact?: boolean}> =
   const account = useCallback(() => (userRef.current ? {id: userRef.current.id, displayName: userRef.current.displayName} : null), []);
   if (!service.current) service.current = createBrowserUssdMarket(() => onlineRef.current, account);
   // Which kind of server is this? 'real' = a real-user deployment (accounts only). null while unknown.
-  const serverEnv = useEnvironment(); const realMode = serverEnv === null ? null : serverEnv.registryMode === 'real';
+  const serverEnv = useEnvironment();
+  const {weather: ussdWeather, refresh: refreshWeather} = useUssdWeather(isOnline); const realMode = serverEnv === null ? null : serverEnv.registryMode === 'real';
   const sync = useSyncState();
   const [session, setSession] = useState<Session>(() => newSession());
   const sessionRef = useRef(session);
@@ -81,7 +83,7 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number; compact?: boolean}> =
     return () => clearInterval(t);
   }, [timeoutSeconds]);
   const authorized = !!enrollment.state.participant && !enrollment.state.publicOnly;
-  const env: UssdEnv = useMemo(() => ({online: isOnline, marketplace: authorized ? marketplace : {...marketplace, allowed: false, own: [], inquiries: []}, market: marketplace.legacy ?? {source: marketplace.source, asOf: marketplace.asOf, listings: marketplace.listings}, now: new Date(now), timeoutSeconds}), [isOnline, marketplace, authorized, now, timeoutSeconds]);
+  const env: UssdEnv = useMemo(() => ({online: isOnline, marketplace: authorized ? marketplace : {...marketplace, allowed: false, own: [], inquiries: []}, market: marketplace.legacy ?? {source: marketplace.source, asOf: marketplace.asOf, listings: marketplace.listings}, now: new Date(now), timeoutSeconds, weather: ussdWeather}), [isOnline, marketplace, authorized, now, timeoutSeconds, ussdWeather]);
   const envRef = useRef(env); envRef.current = env;
   const send = useCallback((key: Key) => {
     if (enrollment.handle(key)) return;
@@ -198,7 +200,7 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number; compact?: boolean}> =
         {inMenu && <p data-testid="ussd-identity">{authorized ? `${enrollment.state.participant!.synthetic ? 'Synthetic' : 'Registered'} ${enrollment.state.participant!.category} · ${enrollment.state.participant!.county}. ${isOnline ? (enrollment.state.real ? 'Identified by your signed-in account. Your phone number is not verified.' : 'Identified by your browser key or signed-in account.') : 'Saved device registration; offline copy.'}` : 'Public advice only. No personalized registry information or marketplace submissions.'} <button type="button" className="min-h-[44px] underline" onClick={enrollment.restart}>Dial again</button></p>}
         {!compact && <p className="text-sm font-bold" data-testid="ussd-net-note">{netText}</p>}
         {!compact && <p className={`text-sm rounded-xl border p-3 ${authorized && marketplace.allowed ? 'bg-[#DDEFE0] border-[#16803C]/40' : 'bg-amber-50 border-amber-300'}`} data-testid="ussd-write-status">{authorized && marketplace.allowed ? (marketplace.mode === 'real' ? 'Interactive marketplace enabled for your account. Nothing is saved or sent until you read the details and confirm. Your phone number is not shared and is not verified. This handset is a simulation: The proposed dial code is not an active telecom service.' : 'Interactive synthetic demo enabled. Nothing is saved or sent until you read the details and confirm. Uses this browser’s existing device keys/account; no phone number identity.') : !authorized ? (enrollment.state.real ? 'Register with your account before personal marketplace actions. Public advice and selling practice remain available.' : 'Register or identify your demo participation before personal marketplace actions. Public advice and selling practice remain available.') : marketplace.reason || 'Checking whether this is a protected synthetic demo server. Submissions stay disabled until confirmed.'}</p>}
-        <button type="button" onClick={() => void refresh()} disabled={refreshing || working} className="agri-button-secondary" data-testid="market-refresh"><RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />{refreshing ? 'Refreshing demo market…' : 'Refresh market & inquiries'}</button>
+        <button type="button" onClick={() => { void refresh(); refreshWeather(); }} disabled={refreshing || working} className="agri-button-secondary" data-testid="market-refresh"><RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />{refreshing ? 'Refreshing demo market…' : 'Refresh market & inquiries'}</button>
         {marketplace.error && <p role="alert" className="text-base font-bold text-[#7A1010]" data-testid="market-error">{marketplace.error}</p>}
         {!compact && screen.appLink && <Link to={screen.appLink.to} className="agri-button-secondary" data-testid="ussd-applink">{screen.appLink.label}</Link>}
         <p className="sr-only">{DEMO_LABEL}</p>

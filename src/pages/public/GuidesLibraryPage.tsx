@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react';
+import {RiceAdviceCard} from '../../components/RiceAdviceCard';
 import {Link, useSearchParams} from 'react-router-dom';
 import {Bookmark, Check, Download, HelpCircle, Layers, Search, Sprout, WifiOff} from 'lucide-react';
 import {apiFetch} from '../../lib/api';
@@ -51,6 +52,7 @@ export const GuidesLibraryPage: React.FC = () => {
       : 'categories';
 
   const [activeTab, setActiveTab] = useState<'categories' | 'problems' | 'guides'>(initialTab);
+  const [cropQuestion, setCropQuestion] = useState<'rice' | null>(searchParams.get('crop') === 'rice-question' ? 'rice' : null);
   const [selectedTopicId, setSelectedTopicId] = useState(searchParams.get('topic') || '');
   const [search, setSearch] = useState(searchParams.get('q') || '');
   const [cropFilter, setCropFilter] = useState(searchParams.get('crop') || '');
@@ -234,6 +236,15 @@ export const GuidesLibraryPage: React.FC = () => {
           <span>Offline mode: 16 local knowledge summaries and your downloaded guides remain readable.</span>
         </div>
       )}
+
+      {/* Farmer questions by crop (starts with Rice) */}
+      <section aria-labelledby="cq-h" className="rounded-3xl bg-white border-2 border-[#183B2B]/15 p-4 space-y-3" data-testid="crop-questions">
+        <h2 id="cq-h" className="font-display text-xl font-extrabold text-[#183B2B]">Farmer questions by crop</h2>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Choose a crop">
+          <button type="button" aria-pressed={cropQuestion === 'rice'} onClick={() => setCropQuestion(cropQuestion === 'rice' ? null : 'rice')} data-testid="cq-rice" className={`min-h-[52px] rounded-2xl border-2 px-6 text-lg font-extrabold ${cropQuestion === 'rice' ? 'border-[#16803C] bg-[#DDEFE0]' : 'border-[#183B2B]/25 bg-white'}`}>Rice</button>
+        </div>
+        {cropQuestion === 'rice' && <RiceAdviceCard />}
+      </section>
 
       {/* Navigation Tabs */}
       <div className="flex flex-wrap gap-2">

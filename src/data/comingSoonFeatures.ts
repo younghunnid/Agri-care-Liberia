@@ -9,10 +9,10 @@ export interface ComingSoonFeature {
 export const COMING_SOON_FEATURES: ComingSoonFeature[] = [
   {
     id: 'live-weather',
-    title: 'Live weather and rainfall alerts',
+    title: 'Rainfall alerts by SMS or voice',
     category: 'Weather & Field Tech',
     farmerValue: 'Helps farmers time planting, fertilizer application, and grain drying around county-level rain.',
-    postHackathonPlan: 'Integrate verified Liberia meteorological feeds and SMS/voice alerts.',
+    postHackathonPlan: 'A live forecast (Open-Meteo) is already shown in the app. Alerts by SMS or voice need an SMS provider and partnerships, and are not built.',
   },
   {
     id: 'crop-disease-photos',

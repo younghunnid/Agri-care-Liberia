@@ -410,7 +410,7 @@ export const OfflineDownloadsPage: React.FC = () => {
           <Section id="dl-weather" title="Weather" badge={<KindBadge kind="sample" />}>
             {inv.weather.length === 0 ? (
               <p className="text-sm text-[#183B2B]/85">
-                No live weather is saved, because no live weather service is connected in this prototype. The{' '}
+                Forecasts you open on the Weather page are saved on this phone automatically (the latest copy for each place, labelled with its age and never called live when offline). This list shows only the older county samples. The{' '}
                 <Link to="/weather" className="inline-flex items-center min-h-[44px] underline font-semibold text-[#16803C]">Weather page</Link> shows bundled <strong>sample</strong> profiles, which are
                 not forecasts.
               </p>

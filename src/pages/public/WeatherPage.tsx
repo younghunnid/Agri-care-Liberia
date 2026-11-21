@@ -13,6 +13,7 @@ import {
 import {LIBERIA_COUNTIES} from '../../../server/constants';
 import {getWeatherForCounty} from '../../data/weatherSoilMinistry';
 import {SpeakButton} from '../../components/SpeakButton';
+import {LiveWeatherPanel} from '../../components/weather/LiveWeatherPanel';
 import {SavedInfoBar} from '../../components/SavedInfoBar';
 import {useApp} from '../../context/AppContext';
 import {BUNDLED_CONTENT_UPDATED} from '../../data/contentVersion';
@@ -55,13 +56,13 @@ export const WeatherPage: React.FC = () => {
         <div className="space-y-2 max-w-2xl">
           <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#F5B942]">
             <CloudRain className="w-4 h-4" aria-hidden="true" />
-            <span>Module 2 · Agricultural Weather Information · Sample Data</span>
+            <span>Agricultural Weather · Live forecast and sample planting profiles</span>
           </div>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold">
             County Weather &amp; Rainfall Planning
           </h1>
           <p className="text-sm sm:text-base text-white/85 leading-relaxed">
-            Select any of Liberia’s 15 counties to check sample rainfall profiles, agricultural risk notices, and practical planting guidance.
+            Choose where you farm to see the live forecast. Below it are older sample county profiles, which are not a forecast.
           </p>
         </div>
 
@@ -72,13 +73,17 @@ export const WeatherPage: React.FC = () => {
         />
       </div>
 
+      <LiveWeatherPanel />
+
+      <h2 className="font-display text-xl font-extrabold text-[#183B2B] pt-2" data-testid="sample-profiles-heading">Sample county profiles (not a forecast)</h2>
+
       {/* Honest Data Source Notice */}
       <div className="rounded-2xl bg-[#F5B942]/25 border border-[#F5B942] p-4 flex items-start gap-3 text-sm text-[#183B2B]">
         <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
         <div>
-          <p className="font-bold">Sample Weather Information — Not Live Meteorological API</p>
+          <p className="font-bold">Sample county profiles — not live</p>
           <p className="text-xs sm:text-sm text-[#183B2B]/85 mt-0.5">
-            No live external weather feed is connected in this prototype. Figures below are representative demonstration seasonal profiles for Liberia; always combine with local sky checks and official radio updates.
+            The live forecast is the section above. The figures below are representative demonstration seasonal profiles for Liberia; always combine with local sky checks and official radio updates.
           </p>
         </div>
       </div>
@@ -116,7 +121,7 @@ export const WeatherPage: React.FC = () => {
             <strong>not a forecast for today</strong>, and it never updates by itself. The 3-day outlook below is a sample, not a prediction.
           </p>
           <p className="text-xs text-[#183B2B]/70">
-            Refresh: no live weather service is connected in this prototype, so there is nothing to refresh. Nothing is saved from the internet here.
+            The live forecast is in the section above, with its own Update button. These sample profiles never update and are not saved from the internet.
           </p>
         </div>
       )}

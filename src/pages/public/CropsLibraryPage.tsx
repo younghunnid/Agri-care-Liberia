@@ -17,6 +17,7 @@ import {useApp} from '../../context/AppContext';
 import {SafeImage} from '../../components/SafeImage';
 import {SpeakButton} from '../../components/SpeakButton';
 import {ListenOfflineSection} from '../../components/AudioLessonCard';
+import {RiceAdviceCard, RiceRecordingSection} from '../../components/RiceAdviceCard';
 import {GuidanceBanner, PlantingGuidanceCard, StorageGuidanceCard} from '../../components/guidance/GuidanceBits';
 import {CROPS_LIBRARY, type CropGuideEntry} from '../../data/cropsLibrary';
 import {recordRecentlyViewedGuide, saveDemoAdvice} from '../../lib/demoStorage';
@@ -135,6 +136,13 @@ export const CropsLibraryPage: React.FC = () => {
         )}
 
         <ListenOfflineSection guideId={`crop:${selectedCrop.slug}`} />
+        {selectedCrop.slug === 'rice' && (
+          <section className="space-y-5" aria-label="Rice questions and recorded advice" data-testid="rice-advice-section">
+            <h2 className="font-display text-2xl font-extrabold text-[#183B2B]">Rice farming advice: questions and recording</h2>
+            <RiceAdviceCard />
+            <RiceRecordingSection />
+          </section>
+        )}
 
         <article className="rounded-3xl bg-white border border-[#183B2B]/10 overflow-hidden">
           {!lowBandwidth && (

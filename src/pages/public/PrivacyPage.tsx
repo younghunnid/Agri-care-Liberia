@@ -37,6 +37,10 @@ export const PrivacyPage: React.FC = () => (
       <h2 id="p-keep" className="text-xl font-extrabold">How long, and your choices</h2>
       <p className="text-base">Information is kept while your account exists. You can ask the team to show you what is held about you, to correct it, or to remove your account. There is not yet a button for this: please use the <Link to="/contact" className="font-semibold text-[#16803C] underline">Contact page</Link>. We will ask you to prove who you are before we act.</p>
     </section>
+    <section aria-labelledby="p-weather" className="space-y-2">
+      <h2 id="p-weather" className="text-xl font-extrabold">Weather</h2>
+      <p className="text-base">To show a forecast, the place you choose (or your phone's approximate position, only if you tap "Use my location" and allow it) is sent to our server and then to Open-Meteo.com. We do not send your name, phone number or address to them, and we do not keep your position. The forecast is saved on your own phone so it can be shown offline, labelled as old.</p>
+    </section>
     <section aria-labelledby="p-forgot" className="space-y-2">
       <h2 id="p-forgot" className="text-xl font-extrabold">If you forget your password</h2>
       <p className="text-base">A password cannot be reset by phone number alone. An administrator checks who you are in person or on a number the programme already knew, then gives you a one-time code. You choose a new password with it, and every other device is signed out.</p>

@@ -6,6 +6,7 @@ import {useApp} from '../../context/AppContext';
 import {SpeakButton} from '../../components/SpeakButton';
 import {StatusLabel} from '../../components/StatusLabel';
 import {GuidanceBanner} from '../../components/guidance/GuidanceBits';
+import {LiveWeatherPanel} from '../../components/weather/LiveWeatherPanel';
 import {GUIDANCE_CROPS, SAMPLE_WEATHER_LABEL, countyGuidance} from '../../data/farmGuidance';
 import {getListingRecords, getQuestionRecords, getSyncVersion, subscribeSync} from '../../lib/offlineDrafts';
 import {syncNow, useSyncState} from '../../lib/syncEngine';
@@ -22,7 +23,7 @@ const ACTIONS: {to: string; label: string; hint: string; Icon: React.ComponentTy
 ];
 const field = 'w-full min-h-[52px] rounded-2xl border-2 border-[#183B2B]/25 bg-white px-3 text-base text-[#183B2B]';
 
-/** The farmer's home screen: five big actions, what is waiting to send, sample weather and planting reminders for the county and crops they chose. Works offline. */
+/** The farmer's home screen: five big actions, what is waiting to send, live weather, sample weather and planting reminders for the county and crops they chose. Works offline. */
 export const FarmerTodayPage: React.FC = () => {
   const {isOnline} = useApp();
   const sync = useSyncState();
@@ -66,6 +67,8 @@ export const FarmerTodayPage: React.FC = () => {
       </nav>
 
       <Link to="/ussd-demo" data-testid="go-ussd" className="min-h-[56px] flex items-center justify-between gap-3 rounded-2xl border-2 border-[#183B2B]/25 bg-white px-4 text-base font-extrabold text-[#183B2B]"><span>Basic phone demo (numbered menus)<span className="block text-sm font-semibold text-[#183B2B]/75">Demonstration only. No mobile network.</span></span><span aria-hidden>→</span></Link>
+
+      <LiveWeatherPanel compact />
 
       <section className="rounded-2xl bg-white border-2 border-[#183B2B]/15 p-4 space-y-3" aria-labelledby="farm-h" data-testid="my-farm">
         <h2 id="farm-h" className="font-display text-xl font-extrabold text-[#183B2B] flex items-center gap-2"><UserCheck className="w-6 h-6 text-[#16803C]" aria-hidden /> My farm</h2>
@@ -122,9 +125,10 @@ export const FarmerTodayPage: React.FC = () => {
         <h2 id="what-h" className="text-lg font-extrabold text-[#183B2B]">What is real in this demonstration</h2>
         <ul className="space-y-2 text-base text-[#183B2B]">
           <li className="flex flex-wrap items-center gap-2"><StatusLabel kind="working" /> Saving and sending your harvest listings, questions and checks, with or without internet.</li>
-          <li className="flex flex-wrap items-center gap-2"><StatusLabel kind="simulated" /> Weather (sample profiles), expert replies, buyers and crop-check results.</li>
+          <li className="flex flex-wrap items-center gap-2"><StatusLabel kind="working" /> Live weather forecast from Open-Meteo when you are online (the last copy is kept, and labelled old, when you are offline).</li>
+          <li className="flex flex-wrap items-center gap-2"><StatusLabel kind="simulated" /> County weather samples, expert replies, buyers and crop-check results.</li>
           <li className="flex flex-wrap items-center gap-2"><StatusLabel kind="draft" /> Planting and storage guidance: not reviewed by an agronomist.</li>
-          <li className="flex flex-wrap items-center gap-2"><StatusLabel kind="future" /> Live weather, SMS and USSD, payments, official data.</li>
+          <li className="flex flex-wrap items-center gap-2"><StatusLabel kind="future" /> SMS and a real USSD service, payments, official data.</li>
         </ul>
       </section>
     </div>

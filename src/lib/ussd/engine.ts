@@ -1,6 +1,7 @@
 import {LIBERIA_COUNTIES} from '../../../server/constants';
 import {cardSeedBySlug} from '../../data/adviceCardsSeed';
 import {BAND_INFO, CROP_LABELS, TRIAGE_CASES, caseById, type TriageCrop} from '../../data/triageCases';
+import {NO_USSD_WEATHER, ussdWeatherLines, type UssdWeather} from '../weather/ussd';
 import {DEMO_TOWNS, EMPTY_MARKETPLACE, INQUIRY_MESSAGES, REAL_INQUIRY_MESSAGES, REAL_TOWNS, type MarketAction, type MarketCommand, type MarketResult, type MarketplaceEnv, type OwnDemoListing} from './marketTypes';
 import {HARVEST_CROPS, cropBySlug, HARVEST_LIMITS} from '../../data/harvestCrops';
 import {GUIDANCE_CROPS, MONTH_NAMES, periodText, plantingEntry, plantingSentence, plantingStatus, storageGuide, cropEntry, type GuidanceItem} from '../../data/farmGuidance';
@@ -19,7 +20,7 @@ export const DEFAULT_TIMEOUT_S = 90;
 export const DEMO_CALLER = '+231770009001';
 export const DEMO_LABEL = 'Demonstration only — no mobile network connection.';
 export const MAIN_TITLE = 'FARM ADVICE (DEMO)';
-export const MAIN_ITEMS = ['Crops & planting', 'Pests & disease', 'Buy & Sell Produce', 'Harvest & storage', 'Expert help', 'Language', 'Help & exit', 'Sell & market'] as const;
+export const MAIN_ITEMS = ['Crops & planting', 'Pests & disease', 'Buy & Sell Produce', 'Harvest & storage', 'Expert help', 'Language', 'Help & exit', 'Sell & market', 'Weather'] as const;
 const MAX_INPUT = 8;
 
 export type Key = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '*' | '#' | 'send' | 'back' | 'home' | 'cancel' | 'end' | 'del';
@@ -28,7 +29,7 @@ export type EndReason = 'exit' | 'cancel' | 'end' | 'timeout';
 export interface Session {status: 'idle' | 'active' | 'ended'; endReason: EndReason | null; no: number; frames: Frame[]; input: string; notice: string | null; lastActivity: number; commandNo: number; pending: MarketCommand | null}
 export interface MarketListing {code: string | null; cropSlug: string; quantityKg: number | null; pricePerKgLrd: number; county: string; status: string}
 export interface MarketEnv {source: 'server' | 'saved' | 'none'; asOf: string | null; listings: MarketListing[]}
-export interface UssdEnv {online: boolean; market: MarketEnv; now: Date; timeoutSeconds?: number; marketplace?: MarketplaceEnv}
+export interface UssdEnv {online: boolean; market: MarketEnv; now: Date; timeoutSeconds?: number; marketplace?: MarketplaceEnv; weather?: UssdWeather}
 export interface Screen {
   text: string; kind: 'CON' | 'IDLE'; expects: 'option' | 'number' | 'none'; truncated: boolean; secondsLeft: number | null;
   appLink: {to: string; label: string} | null; internet: {needed: boolean; state: 'bundled' | 'live' | 'saved' | 'none'}; frameId: string | null;
@@ -144,7 +145,7 @@ function build(frame: Frame, env: UssdEnv): Built {
 function buildBase(frame: Frame, env: UssdEnv): Built {
   const p = frame.p; const slug = p.slug ?? ''; const name = cName(slug); const crop = cropEntry(slug);
   switch (frame.id) {
-    case 'main': return menuBuilt(frame, MAIN_TITLE, [F('plant.crop'), F('pest.menu'), F('market.menu'), F('store.crop'), F('expert.menu'), F('lang.menu'), F('help.menu'), F('market.legacy')].map((to, i) => ({label: MAIN_ITEMS[i], to})), {nav: false});
+    case 'main': return menuBuilt(frame, MAIN_TITLE, [F('plant.crop'), F('pest.menu'), F('market.menu'), F('store.crop'), F('expert.menu'), F('lang.menu'), F('help.menu'), F('market.legacy'), F('weather.menu')].map((to, i) => ({label: MAIN_ITEMS[i], to})), {nav: false});
     // ---- crops and planting
     case 'plant.crop': return cropMenu(frame, 'Crops & planting: crop?', (s) => F('plant.menu', {slug: s}));
     case 'plant.menu': return menuBuilt(frame, `[DEMO] ${name} planting`, [['Planting months', 'plant.months'], ['How to plant', 'plant.how'], ['Soil & water', 'plant.soil'], ['Care of the crop', 'plant.care']].map(([label, id]) => ({label, to: F(id, {slug})})));
@@ -175,6 +176,7 @@ function buildBase(frame: Frame, env: UssdEnv): Built {
     case 'store.sell': return textBuilt(frame, `${name}: before selling [General]`, [storageGuide(slug)!.sellTip.text], {link: guideLink(slug, 'storage')});
     // ---- selling and market information
     // Original Phase 2B submenu: read-only browsing and no-submit selling practice remain grouped together.
+    case 'weather.menu': { const w = env.weather ?? NO_USSD_WEATHER; return textBuilt(frame, `Weather: ${w.place}`, ussdWeatherLines(w, env.now.getTime())); }
     case 'market.legacy': return menuBuilt(frame, 'Sell & market', [{label: 'Harvest for sale (net)', to: F('market.crop')}, {label: 'Try selling (demo only)', to: F('sell.crop')}]);
     case 'market.menu': {
       const m = menuBuilt(frame, 'Buy & Sell Produce', [

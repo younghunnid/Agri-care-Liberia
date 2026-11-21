@@ -23,7 +23,7 @@ export const NAV_GROUPS: NavGroup[] = [
       {label: 'Advice cards with codes', to: '/advice-cards', kinds: ['draft'], note: 'Demonstration advice. Not reviewed by an agronomist.'},
       {label: 'Crop problems (cassava)', to: '/advice/crop-problems', kinds: ['working', 'draft']},
       {label: 'Advice you can read offline', to: '/offline', kinds: ['working']},
-      {label: 'Weather and planting', to: '/weather', kinds: ['simulated'], note: 'Sample weather only. Not live.'},
+      {label: 'Weather and planting', to: '/weather', kinds: ['working', 'simulated'], note: 'Live forecast when online (labelled old when saved). County samples are not live.'},
       {label: 'Soil and seeds', to: '/soil', kinds: ['working']},
       {label: 'Planting months by crop', to: '/guidance', kinds: ['draft'], note: 'Demonstration guidance. Works offline. Not reviewed by an agronomist.'},
       {label: 'Harvest handling and storage by crop', to: '/guidance?tab=storage', kinds: ['draft'], note: 'Demonstration guidance. Works offline.'},
@@ -50,7 +50,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'tools', title: 'Farm Tools', blurb: 'Simple tools for your farm.',
     items: [
-      {label: 'My farm today (home screen)', to: '/today', kinds: ['working', 'simulated'], note: 'Reminders use sample weather, not live. Works offline.'},
+      {label: 'My farm today (home screen)', to: '/today', kinds: ['working', 'simulated'], note: 'Live weather when online; planting reminders use county samples, not live. Works offline.'},
       {label: 'Basic phone (USSD) demo', to: '/ussd-demo', kinds: ['simulated'], note: 'Demonstration only. No mobile network connection.'},
       {label: 'Sell my harvest', to: '/harvest/sell', kinds: ['working', 'simulated'], note: 'Save offline, sent when online. No payments.'},
       {label: 'Find harvest (buyers)', to: '/harvest', kinds: ['simulated'], note: 'Demonstration listings. No payments.'},
