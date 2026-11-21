@@ -438,10 +438,29 @@ test('9. Demo Expert Requests, Simulated Expert reply, and Management summary se
   assert.equal(replied.data.request.status, 'Answered');
   assert.notEqual(replied.data.request.assigned_expert_name, 'Dr. Samuel Tarr (Simulated Extension Officer)');
 
-  const summary = await req(jar, '/api/v1/prototype/management-summary');
+  // Exact counters are for administrators only; the public (and any farmer) gets approximate, suppressed numbers.
+  const summary = await req(await adminJar(), '/api/v1/prototype/management-summary');
   assert.equal(summary.status, 200);
+  assert.equal(summary.data.precision, 'exact');
   assert.equal(summary.data.actualData.publishedCropGuides, 7);
   assert.ok(summary.data.demoAndExperimentalData.marketplaceListings >= 11);
+  for (const who of [new CookieJar(), jar]) {
+    const pub = await req(who, '/api/v1/prototype/management-summary');
+    assert.equal(pub.status, 200); assert.equal(pub.data.precision, 'approximate'); assert.match(pub.data.note, /Approximate public numbers/);
+    for (const group of [pub.data.actualData, pub.data.demoAndExperimentalData]) for (const v of Object.values(group) as number[]) assert.ok(v === 0 || (v >= 5 && v % 5 === 0), `public value ${v} is 0 or a multiple of 5`);
+    assert.equal(pub.data.actualData.publishedCropGuides, 5, '7 exact is shown as 5');
+  }
+});
+
+test('9b. public counters cannot isolate one record (suppression, rounding, change threshold)', async () => {
+  const {publicCount, resetPublicCountsForTests} = await import('../server/publicCounts.ts');
+  resetPublicCountsForTests();
+  assert.equal(publicCount('t.a', 0, 3), 0); assert.equal(publicCount('t.a', 2, 3), 0, 'fewer than 3 is shown as 0');
+  assert.equal(publicCount('t.b', 3, 3), 5); assert.equal(publicCount('t.b', 4, 3), 5, 'one more record does not move the shown value');
+  assert.equal(publicCount('t.b', 5, 3), 5, 'still held: the real value drifted by fewer than 3');
+  assert.equal(publicCount('t.b', 6, 3), 5); assert.equal(publicCount('t.b', 7, 3), 5); assert.equal(publicCount('t.b', 8, 3), 5, 'the held value moved to 6, so 7 and 8 drift by fewer than 3');
+  assert.equal(publicCount('t.b', 9, 3), 10, 'the shown value moves only after a drift of 3 or more');
+  resetPublicCountsForTests();
 });
 
 test('10. Demo Reset restores clean hackathon prototype dataset', async () => {

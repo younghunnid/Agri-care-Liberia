@@ -23,6 +23,7 @@ import {demoPhoneProblem} from '../demoPolicy.ts';
 import {formatSellCode, validateHarvestFields} from '../../src/lib/harvestRules.ts';
 import {maxAudioChars, maxImageChars, mediaAdmission, type MediaRefusal} from '../mediaQuota.ts';
 import {seedPrototypeData} from '../seedPrototype.ts';
+import {PUBLIC_COUNTS_NOTE, publicCount} from '../publicCounts.ts';
 import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
 
 export const prototypeRouter = Router();
@@ -1000,28 +1001,29 @@ prototypeRouter.patch('/expert-requests/demo/:id/reply', requireRole('expert', '
 });
 
 // 4. PROTOTYPE MANAGEMENT & ANALYTICS (Clearly separates actual DB counts vs simulated demo counts)
-prototypeRouter.get('/prototype/management-summary', (_req, res) => {
+prototypeRouter.get('/prototype/management-summary', (req: AuthedRequest, res) => {
   const db = getDb();
-  const actualFarmers = (db.prepare("SELECT COUNT(*) as c FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE r.name = 'farmer'").get() as {c: number}).c;
-  const actualQuestions = (db.prepare('SELECT COUNT(*) as c FROM advisory_questions').get() as {c: number}).c;
-  const publishedGuides = (db.prepare("SELECT COUNT(*) as c FROM agricultural_guides WHERE is_published = 1 AND review_status = 'approved'").get() as {c: number}).c;
-  const demoMarketplace = (db.prepare('SELECT COUNT(*) as c FROM marketplace_listings').get() as {c: number}).c;
-  const demoInquiries = (db.prepare('SELECT COUNT(*) as c FROM marketplace_inquiries').get() as {c: number}).c;
-  const demoRecordings = (db.prepare('SELECT COUNT(*) as c FROM local_language_recordings').get() as {c: number}).c;
-  const demoExpertRequests = (db.prepare('SELECT COUNT(*) as c FROM demo_expert_requests').get() as {c: number}).c;
-
+  const count = (sql: string): number => (db.prepare(sql).get() as {c: number}).c;
+  const actual = {
+    registeredFarmers: count("SELECT COUNT(*) as c FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE r.name = 'farmer'"),
+    formalAdvisoryQuestions: count('SELECT COUNT(*) as c FROM advisory_questions'),
+    publishedCropGuides: count("SELECT COUNT(*) as c FROM agricultural_guides WHERE is_published = 1 AND review_status = 'approved'"),
+  };
+  const demo = {
+    marketplaceListings: count('SELECT COUNT(*) as c FROM marketplace_listings'),
+    marketplaceInquiries: count('SELECT COUNT(*) as c FROM marketplace_inquiries'),
+    localLanguageRecordings: count('SELECT COUNT(*) as c FROM local_language_recordings'),
+    simulatedExpertRequests: count('SELECT COUNT(*) as c FROM demo_expert_requests'),
+  };
+  // Privacy: only a signed-in administrator receives exact numbers. Everyone else gets approximate, suppressed numbers (server/publicCounts.ts).
+  const exact = Boolean(req.user?.roles.includes('admin'));
+  const shape = <T extends Record<string, number>>(group: string, o: T): T =>
+    exact ? o : (Object.fromEntries(Object.entries(o).map(([k, v]) => [k, publicCount(`${group}.${k}`, v)])) as T);
   res.json({
-    actualData: {
-      registeredFarmers: actualFarmers,
-      formalAdvisoryQuestions: actualQuestions,
-      publishedCropGuides: publishedGuides,
-    },
-    demoAndExperimentalData: {
-      marketplaceListings: demoMarketplace,
-      marketplaceInquiries: demoInquiries,
-      localLanguageRecordings: demoRecordings,
-      simulatedExpertRequests: demoExpertRequests,
-    },
+    actualData: shape('actual', actual),
+    demoAndExperimentalData: shape('demo', demo),
+    precision: exact ? 'exact' : 'approximate',
+    ...(exact ? {} : {note: PUBLIC_COUNTS_NOTE}),
   });
 });
 

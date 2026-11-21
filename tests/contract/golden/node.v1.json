@@ -2541,16 +2541,18 @@
       "cookies": [],
       "body": {
         "actualData": {
-          "formalAdvisoryQuestions": 3,
-          "publishedCropGuides": 7,
-          "registeredFarmers": 3
+          "formalAdvisoryQuestions": 5,
+          "publishedCropGuides": 5,
+          "registeredFarmers": 5
         },
         "demoAndExperimentalData": {
-          "localLanguageRecordings": 7,
-          "marketplaceInquiries": 1,
-          "marketplaceListings": 13,
-          "simulatedExpertRequests": 3
-        }
+          "localLanguageRecordings": 5,
+          "marketplaceInquiries": 0,
+          "marketplaceListings": 15,
+          "simulatedExpertRequests": 5
+        },
+        "note": "Approximate public numbers: fewer than 3 are shown as 0, larger ones are rounded to the nearest 5 and change only after a few records are added or removed. Signed-in administrators see exact numbers.",
+        "precision": "approximate"
       }
     },
     {

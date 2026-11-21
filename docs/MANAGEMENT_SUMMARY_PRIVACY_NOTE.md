@@ -1,6 +1,8 @@
 # Public management-summary: privacy concern (documented, not changed)
 
-Status: **open, not fixed.** Recorded for the final integration review with the Codex changes.
+Status: **FIXED locally** (server/publicCounts.ts, server/routes/prototype.ts), not yet deployed.
+
+Fix: anonymous visitors and ordinary signed-in users now receive approximate counters (fewer than 3 shown as 0, larger values rounded to the nearest 5, and the shown value moves only after the real count drifted by at least INSIGHTS_MIN_CHANGE = 3). The response keeps its shape and adds `precision: "approximate"` and a `note`. Only a signed-in administrator receives exact numbers (`precision: "exact"`). The four public pages keep working with the approximate values. Tests: tests/api.test.ts (9 and 9b); contract golden updated for this one request. Not changed: the PHP backend copy of this endpoint (inactive, hash-checked by the PHP parity suite). The original description below is kept for the record.
 
 ## What it is
 `GET /api/v1/prototype/management-summary` (`server/routes/prototype.ts`, around line 1003) has no authentication, no rate limit and no suppression. It returns exact counters:
