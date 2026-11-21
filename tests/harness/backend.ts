@@ -42,7 +42,7 @@ export async function startBackend(): Promise<Backend> {
   process.env.TEST_FIXTURE_TOKEN = token;
   // Simulated SMS (development/test only): codes are readable ONLY through the operator-token-protected inbox.
   const operatorToken = crypto.randomBytes(24).toString('hex');
-  process.env.SMS_PROVIDER = 'simulated';
+  process.env.SMS_PROVIDER = 'simulated'; process.env.AUTH_REQUIRE_SMS = '1';
   process.env.SIMULATED_INBOX = '1';
   process.env.DEMO_INLINE_INBOX = '1';
   process.env.ENABLE_DEMO_SEED = '1'; // the contract and API suites sign in as the synthetic demo expert

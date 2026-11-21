@@ -147,6 +147,8 @@ export function resolvePhoneForRegistration(phone: string, claimGrant: unknown):
   const holder = phoneHolder(phone);
   if (!holder) return 'free';
   if (holder.phone_verified_at !== null) return 'taken';
+  // Password-only mode (no SMS): ownership can never be proven, so a number is NEVER taken from the account that registered it (no timed release).
+  if (!getAuthConfig().requireSms) return 'taken';
   if (!holder.claim_expired) return 'taken';
   return releaseUnverifiedPhone(holder.id) ? 'free' : 'taken';
 }

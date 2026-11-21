@@ -42,7 +42,8 @@
     "test:role-dashboards": "node --import ./tests/assets-loader/register.mjs --import tsx --test tests/role-dashboards.test.tsx",
     "test:home": "node --import ./tests/assets-loader/register.mjs --import tsx --test tests/home-redesign.test.tsx",
     "test:password-policy": "tsx --test tests/password-policy.test.ts",
-    "test:brand": "node --import ./tests/assets-loader/register.mjs --import tsx --test tests/brand.test.tsx"
+    "test:brand": "node --import ./tests/assets-loader/register.mjs --import tsx --test tests/brand.test.tsx",
+    "test:password-auth": "tsx --test tests/password-auth.test.ts"
   },
   "dependencies": {
     "@google/genai": "^3.4.0",

@@ -417,8 +417,8 @@ v1Router.post('/auth/register', asyncRoute(async (req: AuthedRequest, res) => {
   try {
     const resUser = db
       .prepare(`INSERT INTO users (display_name, phone, email, password_hash, status, phone_claim_expires_at)
-                VALUES (?, ?, ?, ?, 'active', datetime('now', ?))`)
-      .run(cleanName, cleanPhone, cleanEmail, passwordHash, `+${getAuthConfig().unverifiedClaimHoursNew} hours`);
+                VALUES (?, ?, ?, ?, 'active', CASE WHEN ? = 1 THEN datetime('now', ?) ELSE NULL END)`)
+      .run(cleanName, cleanPhone, cleanEmail, passwordHash, getAuthConfig().requireSms ? 1 : 0, `+${getAuthConfig().unverifiedClaimHoursNew} hours`);
     userId = Number(resUser.lastInsertRowid);
 
     db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)').run(userId, farmerRole.id);
@@ -537,7 +537,7 @@ v1Router.post('/auth/login', asyncRoute(async (req: AuthedRequest, res) => {
 
   // Password is right. Only a trusted device (valid, unexpired, unrevoked, THIS user's) may receive a session now; anything else must prove
   // possession of the account's phone first. No session cookie is issued until the code is verified.
-  if (!findTrustedDevice(userRow.id, req.cookies?.[DEVICE_COOKIE])) {
+  if (getAuthConfig().requireSms && !findTrustedDevice(userRow.id, req.cookies?.[DEVICE_COOKIE])) {
     if (!hasPhoneOnFile(userRow.phone)) {
       res.status(409).json({error: {code: 'PHONE_RECOVERY_REQUIRED', message: 'This account has no phone number that can receive a code. Please contact the project team for account recovery.'}});
       return;

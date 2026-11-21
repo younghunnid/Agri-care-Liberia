@@ -34,9 +34,34 @@ const ip = (req: Request): string => clientAddress(req);
 const sharedRefusal = (res: Response): void => { err(res, 403, 'SHARED_DEMO_ACCOUNT', 'This is a shared demonstration account. Its password and phone number cannot be changed here.'); };
 const busy = (res: Response): void => { res.setHeader('Retry-After', '3'); err(res, 503, 'SERVER_BUSY', 'The server is busy. Please try again in a moment.'); };
 const err = (res: Response, status: number, code: string, message: string, extra: Record<string, unknown> = {}): void => { res.status(status).json({error: {code, message, ...extra}}); };
-const demo = (): boolean => getSmsProvider().name === 'simulated';
+const demo = (): boolean => getAuthConfig().requireSms && getSmsProvider().name === 'simulated';
 /** The in-website Demo SMS Inbox is on (development / protected demo environment only). */
-const demoInbox = (): boolean => { const c = getAuthConfig(); return c.demoInlineInbox && !c.production && getSmsProvider() instanceof SimulatedSmsProvider; };
+const demoInbox = (): boolean => { const c = getAuthConfig(); return c.requireSms && c.demoInlineInbox && !c.production && getSmsProvider() instanceof SimulatedSmsProvider; };
+
+
+// =================================================================== password-only mode (AUTH_REQUIRE_SMS off, the default): no SMS code exists
+// Every route that needs a verification code answers the same clear refusal. Recovery by "just a phone number" is never offered: it needs verified assistance.
+const ASSISTED = 'Password recovery needs verified assistance from the Agricare Liberia team. Your phone number has not been verified, so it cannot be used to reset a password, and no text message is sent.';
+const NO_SMS_ROUTES: {method: string; test: RegExp; message: string}[] = [
+  {method: 'POST', test: /^\/auth\/forgot-password(\/verify)?$/, message: ASSISTED},
+  {method: 'POST', test: /^\/auth\/reset-password$/, message: ASSISTED},
+  {method: 'GET', test: /^\/auth\/challenge$/, message: 'No verification code is used on this site.'},
+  {method: 'POST', test: /^\/auth\/(verify-device|resend-code)$/, message: 'No verification code is used on this site.'},
+  {method: 'POST', test: /^\/auth\/phone-claim\/(start|verify)$/, message: 'Phone numbers cannot be verified yet. A number stays with the account that registered it. If someone else is using your number, contact the Agricare Liberia team for verified assistance.'},
+  {method: 'POST', test: /^\/account\/phone\//, message: 'Phone numbers cannot be verified or changed here yet. Contact the Agricare Liberia team for verified assistance.'},
+];
+authSecurityRouter.use((req, res, next) => {
+  if (getAuthConfig().requireSms) { next(); return; }
+  const hit = NO_SMS_ROUTES.find((r) => r.method === req.method && r.test.test(req.path));
+  if (!hit) { next(); return; }
+  if (hit.test.source.includes('forgot-password') && !req.path.endsWith('/verify')) {
+    // Same answer for every identifier (existing or not): never reveals whether an account exists. Still rate limited per address.
+    if (!checkAndRecordRateLimit(hashIdentifier(ip(req)), 'password_reset', 10, 60, true).allowed) { res.setHeader('Retry-After', '3600'); err(res, 429, 'RATE_LIMITED', 'Too many requests. Please try later.'); return; }
+    res.json({ok: true, recovery: 'assisted', message: hit.message});
+    return;
+  }
+  err(res, 409, 'SMS_NOT_USED', hit.message);
+});
 
 function handleOtpError(res: Response, e: unknown): void {
   if (e instanceof OtpError) {
@@ -249,10 +274,11 @@ authSecurityRouter.get('/account/security', requireAuth, (req: AuthedRequest, re
   const device = findTrustedDevice(u.id, req.cookies?.[DEVICE_COOKIE]);
   res.setHeader('Cache-Control', 'no-store');
   res.json({
-    phone: {masked: maskPhone(u.phone), onFile: hasPhoneOnFile(u.phone), verified: Boolean(u.phone_verified_at), verifiedAt: u.phone_verified_at, claimExpiresAt: u.phone_verified_at ? null : u.phone_claim_expires_at},
+    phone: {masked: maskPhone(u.phone), onFile: hasPhoneOnFile(u.phone), verified: Boolean(u.phone_verified_at), verifiedAt: u.phone_verified_at, claimExpiresAt: u.phone_verified_at || !getAuthConfig().requireSms ? null : u.phone_claim_expires_at},
     devices: {count: listDevices(u.id, device?.id ?? null).length, currentTrusted: Boolean(device)},
     passwordPolicy: {minLength: getAuthConfig().passwordMinLength},
-    recovery: {viaVerifiedPhone: Boolean(u.phone_verified_at), operatorRecovery: true},
+    smsVerification: getAuthConfig().requireSms,
+    recovery: {viaVerifiedPhone: getAuthConfig().requireSms && Boolean(u.phone_verified_at), operatorRecovery: true},
     demoMode: demo(), demoInbox: demoInbox(),
   });
 });

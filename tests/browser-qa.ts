@@ -8,7 +8,7 @@ import {chromium, type Page, type BrowserContext} from 'playwright';
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'agriccare-codex-browser-'));
 const secret = () => crypto.randomBytes(32).toString('hex');
-Object.assign(process.env, {NODE_ENV: 'production', APP_ENV: 'demo', DB_PATH: path.join(temp, 'qa.db'), SESSION_SECRET: secret(), OTP_HMAC_SECRET: secret(), TRUST_PROXY: '0', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only', ENABLE_DEMO_MARKET_DATA: '1'});
+Object.assign(process.env, {NODE_ENV: 'production', APP_ENV: 'demo', DB_PATH: path.join(temp, 'qa.db'), SESSION_SECRET: secret(), OTP_HMAC_SECRET: secret(), TRUST_PROXY: '0', AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only', ENABLE_DEMO_MARKET_DATA: '1'});
 const {createApp} = await import('../server.ts');
 const {closeDb} = await import('../server/db.ts');
 const server = (await createApp()).listen(0, '127.0.0.1');

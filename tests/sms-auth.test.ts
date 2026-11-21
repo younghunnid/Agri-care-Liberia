@@ -558,13 +558,13 @@ test('16a. config: production refuses the simulated provider, the inbox and the 
   const prod = {NODE_ENV: 'production', OTP_HMAC_SECRET: crypto.randomBytes(32).toString('hex')} as NodeJS.ProcessEnv;
   assert.equal(loadAuthConfig(prod).production, true);
   const secret = crypto.randomBytes(24).toString('hex');
-  for (const extra of [{SMS_PROVIDER: 'simulated'}, {SIMULATED_INBOX: '1', SMS_PROVIDER: 'simulated', DEMO_OPERATOR_TOKEN: secret}, {DEMO_OPERATOR_TOKEN: secret}]) {
+  for (const extra of [{AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated'}, {SIMULATED_INBOX: '1', AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', DEMO_OPERATOR_TOKEN: secret}, {DEMO_OPERATOR_TOKEN: secret}]) {
     assert.throws(() => loadAuthConfig({...prod, ...extra}), (e: unknown) => e instanceof AuthConfigError && !JSON.stringify(e.problems).includes(secret), JSON.stringify(extra));
   }
   assert.throws(() => loadAuthConfig({NODE_ENV: 'production'} as NodeJS.ProcessEnv), AuthConfigError, 'production needs OTP_HMAC_SECRET');
   assert.throws(() => loadAuthConfig({...prod, OTP_HMAC_SECRET: 'short'}), AuthConfigError);
   // development: the inbox needs a strong separate operator token and the simulated provider; typos are errors
-  const dev = {SMS_PROVIDER: 'simulated', SIMULATED_INBOX: '1'} as NodeJS.ProcessEnv;
+  const dev = {AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', SIMULATED_INBOX: '1'} as NodeJS.ProcessEnv;
   assert.throws(() => loadAuthConfig(dev), AuthConfigError);
   assert.throws(() => loadAuthConfig({...dev, DEMO_OPERATOR_TOKEN: 'tooshort'}), AuthConfigError);
   const otp = crypto.randomBytes(24).toString('hex');
@@ -594,10 +594,10 @@ async function bootServer(env: Record<string, string>): Promise<{proc: ChildProc
     return {proc, base, dir, out: () => out, exited};
   }
 }
-test('16b. a real production-mode server: refuses to start with the simulated provider; with none, the inbox does not exist and new-device sign-in fails closed', async () => {
+test('16b. a real production-mode server: refuses to start with the simulated provider; with none, the inbox does not exist and password sign-in works without any code', async () => {
   const secret = crypto.randomBytes(32).toString('hex');
   const base = {NODE_ENV: 'production', SESSION_SECRET: crypto.randomBytes(32).toString('hex'), OTP_HMAC_SECRET: secret};
-  const bad = await bootServer({...base, SMS_PROVIDER: 'simulated', SIMULATED_INBOX: '1', DEMO_OPERATOR_TOKEN: crypto.randomBytes(24).toString('hex')});
+  const bad = await bootServer({...base, AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', SIMULATED_INBOX: '1', DEMO_OPERATOR_TOKEN: crypto.randomBytes(24).toString('hex')});
   assert.notEqual(await Promise.race([bad.exited, new Promise<null>((r) => setTimeout(() => r(null), 15000))]), null, 'the server must exit');
   assert.match(bad.out(), /refused in production/); assert.ok(!bad.out().includes(base.OTP_HMAC_SECRET));
   fs.rmSync(bad.dir, {recursive: true, force: true});
@@ -616,11 +616,12 @@ test('16b. a real production-mode server: refuses to start with the simulated pr
     assert.equal(reg.status, 201);
     await req(jar, '/api/v1/auth/logout', {method: 'POST', body: {}});
     const login = await req(new CookieJar(), '/api/v1/auth/login', {method: 'POST', body: {identifier: p, password: PW}});
-    assert.equal(login.status, 503); assert.equal(login.data.error.code, 'SMS_UNAVAILABLE');
-    assert.ok(!login.headers.getSetCookie().some((c) => c.startsWith('agri_session=')));
+    // Phone number + password mode (AUTH_REQUIRE_SMS off): a new device signs in with the password alone; nothing is sent, nothing is verified.
+    assert.equal(login.status, 200); assert.ok(login.headers.getSetCookie().some((c) => c.startsWith('agri_session=')));
     const forgot = await req(new CookieJar(), '/api/v1/auth/forgot-password', {method: 'POST', body: {identifier: p}});
-    assert.equal(forgot.status, 503);
-    assert.equal((await req(new CookieJar(), '/api/v1/auth/forgot-password', {method: 'POST', body: {identifier: '+231770777999'}})).status, 503, 'identical for unknown numbers');
+    assert.equal(forgot.status, 200); assert.equal(forgot.data.recovery, 'assisted');
+    const forgotUnknown = await req(new CookieJar(), '/api/v1/auth/forgot-password', {method: 'POST', body: {identifier: '+231770777999'}});
+    assert.deepEqual(forgotUnknown.data, forgot.data, 'identical for unknown numbers');
     assert.ok(!s.out().includes(secret));
   } finally {
     setBaseUrl(prevBase);
@@ -809,11 +810,11 @@ test('25. resend shows the newest message first and the old code stops working',
 test('26a. config: the in-website inbox is refused in production; APP_ENV=demo is a protected mode with mandatory protections', () => {
   const s = (n: number) => crypto.randomBytes(n).toString('hex');
   const prodBase = {NODE_ENV: 'production', OTP_HMAC_SECRET: s(32)} as NodeJS.ProcessEnv;
-  assert.throws(() => loadAuthConfig({...prodBase, SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1'}), AuthConfigError);
+  assert.throws(() => loadAuthConfig({...prodBase, AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1'}), AuthConfigError);
   assert.throws(() => loadAuthConfig({...prodBase, DEMO_INLINE_INBOX: '1'}), AuthConfigError);
   assert.equal(loadAuthConfig({NODE_ENV: 'production', OTP_HMAC_SECRET: s(32), APP_ENV: 'staging'} as NodeJS.ProcessEnv).production, true, 'only test and demo are exempt');
   assert.throws(() => loadAuthConfig({DEMO_INLINE_INBOX: '1'} as NodeJS.ProcessEnv), AuthConfigError, 'needs the simulated provider');
-  const good = {NODE_ENV: 'production', APP_ENV: 'demo', SMS_PROVIDER: 'simulated', DEMO_ENV_ACK: 'synthetic-accounts-only', OTP_HMAC_SECRET: s(32), SESSION_SECRET: s(32), DEMO_INLINE_INBOX: '1'} as NodeJS.ProcessEnv;
+  const good = {NODE_ENV: 'production', APP_ENV: 'demo', AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', DEMO_ENV_ACK: 'synthetic-accounts-only', OTP_HMAC_SECRET: s(32), SESSION_SECRET: s(32), DEMO_INLINE_INBOX: '1'} as NodeJS.ProcessEnv;
   const cfg = loadAuthConfig(good);
   assert.equal(cfg.demoEnvironment, true); assert.equal(cfg.production, false); assert.equal(cfg.demoInlineInbox, true); assert.equal(cfg.maxAttempts, 5); assert.equal(cfg.otpTtlMs, 300000);
   for (const drop of ['SMS_PROVIDER', 'DEMO_ENV_ACK', 'OTP_HMAC_SECRET', 'SESSION_SECRET']) {
@@ -826,9 +827,9 @@ test('26a. config: the in-website inbox is refused in production; APP_ENV=demo i
 });
 test('26b. a real APP_ENV=demo server: protections stay on, only synthetic numbers get messages, the inbox is private; production refuses the inbox', async () => {
   const s = (n: number) => crypto.randomBytes(n).toString('hex');
-  const demoEnv = {NODE_ENV: 'production', APP_ENV: 'demo', SMS_PROVIDER: 'simulated', DEMO_ENV_ACK: 'synthetic-accounts-only', OTP_HMAC_SECRET: s(32), SESSION_SECRET: s(32), DEMO_INLINE_INBOX: '1'};
+  const demoEnv = {NODE_ENV: 'production', APP_ENV: 'demo', AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', DEMO_ENV_ACK: 'synthetic-accounts-only', OTP_HMAC_SECRET: s(32), SESSION_SECRET: s(32), DEMO_INLINE_INBOX: '1'};
   // production without the demo flag refuses the inline inbox
-  const refused = await bootServer({NODE_ENV: 'production', OTP_HMAC_SECRET: s(32), SESSION_SECRET: s(32), SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1'});
+  const refused = await bootServer({NODE_ENV: 'production', OTP_HMAC_SECRET: s(32), SESSION_SECRET: s(32), AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1'});
   assert.notEqual(await Promise.race([refused.exited, new Promise<null>((r) => setTimeout(() => r(null), 15000))]), null);
   assert.match(refused.out(), /refused in production/); fs.rmSync(refused.dir, {recursive: true, force: true});
   // demo environment missing the acknowledgement refuses too

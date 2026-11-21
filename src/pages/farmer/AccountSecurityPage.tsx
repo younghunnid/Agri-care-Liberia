@@ -10,6 +10,7 @@ interface Security {
   devices: {count: number; currentTrusted: boolean};
   passwordPolicy: {minLength: number};
   recovery: {viaVerifiedPhone: boolean; operatorRecovery: boolean};
+  smsVerification?: boolean;
   demoMode: boolean;
   demoInbox?: boolean;
 }
@@ -83,15 +84,17 @@ export const AccountSecurityPage: React.FC = () => {
             <p className="text-lg font-bold text-[#183B2B]" data-testid="masked-phone">{sec.phone.masked}</p>
             {sec.phone.verified
               ? <p className="inline-flex items-center gap-1 text-sm font-bold text-[#0F5C2A]" data-testid="phone-status"><CheckCircle2 className="w-4 h-4" aria-hidden /> Verified: this number can receive codes and recover your account</p>
+              : sec.smsVerification === false
+                ? <p className="inline-flex items-start gap-1 text-sm font-bold text-amber-900" data-testid="phone-status"><TriangleAlert className="w-4 h-4 shrink-0 mt-0.5" aria-hidden /> Not verified. This site cannot verify phone numbers yet (no text messages are sent). You sign in with your phone number and password only, and your number is not proven to be yours.</p>
               : <p className="inline-flex items-start gap-1 text-sm font-bold text-amber-900" data-testid="phone-status"><TriangleAlert className="w-4 h-4 shrink-0 mt-0.5" aria-hidden /> Not verified yet. Until you verify it you cannot recover your account by SMS{sec.phone.claimExpiresAt ? '.' : '.'} Unverified numbers can be claimed by their real owner.</p>}
-            {!sec.phone.verified && sec.phone.onFile && !conf && <button type="button" onClick={startConfirm} disabled={busy || !isOnline} data-testid="confirm-start" className={`${btn} bg-[#16803C] text-white w-full`}>Send me a code to verify</button>}
+            {sec.smsVerification !== false && !sec.phone.verified && sec.phone.onFile && !conf && <button type="button" onClick={startConfirm} disabled={busy || !isOnline} data-testid="confirm-start" className={`${btn} bg-[#16803C] text-white w-full`}>Send me a code to verify</button>}
             {conf && <CodeEntry online={isOnline} busy={busy} expiresIn={conf.expiresInSeconds} resendAfter={conf.resendAfterSeconds} sentToken={confSent} error={confMsg?.kind === 'err' ? confMsg.text : null} demoInbox={conf.demoInbox ?? sec.demoInbox} submitLabel="Verify my number" onSubmit={verifyConfirm} onResend={startConfirm} />}
             {msg(confMsg?.kind === 'ok' ? confMsg : null, 'confirm-msg')}
           </section>
 
           <section aria-labelledby="dev-h" className="rounded-2xl bg-white border border-[#183B2B]/12 p-4 space-y-2">
             <h2 id="dev-h" className="text-xl font-extrabold text-[#183B2B]">Trusted phones and browsers</h2>
-            <p className="text-base text-[#183B2B]/85">{sec.devices.count} trusted {sec.devices.count === 1 ? 'device' : 'devices'}. A new phone or browser always needs a code.</p>
+            <p className="text-base text-[#183B2B]/85">{sec.devices.count} trusted {sec.devices.count === 1 ? 'device' : 'devices'}. {sec.smsVerification === false ? 'Signing in on a new phone or browser needs only your phone number and password, so keep your password private.' : 'A new phone or browser always needs a code.'}</p>
             <Link to="/account/devices" data-testid="devices-link" className="inline-flex items-center min-h-[52px] rounded-2xl border-2 border-[#16803C] px-5 text-base font-bold text-[#0F5C2A]">Review and remove devices</Link>
           </section>
 
@@ -106,6 +109,12 @@ export const AccountSecurityPage: React.FC = () => {
             </form>
           </section>
 
+          {sec.smsVerification === false ? (
+            <section aria-labelledby="chg-h" className="rounded-2xl bg-white border border-[#183B2B]/12 p-4 space-y-2" data-testid="phone-change-assisted">
+              <h2 id="chg-h" className="text-xl font-extrabold text-[#183B2B]">Change phone number</h2>
+              <p className="text-base text-[#183B2B]/85">Phone numbers cannot be changed here yet. Contact the Agricare Liberia team for verified assistance.</p>
+            </section>
+          ) : (
           <section aria-labelledby="chg-h" className="rounded-2xl bg-white border border-[#183B2B]/12 p-4 space-y-3">
             <h2 id="chg-h" className="text-xl font-extrabold text-[#183B2B]">Change phone number</h2>
             <p className="text-sm text-[#183B2B]/80">For safety this needs your password, a code sent to your current number, and a code sent to the new number. Nothing changes until both are correct.</p>
@@ -126,11 +135,12 @@ export const AccountSecurityPage: React.FC = () => {
             {msg(chMsg?.kind === 'ok' ? chMsg : null, 'ch-msg')}
             {stage === 'idle' && chMsg?.kind === 'err' && msg(chMsg, 'ch-err')}
           </section>
+          )}
 
           <section aria-labelledby="rec-h" className="rounded-2xl bg-[#F3F8F0] border border-[#16803C]/25 p-4 space-y-2">
             <h2 id="rec-h" className="text-xl font-extrabold text-[#183B2B]">Recovery options</h2>
             <ul className="list-disc pl-5 text-base text-[#183B2B]/90 space-y-1">
-              <li>{sec.recovery.viaVerifiedPhone ? 'Forgot your password? A code is sent to your verified phone.' : 'Verify your phone number above to be able to recover your password by SMS.'}</li>
+              <li>{sec.smsVerification === false ? 'Forgot your password? It cannot be reset by phone number alone. Contact the Agricare Liberia team for verified assistance.' : sec.recovery.viaVerifiedPhone ? 'Forgot your password? A code is sent to your verified phone.' : 'Verify your phone number above to be able to recover your password by SMS.'}</li>
               <li>Lost your SIM or number? Contact the project team or your extension office. They can move your account to a new number after checking who you are. All your phones are signed out when they do.</li>
             </ul>
           </section>

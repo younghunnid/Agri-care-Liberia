@@ -17,6 +17,8 @@ export interface AuthConfig {
   /** APP_ENV=demo: an explicitly acknowledged, protected hackathon demonstration server (NOT production). */
   demoEnvironment: boolean;
   smsProvider: 'none' | 'simulated';
+  /** AUTH_REQUIRE_SMS=1: sign-in from a new device, SMS password recovery and phone proof need an SMS code (needs an SMS provider). Default OFF: phone number + password only, numbers stay UNVERIFIED. */
+  requireSms: boolean;
   simulatedInbox: boolean;
   /** In-website "Demo SMS Inbox": a browser may read ONLY the simulated message of its own pending challenge. */
   demoInlineInbox: boolean;
@@ -69,6 +71,8 @@ export function loadAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig
   const smsProvider: 'none' | 'simulated' = providerRaw === 'simulated' ? 'simulated' : 'none';
   const simulatedInbox = flag(env.SIMULATED_INBOX, 'SIMULATED_INBOX', problems);
   const demoInlineInbox = flag(env.DEMO_INLINE_INBOX, 'DEMO_INLINE_INBOX', problems);
+  const requireSms = flag(env.AUTH_REQUIRE_SMS, 'AUTH_REQUIRE_SMS', problems);
+  if (requireSms && smsProvider === 'none') problems.push('AUTH_REQUIRE_SMS needs an SMS provider (SMS_PROVIDER); none is configured');
   const operatorRaw = (env.DEMO_OPERATOR_TOKEN ?? '').trim();
 
   if (production) {
@@ -104,7 +108,7 @@ export function loadAuthConfig(env: NodeJS.ProcessEnv = process.env): AuthConfig
 
   if (problems.length) throw new AuthConfigError(problems);
   return {
-    production, demoEnvironment, smsProvider, simulatedInbox, demoInlineInbox, operatorToken,
+    production, demoEnvironment, smsProvider, requireSms, simulatedInbox, demoInlineInbox, operatorToken,
     otpSecret: otpRaw || EPHEMERAL_OTP_SECRET,
     simulatedPrefix: prefix,
     trustedDeviceDays,

@@ -148,7 +148,7 @@ test('4. API errors are JSON: unknown paths 404, bad JSON 400, oversized body 41
     const big = await fetch(`${s.base}/api/v1/auth/login`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({x: 'a'.repeat(5 * 1024 * 1024)})});
     assert.equal(big.status, 413); assert.match(await big.text(), /PAYLOAD_TOO_LARGE/);
     const env = await (await fetch(`${s.base}/api/v1/environment`)).json() as Record<string, boolean>;
-    assert.deepEqual(env, {demoEnvironment: false, simulatedSms: false, syntheticAccountsOnly: false});
+    assert.deepEqual(env, {demoEnvironment: false, simulatedSms: false, phoneVerification: 'none', syntheticAccountsOnly: false});
   } finally { await s.stop(); }
 });
 
@@ -278,11 +278,11 @@ test('9. staging diagnostics exist only with STAGING_DIAG_TOKEN, require it, and
 
 test('10. the protected demo environment boots as a labelled, isolated demonstration server (synthetic accounts only)', async () => {
   const dir = tmp();
-  const env = {...goodEnv(dir), APP_ENV: 'demo', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only', ENABLE_DEMO_SEED: '1', DEMO_FARMER_PASSWORD: 'Private-Farmer-Pass-77', DEMO_EXPERT_PASSWORD: 'Private-Expert-Pass-88'};
+  const env = {...goodEnv(dir), APP_ENV: 'demo', AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only', ENABLE_DEMO_SEED: '1', DEMO_FARMER_PASSWORD: 'Private-Farmer-Pass-77', DEMO_EXPERT_PASSWORD: 'Private-Expert-Pass-88'};
   const s = await boot(env);
   try {
     const e = await (await fetch(`${s.base}/api/v1/environment`)).json() as Record<string, boolean>;
-    assert.deepEqual(e, {demoEnvironment: true, simulatedSms: true, syntheticAccountsOnly: true});
+    assert.deepEqual(e, {demoEnvironment: true, simulatedSms: true, phoneVerification: 'sms', syntheticAccountsOnly: true});
     const c = await fetch(`${s.base}/api/v1/csrf-token`);
     for (const x of cookiesOf(c)) assert.match(x, /SameSite=Lax/i);
     assert.equal((await fetch(`${s.base}/api/v1/dev/simulated-sms`, {headers: {'X-Demo-Operator-Token': 'x'.repeat(40)}})).status, 404, 'operator inbox off unless SIMULATED_INBOX is set');

@@ -24,7 +24,8 @@ export async function createApp() {
   assertSafeTestEnvironment(); // refuses APP_ENV=test on the default database BEFORE anything is opened
   const rt = getRuntimeConfig(); // fails fast on an unsafe deployment (secrets, database location, cookies, demo accounts)
   const authCfg = getAuthConfig(); // fails fast on unsafe SMS/OTP settings (e.g. the simulated provider in production)
-  if (authCfg.smsProvider === 'none') console.warn('[auth] SMS_PROVIDER=none: sign-in from a NEW device and SMS password recovery are unavailable (fail closed). Trusted devices still work.');
+  if (!authCfg.requireSms) console.warn('[auth] Phone number + password sign-in, NO SMS codes (AUTH_REQUIRE_SMS off). Phone numbers are stored as UNVERIFIED; password recovery needs verified assistance.');
+  else if (authCfg.smsProvider === 'none') console.warn('[auth] SMS_PROVIDER=none: sign-in from a NEW device and SMS password recovery are unavailable (fail closed). Trusted devices still work.');
   else console.warn(`[auth] SMS_PROVIDER=simulated: DEMO MODE${authCfg.demoEnvironment ? ' (APP_ENV=demo, protected hackathon environment)' : ''}. Verification messages are simulated and nothing is sent.${authCfg.demoInlineInbox ? ' The in-website Demo SMS Inbox is ON.' : ''}`);
   if (rt.strict) checkStorage(rt.dbPath); // production/demo: the database folder must be writable and persistent
   getDb();
@@ -85,7 +86,7 @@ export async function createApp() {
   // Which kind of server is this? (lets the interface label a demonstration environment). No secrets, no account data.
   app.get('/api/v1/environment', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    res.json({demoEnvironment: rt.demoEnvironment, simulatedSms: authCfg.smsProvider === 'simulated', syntheticAccountsOnly: rt.demoEnvironment});
+    res.json({demoEnvironment: rt.demoEnvironment, simulatedSms: authCfg.requireSms && authCfg.smsProvider === 'simulated', phoneVerification: authCfg.requireSms ? 'sms' : 'none', syntheticAccountsOnly: rt.demoEnvironment});
   });
 
   // Staging diagnostics: exist ONLY when STAGING_DIAG_TOKEN is set (remove it after the staging tests).

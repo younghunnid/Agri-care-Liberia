@@ -48,7 +48,7 @@ async function boot(envIn: Record<string, string | undefined>, opts: {entry?: st
   }
 }
 const demoEnv = (extra: Record<string, string | undefined> = {}): Record<string, string | undefined> => ({
-  NODE_ENV: 'production', APP_ENV: 'demo', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only',
+  NODE_ENV: 'production', APP_ENV: 'demo', AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only',
   SESSION_SECRET: rand(), OTP_HMAC_SECRET: rand(), ENABLE_DEMO_SEED: '1', DEMO_FARMER_PASSWORD: FARMER_PW, DEMO_EXPERT_PASSWORD: EXPERT_PW, TRUST_PROXY: '0', ...extra,
 });
 const prodEnv = (extra: Record<string, string | undefined> = {}): Record<string, string | undefined> => ({NODE_ENV: 'production', SESSION_SECRET: rand(), OTP_HMAC_SECRET: rand(), TRUST_PROXY: '0', ...extra});

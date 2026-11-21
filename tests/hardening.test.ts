@@ -129,7 +129,7 @@ test('4. production protections are intact: demo data and unsafe publication set
   assert.throws(() => loadRuntimeConfig({...base, INSIGHTS_MIN_CHANGE: '0'}, '/srv/app'), /whole number/); assert.throws(() => loadRuntimeConfig({...base, INSIGHTS_MIN_CHANGE: 'x'}, '/srv/app'), /whole number/);
   assert.equal(loadRuntimeConfig(base, '/srv/app').insightsMinChange, 3, 'default: batches of 3'); assert.equal(loadRuntimeConfig({...base, INSIGHTS_MIN_CHANGE: '5'}, '/srv/app').insightsMinChange, 5);
   assert.equal(loadRuntimeConfig({INSIGHTS_MIN_CHANGE: '1'} as NodeJS.ProcessEnv, '/srv/app').insightsMinChange, 1, 'allowed only outside production and the demo environment');
-  const demoEnv = {...base, NODE_ENV: 'production', APP_ENV: 'demo', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only'} as NodeJS.ProcessEnv;
+  const demoEnv = {...base, NODE_ENV: 'production', APP_ENV: 'demo', AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only'} as NodeJS.ProcessEnv;
   assert.throws(() => loadRuntimeConfig({...demoEnv, INSIGHTS_MIN_CHANGE: '2'}, '/srv/app'), /INSIGHTS_MIN_CHANGE below 3/);
   const route = fs.readFileSync(path.join(root, 'server/routes/harvest.ts'), 'utf8'); const i = route.indexOf("harvestRouter.post('/admin/demo/market-data'");
   assert.ok(i > 0 && route.indexOf('getRuntimeConfig().production', i) > i && route.indexOf('getRuntimeConfig().production', i) < route.indexOf('seedDemoMarketData(getDb()', i), 'the production check comes before any seeding'); assert.match(route.slice(i, i + 900), /requireRole\('admin'\)/);

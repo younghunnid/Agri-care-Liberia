@@ -25,6 +25,13 @@ export const ForgotPasswordPage: React.FC = () => {
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [show, setShow] = useState(false);
+  // 'none' = this site sends no verification messages (phone number + password only): recovery needs verified assistance.
+  const [phoneVerification, setPhoneVerification] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch('/api/v1/environment').then((r) => (r.ok ? r.json() : null)).then((j: {phoneVerification?: string} | null) => { if (live && j?.phoneVerification) setPhoneVerification(j.phoneVerification); }).catch(() => undefined);
+    return () => { live = false; };
+  }, []);
 
   // Come back to the right screen after a reload (the challenge lives in an HttpOnly cookie, not in this page).
   const restore = useCallback(async () => {
@@ -60,6 +67,19 @@ export const ForgotPasswordPage: React.FC = () => {
     await apiFetch('/auth/reset-password', {method: 'POST', body: JSON.stringify({newPassword: pw})});
     setPw(''); setPw2(''); setUser(null); setStep('done');
   }); };
+
+  if (phoneVerification === 'none') {
+    return (
+      <div className="max-w-md mx-auto px-4 sm:px-6 py-10 space-y-5" data-testid="forgot-page" data-step="assisted">
+        <div className="rounded-3xl bg-white border border-[#183B2B]/10 p-6 sm:p-8 space-y-4 shadow-xs">
+          <h1 className="font-display text-2xl font-extrabold text-[#183B2B]">Forgot your password?</h1>
+          <p className="text-base text-[#183B2B]" data-testid="assisted-recovery">Your password cannot be reset by entering a phone number. This site does not send text messages, and your phone number has not been verified, so we cannot tell that a request really comes from you.</p>
+          <p className="text-base text-[#183B2B]">To recover your account, contact the Agricare Liberia team for verified assistance. They will confirm who you are before helping. Until then, try the password again, or register a new account with a different number.</p>
+          <Link to="/login" className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-[#16803C] px-5 text-base font-extrabold text-white">Back to sign in</Link>
+        </div>
+      </div>
+    );
+  }
 
   const step1 = step === 'identify' ? 1 : step === 'code' ? 2 : step === 'password' ? 3 : 4;
   return (

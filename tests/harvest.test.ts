@@ -351,7 +351,7 @@ test('11. defaults on real servers: Phase 0 limits and the synthetic-only phone 
     assert.equal(agg.filter((s) => s === 200).length, 120); assert.equal(agg[121], 429);
   } finally { p.proc.kill(); }
   // protected demo environment: only synthetic numbers for sellers and buyers (Phase 0 policy), and the demo data can be loaded
-  const d = await mk({NODE_ENV: 'production', APP_ENV: 'demo', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only', ENABLE_DEMO_MARKET_DATA: '1', PUBLIC_WRITE_LIMIT_SCALE: '100'});
+  const d = await mk({NODE_ENV: 'production', APP_ENV: 'demo', AUTH_REQUIRE_SMS: '1', SMS_PROVIDER: 'simulated', DEMO_INLINE_INBOX: '1', DEMO_ENV_ACK: 'synthetic-accounts-only', ENABLE_DEMO_MARKET_DATA: '1', PUBLIC_WRITE_LIMIT_SCALE: '100'});
   try {
     const jar = {c: ''};
     const synth = await call(d.base, jar, 'GET', '/api/v1/insights/aggregates'); assert.equal(synth.j.containsSyntheticRecords, true, 'ENABLE_DEMO_MARKET_DATA loaded the synthetic data at start-up');

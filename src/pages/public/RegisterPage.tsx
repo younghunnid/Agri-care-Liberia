@@ -1,5 +1,5 @@
 import {BrandLogo} from '../../components/BrandLogo';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {Link, useNavigate} from 'react-router-dom';
 import {UserPlus} from 'lucide-react';
 import {apiFetch} from '../../lib/api';
@@ -20,6 +20,8 @@ export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
+  const [noSms, setNoSms] = useState(false); // this site sends no verification messages
+  useEffect(() => { let live = true; fetch('/api/v1/environment').then((r) => (r.ok ? r.json() : null)).then((j: {phoneVerification?: string} | null) => { if (live && j?.phoneVerification === 'none') setNoSms(true); }).catch(() => undefined); return () => { live = false; }; }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [county, setCounty] = useState('Montserrado');
@@ -123,6 +125,7 @@ export const RegisterPage: React.FC = () => {
                 className="w-full min-h-[44px] rounded-xl border border-[#183B2B]/20 px-3.5 text-sm"
               />
               <p className="text-xs text-[#183B2B]/65 mt-1">Liberian format: 077 012 3456 or +231 77 012 3456</p>
+              {noSms && <p className="text-xs text-[#183B2B]/65 mt-1" data-testid="reg-phone-note">You sign in with this number and your password. No text message is sent and the number is not verified. Choose a password only you know: if you forget it, recovery needs help from the Agricare Liberia team.</p>}
             </div>
             <div>
               <label htmlFor="reg-email" className="block text-sm font-semibold mb-1.5">
