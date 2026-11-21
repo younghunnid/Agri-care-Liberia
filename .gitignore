@@ -16,4 +16,5 @@ dist/
 /restore-db.js
 /bootstrap-admin.js
 /recover-account.js
+/real-mode-prep.js
 /dist-test/

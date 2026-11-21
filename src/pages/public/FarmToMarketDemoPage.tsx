@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import {useEnvironment} from '../../lib/useEnvironment';
 import {Link} from 'react-router-dom';
 import {apiFetch} from '../../lib/api';
 import {useApp} from '../../context/AppContext';
@@ -28,6 +29,7 @@ export const FARM_TO_MARKET_STEPS: Step[] = [
 ];
 
 export const FarmToMarketDemoPage: React.FC = () => {
+  const serverEnv = useEnvironment();
   const {user} = useApp();
   const [msg, setMsg] = useState<string | null>(null);
   const isAdmin = Boolean(user?.roles?.includes('admin'));
@@ -49,7 +51,7 @@ export const FarmToMarketDemoPage: React.FC = () => {
       <section className="rounded-2xl bg-white border border-[#183B2B]/10 p-4 space-y-2" aria-labelledby="prep-h">
         <h2 id="prep-h" className="text-xl font-extrabold text-[#183B2B]">Before you start</h2>
         <ul className="list-disc pl-6 space-y-1 text-base text-[#183B2B]">
-          <li>Use the demonstration site with synthetic accounts and numbers only (+23177000xxxx). Please do not enter real personal information.</li>
+          <li>{serverEnv?.demoEnvironment !== false ? 'Use the demonstration site with synthetic accounts and numbers only (+23177000xxxx). Please do not enter real personal information.' : 'This walkthrough shows how selling and buying work. It is a simulation of a possible dial-code service: the code is not an active telecom service. Your own account is used if you sign in.'}</li>
           <li>For a fuller Ministry view the operator loads the synthetic background data (start the server with <code>ENABLE_DEMO_MARKET_DATA=1</code>, or sign in as an administrator and press the button below). Restarting never erases the questions, replies or status changes made while presenting; only the separate, confirmed reset does.</li>
           <li>Use two browsers or two profiles to play the farmer and the buyer: each keeps its own private device key.</li>
         </ul>

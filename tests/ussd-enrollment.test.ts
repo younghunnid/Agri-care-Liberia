@@ -34,7 +34,7 @@ test('upgrading an existing SQLite schema preserves user records, roles and prof
   try {
     db.exec('PRAGMA foreign_keys = ON');
     const directory = new URL('../server/migrations/', import.meta.url);
-    for (const file of fs.readdirSync(directory).filter((f) => f.endsWith('.sql') && f !== '20261121_ussd_440_participant_registry.sql').sort()) {
+    for (const file of fs.readdirSync(directory).filter((f) => f.endsWith('.sql') && !f.startsWith('2026')).sort()) {
       db.exec(fs.readFileSync(new URL(file, directory), 'utf8'));
       db.prepare('INSERT INTO schema_migrations (version) VALUES (?)').run(file);
     }
@@ -46,7 +46,7 @@ test('upgrading an existing SQLite schema preserves user records, roles and prof
     const original = snapshot();
     // Filename versions are independent of a concurrently reserved sequential auth slot.
     db.prepare('INSERT INTO schema_migrations (version) VALUES (?)').run('012_auth_numbering_fixture.sql');
-    assert.deepEqual(runMigrations(db), ['20261121_ussd_440_participant_registry.sql']);
+    assert.deepEqual(runMigrations(db), ['20261121_ussd_440_participant_registry.sql', '20261122_participant_registry_classes.sql']);
     assert.deepEqual(snapshot(), original);
     assert.deepEqual(runMigrations(db), [], 'migration is applied once');
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
@@ -56,8 +56,8 @@ test('upgrading an existing SQLite schema preserves user records, roles and prof
       db.prepare("INSERT INTO participant_consents (participant_id, consent_version, consent_text, identity_kind) VALUES (?, ?, 'Fabricated QA consent', 'device')").run(participant, REGISTRY_CONSENT_VERSION);
     }
     const aggregate = registryAggregates(db);
-    assert.equal(aggregate.real.total, 3); assert.equal(aggregate.synthetic.total, 3);
-    assert.deepEqual(aggregate.real.categories.rows, [{label: 'Farmer', participants: 3}]);
+    assert.equal(aggregate.anonymous.total, 3, 'device-only non-synthetic participants are reported as ANONYMOUS browser participants'); assert.equal(aggregate.real.total, null, 'and are never counted as genuine account participants'); assert.equal(aggregate.synthetic.total, 3);
+    assert.deepEqual(aggregate.anonymous.categories.rows, [{label: 'Farmer', participants: 3}]);
     assert.deepEqual(aggregate.synthetic.categories.rows, [{label: 'Buyer', participants: 3}]);
   } finally { db.close(); }
 });
@@ -154,7 +154,7 @@ test('Ministry registry API is admin-only, suppresses small groups and persists 
   const admin = await account(['admin']);
   const first = await req(admin.jar, '/api/v1/ministry/participants?county=Bong&category=Farmer'); assert.equal(first.status, 200);
   assert.equal(first.data.minGroup, 3); assert.equal(first.data.real.total, null);
-  const visible = JSON.stringify(first.data); assert.ok(!/requester_hash|user_id|phone|participant_id|\+231/.test(visible));
+  const visible = JSON.stringify(first.data); assert.ok(!/requester_hash|user_id|participant_id|\+231|"phoneNumber"|"msisdn"/.test(visible), 'no identifiers or phone numbers in the aggregate (only suppressed phone-STATUS totals)');
   assert.ok(first.data.synthetic.total === null || first.data.synthetic.total % 3 === 0);
   await enroll(key(), new CookieJar(), {category: 'Cooperative', county: 'Nimba'});
   closeDb();

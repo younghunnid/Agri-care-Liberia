@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {useEnvironment} from '../../lib/useEnvironment';
 import {Link} from 'react-router-dom';
 import {Wifi, WifiOff} from 'lucide-react';
 import {LIBERIA_COUNTIES} from '../../../server/constants';
@@ -18,6 +19,7 @@ interface Convo {id: number; buyerName: string; buyerCounty: string; buyerPhone:
 
 /** Farmer: list a harvest (crop, kilograms, price per kg, county, harvest date). Saved on the phone first and sent when online; the SELL reference is issued by the server after the first successful send. */
 export const SellHarvestPage: React.FC = () => {
+  const serverEnv = useEnvironment();
   const {isOnline, user} = useApp();
   useSyncState(); // re-render when records or the queue change
   const [crop, setCrop] = useState('cassava');
@@ -130,7 +132,7 @@ export const SellHarvestPage: React.FC = () => {
           <label className="flex items-start gap-3 cursor-pointer"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="w-6 h-6 mt-0.5 accent-[#16803C]" data-testid="h-consent" />
             <span className="text-base text-[#183B2B]">Show my phone number to buyers. If this is empty, buyers can only send you a question and your number stays private.</span></label>
           {consent && <div><label htmlFor="h-phone" className="block text-base font-bold text-[#183B2B] mb-1">Phone number</label><input id="h-phone" {...invalid('h-phone')} required inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={field} data-testid="h-phone" />
-            <p className="text-sm text-[#183B2B]/75 mt-1">On the demonstration site only synthetic test numbers beginning +23177000 are allowed.</p></div>}
+            <p className="text-sm text-[#183B2B]/75 mt-1">{serverEnv?.demoEnvironment ? 'On the demonstration site only synthetic test numbers beginning +23177000 are allowed.' : 'Your number is shown to buyers only because you ticked the box above. It is not verified: this site cannot check that a number belongs to its owner.'}</p></div>}
         </fieldset>
         <button type="submit" disabled={saving} aria-busy={saving} className="w-full disabled:opacity-60 min-h-[56px] rounded-2xl bg-[#16803C] text-white text-lg font-extrabold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#16803C]" data-testid="h-submit">{saving ? 'Saving on this phone…' : 'Save my listing'}</button>
       </form>

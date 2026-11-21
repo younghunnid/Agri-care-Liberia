@@ -148,7 +148,7 @@ test('4. API errors are JSON: unknown paths 404, bad JSON 400, oversized body 41
     const big = await fetch(`${s.base}/api/v1/auth/login`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({x: 'a'.repeat(5 * 1024 * 1024)})});
     assert.equal(big.status, 413); assert.match(await big.text(), /PAYLOAD_TOO_LARGE/);
     const env = await (await fetch(`${s.base}/api/v1/environment`)).json() as Record<string, boolean>;
-    assert.deepEqual(env, {demoEnvironment: false, simulatedSms: false, phoneVerification: 'none', syntheticAccountsOnly: false});
+    assert.deepEqual(env, {demoEnvironment: false, simulatedSms: false, phoneVerification: 'none', registryMode: 'real', syntheticAccountsOnly: false});
   } finally { await s.stop(); }
 });
 
@@ -282,7 +282,7 @@ test('10. the protected demo environment boots as a labelled, isolated demonstra
   const s = await boot(env);
   try {
     const e = await (await fetch(`${s.base}/api/v1/environment`)).json() as Record<string, boolean>;
-    assert.deepEqual(e, {demoEnvironment: true, simulatedSms: true, phoneVerification: 'sms', syntheticAccountsOnly: true});
+    assert.deepEqual(e, {demoEnvironment: true, simulatedSms: true, phoneVerification: 'sms', registryMode: 'synthetic', syntheticAccountsOnly: true});
     const c = await fetch(`${s.base}/api/v1/csrf-token`);
     for (const x of cookiesOf(c)) assert.match(x, /SameSite=Lax/i);
     assert.equal((await fetch(`${s.base}/api/v1/dev/simulated-sms`, {headers: {'X-Demo-Operator-Token': 'x'.repeat(40)}})).status, 404, 'operator inbox off unless SIMULATED_INBOX is set');

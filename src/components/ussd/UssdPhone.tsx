@@ -9,6 +9,8 @@ import {DEFAULT_TIMEOUT_S, DEMO_LABEL, finishMarket, newSession, press, tick, vi
 import {enrollmentText} from '../../lib/ussd/enrollment';
 import {useEnrollment} from '../../lib/ussd/useEnrollment';
 import {createScreenSpeaker} from '../../lib/ussd/screenVoice';
+import {UssdAccountForm} from './UssdAccountForm';
+import {useEnvironment} from '../../lib/useEnvironment';
 
 const DIGITS: Key[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
 const SPOKEN: Record<string, string> = {'*': 'Star', '#': 'Hash'};
@@ -20,7 +22,11 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
   const {isOnline, user, loadingAuth} = useApp();
   const onlineRef = useRef(isOnline); onlineRef.current = isOnline;
   const service = useRef<ReturnType<typeof createBrowserUssdMarket> | null>(null);
-  if (!service.current) service.current = createBrowserUssdMarket(() => onlineRef.current);
+  const userRef = useRef(user); userRef.current = user;
+  const account = useCallback(() => (userRef.current ? {id: userRef.current.id, displayName: userRef.current.displayName} : null), []);
+  if (!service.current) service.current = createBrowserUssdMarket(() => onlineRef.current, account);
+  // Which kind of server is this? 'real' = a real-user deployment (accounts only). null while unknown.
+  const serverEnv = useEnvironment(); const realMode = serverEnv === null ? null : serverEnv.registryMode === 'real';
   const sync = useSyncState();
   const [session, setSession] = useState<Session>(() => newSession());
   const sessionRef = useRef(session);
@@ -30,6 +36,7 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
   const [working, setWorking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceNotice, setVoiceNotice] = useState('');
+  const [voiceInfo, setVoiceInfo] = useState('');
   const spokenScreenRef = useRef('');
   const lastRead = useRef<string | null>(null);
   const speaker = useRef<ReturnType<typeof createScreenSpeaker> | null>(null);
@@ -47,7 +54,7 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
     const next = press({...sessionRef.current, status: 'idle', pending: null, input: ''}, 'send', envRef.current, Date.now());
     sessionRef.current = next; setSession(next);
   }, []);
-  const enrollment = useEnrollment({userId: user?.id ?? null, loadingAuth, online: isOnline, timeoutSeconds, open: openMenu, voice});
+  const enrollment = useEnrollment({userId: user?.id ?? null, loadingAuth, real: realMode, online: isOnline, timeoutSeconds, open: openMenu, voice});
   const mounted = useRef(true);
   const started = useRef(new Set<string>());
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -58,7 +65,7 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
     if (mounted.current && service.current === source) { setMarketplace(data); setRefreshing(false); }
   }, []);
   useEffect(() => {
-    service.current = createBrowserUssdMarket(() => onlineRef.current);
+    service.current = createBrowserUssdMarket(() => onlineRef.current, account);
     setMarketplace({...EMPTY_MARKETPLACE, loading: true});
     setWorking(false); started.current.clear();
     const empty = newSession(); sessionRef.current = empty; setSession(empty);
@@ -160,17 +167,26 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
         </div>
         <p className="text-sm text-center text-[#E8EDF3]" data-testid="ussd-session">{active ? `Session ${session.no} is open.` : session.status === 'ended' ? `Session ${session.no} ended.` : 'No session yet.'} {!active && <button type="button" onClick={() => send('send')} className={`inline-flex items-center gap-1 min-h-[44px] font-bold underline ${FOCUS}`}><RotateCcw className="w-4 h-4" aria-hidden /> Start a session</button>}</p>
       </div>
+      {enrollment.state.stage === 'form' && enrollment.state.formMode && <UssdAccountForm mode={enrollment.state.formMode} county={enrollment.state.county} onBack={() => enrollment.handle('back')} />}
       <div className="mt-4 space-y-3 text-[#183B2B]" data-testid="ussd-info">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Screen reading controls">
           <button type="button" className="agri-button-secondary" aria-pressed={voiceEnabled} onClick={() => voice(!voiceEnabled)} data-testid="ussd-voice-toggle">Voice {voiceEnabled ? 'on' : 'off'}</button>
           <button type="button" className="agri-button-secondary" onClick={() => speaker.current!.read(spokenScreen)} data-testid="ussd-voice-repeat">Repeat screen</button>
+          <button type="button" className="agri-button-secondary" data-testid="ussd-voice-test" onClick={() => {
+            // Real-device check (for example iPhone Safari): speech starts only after a tap, needs the ring switch off silent and the volume up.
+            const synth = typeof window !== 'undefined' ? window.speechSynthesis : undefined;
+            const voices = synth?.getVoices?.().length ?? 0;
+            setVoiceInfo(synth ? `Voice check: speech is available on this device (${voices} voice${voices === 1 ? '' : 's'} listed). If you hear nothing, raise the volume and turn off silent mode.` : 'Voice check: this browser has no speech support. The screen text stays visible.');
+            speaker.current!.read('Agricare voice test. If you can hear this sentence, screen reading works on this device.');
+          }}>Test voice on this device</button>
         </div>
         <p className="text-sm">Hold 0 for about 1.5 seconds to mute. A short press still enters 0. Browser speech may need an installed voice; no telecom voice service is connected.</p>
         {voiceNotice && <p role="status" data-testid="ussd-voice-notice">{voiceNotice}</p>}
+        {voiceInfo && <p role="status" className="text-sm" data-testid="ussd-voice-info">{voiceInfo}</p>}
         {!inMenu && <button type="button" className="agri-button-secondary" onClick={enrollment.publicAdvice} data-testid="ussd-public-advice">Browse public advice without registering</button>}
-        {inMenu && <p data-testid="ussd-identity">{authorized ? `${enrollment.state.participant!.synthetic ? 'Synthetic' : 'Registered'} ${enrollment.state.participant!.category} · ${enrollment.state.participant!.county}. ${isOnline ? 'Identified by your browser key or signed-in account.' : 'Saved device registration; offline copy.'}` : 'Public advice only. No personalized registry information or marketplace submissions.'} <button type="button" className="min-h-[44px] underline" onClick={enrollment.restart}>Dial again</button></p>}
+        {inMenu && <p data-testid="ussd-identity">{authorized ? `${enrollment.state.participant!.synthetic ? 'Synthetic' : 'Registered'} ${enrollment.state.participant!.category} · ${enrollment.state.participant!.county}. ${isOnline ? (enrollment.state.real ? 'Identified by your signed-in account. Your phone number is not verified.' : 'Identified by your browser key or signed-in account.') : 'Saved device registration; offline copy.'}` : 'Public advice only. No personalized registry information or marketplace submissions.'} <button type="button" className="min-h-[44px] underline" onClick={enrollment.restart}>Dial again</button></p>}
         <p className="text-sm font-bold" data-testid="ussd-net-note">{netText}</p>
-        <p className={`text-sm rounded-xl border p-3 ${authorized && marketplace.allowed ? 'bg-[#DDEFE0] border-[#16803C]/40' : 'bg-amber-50 border-amber-300'}`} data-testid="ussd-write-status">{authorized && marketplace.allowed ? 'Interactive synthetic demo enabled. Nothing is saved or sent until you read the details and confirm. Uses this browser’s existing device keys/account; no phone number identity.' : !authorized ? 'Register or identify your demo participation before personal marketplace actions. Public advice and selling practice remain available.' : marketplace.reason || 'Checking whether this is a protected synthetic demo server. Submissions stay disabled until confirmed.'}</p>
+        <p className={`text-sm rounded-xl border p-3 ${authorized && marketplace.allowed ? 'bg-[#DDEFE0] border-[#16803C]/40' : 'bg-amber-50 border-amber-300'}`} data-testid="ussd-write-status">{authorized && marketplace.allowed ? (marketplace.mode === 'real' ? 'Interactive marketplace enabled for your account. Nothing is saved or sent until you read the details and confirm. Your phone number is not shared and is not verified. This handset is a simulation: The proposed dial code is not an active telecom service.' : 'Interactive synthetic demo enabled. Nothing is saved or sent until you read the details and confirm. Uses this browser’s existing device keys/account; no phone number identity.') : !authorized ? (enrollment.state.real ? 'Register with your account before personal marketplace actions. Public advice and selling practice remain available.' : 'Register or identify your demo participation before personal marketplace actions. Public advice and selling practice remain available.') : marketplace.reason || 'Checking whether this is a protected synthetic demo server. Submissions stay disabled until confirmed.'}</p>
         <button type="button" onClick={() => void refresh()} disabled={refreshing || working} className="agri-button-secondary" data-testid="market-refresh"><RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />{refreshing ? 'Refreshing demo market…' : 'Refresh market & inquiries'}</button>
         {marketplace.error && <p role="alert" className="text-base font-bold text-[#7A1010]" data-testid="market-error">{marketplace.error}</p>}
         {screen.appLink && <Link to={screen.appLink.to} className="agri-button-secondary" data-testid="ussd-applink">{screen.appLink.label}</Link>}

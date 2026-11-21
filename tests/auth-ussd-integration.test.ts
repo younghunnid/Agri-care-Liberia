@@ -47,7 +47,7 @@ test('1. the combined server runs password-only sign-in (no SMS) with *440# enro
   assert.equal(env.demoEnvironment, true); assert.equal(env.phoneVerification, 'none'); assert.equal(env.simulatedSms, false);
   const mig = db().prepare("SELECT version FROM schema_migrations ORDER BY version").all() as {version: string}[];
   assert.ok(mig.some((m) => m.version === '011_demo_seed_keys.sql') && mig.some((m) => m.version === '20261121_ussd_440_participant_registry.sql'), 'both migration lines applied');
-  assert.equal(mig[mig.length - 1].version, '20261121_ussd_440_participant_registry.sql');
+  assert.equal(mig[mig.length - 1].version, '20261122_participant_registry_classes.sql');
 });
 
 test('2. device enrollment, then website registration and sign-in: one identity, linked once, never duplicated', async () => {

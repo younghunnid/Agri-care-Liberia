@@ -6,7 +6,8 @@ import {harvestClient} from '../triageApp';
 import {createUssdMarketClient} from './marketClient';
 
 /** All writes follow the same API/queue path as the existing harvest workspace. */
-export const createBrowserUssdMarket = (online: () => boolean) => createUssdMarketClient({
+export const createBrowserUssdMarket = (online: () => boolean, account?: () => {id: number; displayName: string} | null) => createUssdMarketClient({
+  account,
   enabled: import.meta.env?.VITE_USSD_MARKETPLACE_ENABLED === 'true', online,
   uuid: () => crypto.randomUUID(),
   get: (path, headers) => apiFetch(path, {headers}),

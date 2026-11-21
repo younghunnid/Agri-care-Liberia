@@ -1,7 +1,7 @@
 import {LIBERIA_COUNTIES} from '../../../server/constants';
 import {cardSeedBySlug} from '../../data/adviceCardsSeed';
 import {BAND_INFO, CROP_LABELS, TRIAGE_CASES, caseById, type TriageCrop} from '../../data/triageCases';
-import {DEMO_TOWNS, EMPTY_MARKETPLACE, INQUIRY_MESSAGES, type MarketAction, type MarketCommand, type MarketResult, type MarketplaceEnv, type OwnDemoListing} from './marketTypes';
+import {DEMO_TOWNS, EMPTY_MARKETPLACE, INQUIRY_MESSAGES, REAL_INQUIRY_MESSAGES, REAL_TOWNS, type MarketAction, type MarketCommand, type MarketResult, type MarketplaceEnv, type OwnDemoListing} from './marketTypes';
 import {HARVEST_CROPS, cropBySlug, HARVEST_LIMITS} from '../../data/harvestCrops';
 import {GUIDANCE_CROPS, MONTH_NAMES, periodText, plantingEntry, plantingSentence, plantingStatus, storageGuide, cropEntry, type GuidanceItem} from '../../data/farmGuidance';
 import {LANGUAGE_OPTIONS} from '../i18n';
@@ -122,7 +122,26 @@ const kgOk = (s: string): number | null => { const n = /^\d{1,8}$/.test(s) ? Num
 const priceOk = (s: string): number | null => { const n = /^\d{1,8}$/.test(s) ? Number(s) : NaN; return Number.isInteger(n) && n >= 1 && n <= 50_000_000 ? n : null; };
 const cropMenu = (frame: Frame, head: string, to: (slug: string) => Frame): Built => menuBuilt(frame, head, GUIDANCE_CROPS.map((c) => ({label: c.name, to: to(c.slug)})));
 
+/** Real-user deployment, signed-in account: the interactive marketplace screens speak of real listings and the member's own name, not "demo" or "synthetic". */
+const realMarket = (env: UssdEnv): boolean => (env.marketplace ?? EMPTY_MARKETPLACE).mode === 'real';
+const capital = (t: string): string => t.charAt(0).toUpperCase() + t.slice(1);
+function realWording(text: string, who: string): string {
+  return capital(text
+    .replace(/Synthetic USSD (Farmer|Buyer)/g, who)
+    .replace(/Synthetic produce only\. No payments\./g, 'Posted by Agricare members. No payments.')
+    .replace(/Synthetic town/g, 'Town')
+    .replace(/\(demo\)/gi, '')
+    .replace(/\bdemo (?=listing|inquir|harvest|sale|produce|server|submission|question)/gi, '')
+    .replace(/Demo submissions disabled\./g, 'Submissions are not available now.')
+    .replace(/ {2,}/g, ' ').replace(/ \./g, '.').trim());
+}
 function build(frame: Frame, env: UssdEnv): Built {
+  const built = buildBase(frame, env);
+  if (!realMarket(env) || !frame.id.startsWith('trade.') && frame.id !== 'market.menu') return built;
+  const who = ((env.marketplace ?? EMPTY_MARKETPLACE).identityName ?? 'Agricare member').slice(0, 40);
+  return {...built, head: built.head === null ? null : realWording(built.head, who), lines: built.lines.map((l) => realWording(l, who)), foot: built.foot.map((l) => realWording(l, who))};
+}
+function buildBase(frame: Frame, env: UssdEnv): Built {
   const p = frame.p; const slug = p.slug ?? ''; const name = cName(slug); const crop = cropEntry(slug);
   switch (frame.id) {
     case 'main': return menuBuilt(frame, MAIN_TITLE, [F('plant.crop'), F('pest.menu'), F('market.menu'), F('store.crop'), F('expert.menu'), F('lang.menu'), F('help.menu'), F('market.legacy')].map((to, i) => ({label: MAIN_ITEMS[i], to})), {nav: false});
@@ -198,7 +217,7 @@ function build(frame: Frame, env: UssdEnv): Built {
     }
     case 'trade.buy.question': return menuBuilt(frame, 'Ask seller (demo)', ['Still available?', 'Collection time?', 'Discuss price?'].map((label, i) => ({label, to: F('trade.buy.confirm', {...p, question: String(i)})})));
     case 'trade.buy.confirm': {
-      const m = env.marketplace ?? EMPTY_MARKETPLACE; const l = m.listings.find((x) => String(x.id) === p.id); const message = INQUIRY_MESSAGES[Number(p.question)];
+      const m = env.marketplace ?? EMPTY_MARKETPLACE; const l = m.listings.find((x) => String(x.id) === p.id); const message = (realMarket(env) ? REAL_INQUIRY_MESSAGES : INQUIRY_MESSAGES)[Number(p.question)];
       if (!l || !message) return textBuilt(frame, 'Cannot send', ['The demo listing is no longer available. Nothing was sent. Go Back and refresh.']);
       return reviewBuilt(frame, 'Confirm inquiry', [`To listing ${l.code ?? 'without a server reference'}.`, message, `Name: Synthetic USSD Buyer. County: ${p.county}.`, 'Uses your existing browser key/account. No phone number shared.', 'This sends a real browser inquiry to the demo server. It is not an order or payment.'], 'Send demo inquiry', () => !m.allowed ? err('Demo submissions disabled.') : !env.online ? err('Offline. Nothing was sent.') : m.source !== 'server' ? err('Refresh the live list first.') : {command: {kind: 'inquiry', listingId: l.id, county: p.county, message}});
     }
@@ -207,7 +226,7 @@ function build(frame: Frame, env: UssdEnv): Built {
       handle: (i) => kgOk(i) === null ? err('Not a valid number of kg.') : {push: F('trade.sell.price', {...p, kg: String(kgOk(i))})}};
     case 'trade.sell.price': return {head: 'Sell: L$ per kg', lines: ['Whole LRD per kilogram: 1 to 50,000,000.'], foot: [NAV], kind: 'CON', expects: 'number', maxInput: 8,
       handle: (i) => priceOk(i) === null ? err('Not a valid price.') : {push: F('trade.sell.county', {...p, price: String(priceOk(i))})}};
-    case 'trade.sell.county': return menuBuilt(frame, 'Sell: county', LIBERIA_COUNTIES.map((county) => ({label: county, to: F('trade.sell.town', {...p, county})})));
+    case 'trade.sell.county': return menuBuilt(frame, 'Sell: county', LIBERIA_COUNTIES.map((county) => ({label: county, to: realMarket(env) ? F('trade.sell.confirm', {...p, county, town: REAL_TOWNS[county], date: env.now.toISOString().slice(0, 10)}) : F('trade.sell.town', {...p, county})})));
     case 'trade.sell.town': return menuBuilt(frame, 'Synthetic town', DEMO_TOWNS.map((town) => ({label: town, to: F('trade.sell.confirm', {...p, town, date: env.now.toISOString().slice(0, 10)})})));
     case 'trade.sell.confirm': {
       const m = env.marketplace ?? EMPTY_MARKETPLACE;

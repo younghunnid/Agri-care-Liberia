@@ -50,3 +50,10 @@ iPhone Safari audio (tap Voice on, silent switch, lock/unlock, installed home-sc
 2. **Suspend the two demo accounts** (`+231770000101`, `+231770000201`) in Admin > Farmer & User Management so they cannot act in real mode.
 3. Remove `APP_ENV=demo`, `DEMO_ENV_ACK`, `SMS_PROVIDER=simulated`, `DEMO_*`, `ENABLE_DEMO_*`, `STAGING_DIAG_TOKEN`; keep secrets, `DB_PATH` and `START_SERVER=1`. Note the USSD enrollment and synthetic marketplace actions then close (by design).
 4. Have the privacy notice reviewed, name the administrator(s) who will run recovery, and test one full recovery with a real person.
+
+## Real-user readiness round (commit after `42b82ba`)
+- **Real-user USSD enrollment:** `docs/REAL_USER_DEPLOYMENT.md` (exact variables, sequence, rollback, risks), `docs/IPHONE_TESTING.md`. In real mode the handset flow is dial, voice, category, county, **account step** (secure form for phone number + password; the browser cannot detect a number and entering one never verifies it), registry consent, menu. Only signed-in genuine accounts are enrolled; migration `20261122_participant_registry_classes.sql` (additive) adds registry classes.
+- **Ministry registry classes:** genuine accounts, anonymous browser participants, synthetic records, plus a suppressed phone-status split (verified / not verified).
+- **Marketplace in real mode:** option 3 works for signed-in members with real listings and their own name (no demo wording, county market town, no phone published). Option 8 is unchanged.
+- **Operator tool:** `real-mode-prep.js --check | --suspend-demo --confirm` (read-only report; suspends demonstration accounts, never administrators, deletes nothing).
+- **New tests:** `test:real-mode` (8), `test:real-mode-config` (3), `tests/ussd-real-market.test.ts` (4, in `test:ussd-marketplace`), `test:real-mode-browser` (11 scenarios).

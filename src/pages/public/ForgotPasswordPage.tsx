@@ -98,7 +98,7 @@ export const ForgotPasswordPage: React.FC = () => {
             <p className="text-base text-[#183B2B]">Enter the phone number of your account. If it has a verified phone, we send a six-digit code to it.</p>
             <div>
               <label htmlFor="forgot-ident" className="block text-base font-bold text-[#183B2B]">Phone number</label>
-              <input id="forgot-ident" data-testid="forgot-ident" inputMode="tel" autoComplete="tel" required value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="+231770000101" className="mt-1 w-full min-h-[52px] rounded-xl border border-[#183B2B]/30 px-3.5 text-base" />
+              <input id="forgot-ident" data-testid="forgot-ident" inputMode="tel" autoComplete="tel" required value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="077 012 3456" className="mt-1 w-full min-h-[52px] rounded-xl border border-[#183B2B]/30 px-3.5 text-base" />
             </div>
             {error && <p role="alert" className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm font-semibold text-red-800">{error}</p>}
             <button type="submit" disabled={busy || !isOnline || identifier.trim().length < 6} data-testid="forgot-submit" className="w-full min-h-[56px] rounded-2xl bg-[#16803C] disabled:bg-slate-300 disabled:text-slate-700 text-white text-lg font-extrabold">Send the code</button>

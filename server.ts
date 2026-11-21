@@ -15,6 +15,7 @@ import {markSharedDemoAccounts} from './server/security.ts';
 import {seedDemoMarketData} from './server/demoMarket.ts';
 import {stagingRouter} from './server/routes/staging.ts';
 import {v1Router} from './server/routes/v1.ts';
+import {registryMode} from './server/registryMode.ts';
 
 // The application folder is where this file lives (works for `tsx server.ts` and for the built `server.js`, whatever the working directory is).
 process.env.APP_ROOT ??= path.dirname(fileURLToPath(import.meta.url));
@@ -86,7 +87,7 @@ export async function createApp() {
   // Which kind of server is this? (lets the interface label a demonstration environment). No secrets, no account data.
   app.get('/api/v1/environment', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    res.json({demoEnvironment: rt.demoEnvironment, simulatedSms: authCfg.requireSms && authCfg.smsProvider === 'simulated', phoneVerification: authCfg.requireSms ? 'sms' : 'none', syntheticAccountsOnly: rt.demoEnvironment});
+    res.json({demoEnvironment: rt.demoEnvironment, simulatedSms: authCfg.requireSms && authCfg.smsProvider === 'simulated', phoneVerification: authCfg.requireSms ? 'sms' : 'none', registryMode: registryMode(), syntheticAccountsOnly: rt.demoEnvironment});
   });
 
   // Staging diagnostics: exist ONLY when STAGING_DIAG_TOKEN is set (remove it after the staging tests).

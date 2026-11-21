@@ -2,9 +2,9 @@ import {LIBERIA_COUNTIES} from '../../../server/constants';
 import {validateHarvestFields} from '../harvestRules';
 import type {HarvestListing, HarvestLoad} from '../harvestClient';
 import type {ListingData, ListingRecord} from '../offlineDrafts';
-import {DEMO_TOWNS, EMPTY_MARKETPLACE, INQUIRY_MESSAGES, USSD_DEMO_MARKER, type DemoInquiry, type MarketplaceEnv, type MarketCommand, type MarketResult, type OwnDemoListing} from './marketTypes';
+import {DEMO_TOWNS, EMPTY_MARKETPLACE, INQUIRY_MESSAGES, REAL_INQUIRY_MESSAGES, REAL_TOWNS, USSD_DEMO_MARKER, USSD_REAL_MARKER, type DemoInquiry, type MarketplaceEnv, type MarketCommand, type MarketResult, type OwnDemoListing} from './marketTypes';
 
-interface Environment {demoEnvironment?: boolean; syntheticAccountsOnly?: boolean}
+interface Environment {demoEnvironment?: boolean; syntheticAccountsOnly?: boolean; registryMode?: string}
 interface InquiryResponse {id: number; role: 'buyer' | 'seller'; listingId: number; listingCode: string | null; cropLabel: string; message: string; farmerReply: string; status: string}
 export interface MarketClientDeps {
   enabled: boolean; timeoutMs?: number; online: () => boolean; now?: () => Date; uuid: () => string;
@@ -13,14 +13,21 @@ export interface MarketClientDeps {
   loadMarket: () => Promise<HarvestLoad>; init: () => Promise<void>; records: () => ListingRecord[];
   save: (data: ListingData) => Promise<ListingRecord>; queue: (localId: string) => Promise<void>; syncSoon: () => void;
   requesterKey: () => string;
+  /** The signed-in account, if any (real-user mode needs one; the server still authorizes every action). */
+  account?: () => {id: number; displayName: string} | null;
 }
 const isDemo = (l: HarvestListing): boolean => l.synthetic === true || (typeof l.description === 'string' && l.description.startsWith(USSD_DEMO_MARKER));
 const isOwnDemo = (l: ListingRecord): boolean => l.data.description.startsWith(USSD_DEMO_MARKER) && !!l.data.cropSlug;
+const isOwnReal = (l: ListingRecord): boolean => l.data.description.startsWith(USSD_REAL_MARKER) && !!l.data.cropSlug;
 const publicDemo = (l: HarvestListing) => ({id: l.id, code: l.code, cropSlug: l.cropSlug, quantityKg: l.quantityKg, pricePerKgLrd: l.pricePerKgLrd, county: l.county, town: l.town, status: l.status});
 
 /** No new identity or API. Uses existing CSRF/cookies, owner keys, requester keys, queue and idempotency. */
 export function createUssdMarketClient(d: MarketClientDeps) {
   let verifiedDemo = false;
+  let realMode = false; // real-user deployment AND a signed-in account
+  const mode = (): 'demo' | 'real' | null => (verifiedDemo ? 'demo' : realMode ? 'real' : null);
+  const isOwn = (l: ListingRecord): boolean => (realMode ? isOwnReal(l) : isOwnDemo(l));
+  const identity = (): string => (d.account?.()?.displayName ?? 'Agricare member').slice(0, 80);
   let state: MarketplaceEnv = {...EMPTY_MARKETPLACE};
   const inFlight = new Map<string, Promise<MarketResult>>();
   const completed = new Map<string, MarketResult>();
@@ -33,12 +40,12 @@ export function createUssdMarketClient(d: MarketClientDeps) {
       return await Promise.race([action(), new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new Error('Request deadline exceeded')), d.timeoutMs ?? 12_000); })]);
     } finally { if (timer) clearTimeout(timer); }
   }
-  const reason = () => !d.enabled ? 'Interactive demo submissions are not configured. Advice and practice menus still work.' : !verifiedDemo ? 'Submissions need the existing protected synthetic-only demo server. Open this page online there first. No development database is changed by enabling this screen.' : '';
-  const own = (): OwnDemoListing[] => d.records().filter(isOwnDemo).map((r) => ({localId: r.localId, code: r.status === 'published' ? r.listingCode ?? null : null, cropSlug: r.data.cropSlug!, quantityKg: Number(r.data.quantityKg), price: Number(r.data.priceLrd), county: r.data.county, town: r.data.town, status: r.status, error: r.lastError}));
-  const snapshot = (): MarketplaceEnv => ({...state, own: own(), allowed: d.enabled && verifiedDemo, reason: reason()});
+  const reason = () => !d.enabled ? 'Interactive submissions are not configured. Advice and practice menus still work.' : !mode() ? (d.account?.() ? 'Submissions need the existing protected synthetic-only demo server, or a real-user deployment. Open this page online first.' : 'Sign in through the registration step to use the marketplace.') : '';
+  const own = (): OwnDemoListing[] => d.records().filter(isOwn).map((r) => ({localId: r.localId, code: r.status === 'published' ? r.listingCode ?? null : null, cropSlug: r.data.cropSlug!, quantityKg: Number(r.data.quantityKg), price: Number(r.data.priceLrd), county: r.data.county, town: r.data.town, status: r.status, error: r.lastError}));
+  const snapshot = (): MarketplaceEnv => ({...state, own: own(), allowed: d.enabled && mode() !== null, mode: mode() ?? undefined, identityName: realMode ? identity() : undefined, reason: reason()});
   async function checkEnvironment(): Promise<void> {
-    try { const e = await deadline(() => d.get<Environment>('/environment')); verifiedDemo = e.demoEnvironment === true && e.syntheticAccountsOnly === true; }
-    catch { verifiedDemo = false; }
+    try { const e = await deadline(() => d.get<Environment>('/environment')); verifiedDemo = e.demoEnvironment === true && e.syntheticAccountsOnly === true; realMode = !verifiedDemo && e.registryMode === 'real' && !!d.account?.(); }
+    catch { verifiedDemo = false; realMode = false; }
   }
   async function load(): Promise<MarketplaceEnv> {
     state = {...state, loading: true, error: null};
@@ -46,11 +53,11 @@ export function createUssdMarketClient(d: MarketClientDeps) {
       await d.init();
       if (d.online()) await checkEnvironment();
       const market = await deadline(() => d.loadMarket());
-      state = {...state, source: market.source, asOf: market.asOf ?? null, listings: market.listings.filter(isDemo).map(publicDemo),
+      state = {...state, source: market.source, asOf: market.asOf ?? null, listings: market.listings.filter((l) => (realMode ? !isDemo(l) : isDemo(l))).map(publicDemo),
         legacy: {source: market.source, asOf: market.asOf ?? null, listings: market.listings.map((l) => ({code: l.code, cropSlug: l.cropSlug, quantityKg: l.quantityKg, pricePerKgLrd: l.pricePerKgLrd, county: l.county, status: l.status}))},
       };
-      if (d.online() && verifiedDemo) {
-        const local = d.records().filter(isOwnDemo); const ids = new Set([...state.listings.map((l) => l.id), ...local.flatMap((r) => r.serverId ? [r.serverId] : [])]);
+      if (d.online() && mode()) {
+        const local = d.records().filter(isOwn); const ids = new Set([...state.listings.map((l) => l.id), ...local.flatMap((r) => r.serverId ? [r.serverId] : [])]);
         const key = d.requesterKey();
         if (key !== d.requesterKey()) throw new Error('This browser cannot retain its private requester key. Inquiries are unavailable.');
         const received = new Map<number, DemoInquiry>();
@@ -67,15 +74,15 @@ export function createUssdMarketClient(d: MarketClientDeps) {
     if (!d.enabled) return {status: 'failed', message: reason()};
     // Recheck the existing server guard before online writes. No host/query parameter can enable it.
     if (d.online()) await checkEnvironment();
-    if (!verifiedDemo) return {status: 'failed', message: reason()};
+    if (!mode()) return {status: 'failed', message: reason()};
     await d.init();
     if (c.kind === 'sell') {
       const h = validateHarvestFields({cropSlug: c.crop, quantityKg: c.kg, harvestDate: c.harvestDate}, now());
       if (!h.ok) return {status: 'failed', message: h.error};
-      if (!Number.isInteger(c.price) || c.price < 1 || c.price > 50_000_000 || !(LIBERIA_COUNTIES as readonly string[]).includes(c.county) || !(DEMO_TOWNS as readonly string[]).includes(c.town)) return {status: 'failed', message: 'Choose a valid whole asking price, county and synthetic town. Nothing was submitted.'};
+      if (!Number.isInteger(c.price) || c.price < 1 || c.price > 50_000_000 || !(LIBERIA_COUNTIES as readonly string[]).includes(c.county) || !((realMode ? Object.values(REAL_TOWNS) : DEMO_TOWNS) as readonly string[]).includes(c.town)) return {status: 'failed', message: 'Choose a valid whole asking price, county and town. Nothing was submitted.'};
       let localId = localForCommand.get(c.token);
       if (!localId) {
-        const data: ListingData = {sellerType: 'farmer', sellerName: 'Synthetic USSD Farmer', farmName: '', category: h.crop.category, productName: h.crop.label, quantity: String(h.quantityKg), unit: 'kg', priceLrd: String(c.price), county: c.county, town: c.town, availabilityStatus: 'Available', description: USSD_DEMO_MARKER, photoDataUrl: '', sellerPhone: '', phoneConsent: false, cropSlug: c.crop, quantityKg: h.quantityKg, harvestDate: h.harvestDate};
+        const data: ListingData = {sellerType: 'farmer', sellerName: realMode ? identity() : 'Synthetic USSD Farmer', farmName: '', category: h.crop.category, productName: h.crop.label, quantity: String(h.quantityKg), unit: 'kg', priceLrd: String(c.price), county: c.county, town: c.town, availabilityStatus: 'Available', description: realMode ? USSD_REAL_MARKER : USSD_DEMO_MARKER, photoDataUrl: '', sellerPhone: '', phoneConsent: false, cropSlug: c.crop, quantityKg: h.quantityKg, harvestDate: h.harvestDate};
         const rec = await d.save(data); localId = rec.localId; localForCommand.set(c.token, localId);
       }
       try { await d.queue(localId); } catch { return {status: 'failed', localId, message: 'The draft is saved, but could not be queued. Review it in Sell my harvest. It has no server confirmation.'}; }
@@ -83,24 +90,24 @@ export function createUssdMarketClient(d: MarketClientDeps) {
       return {status: 'pending', localId, message: 'Saved on this phone and queued with your permission. Pending Sync until the server confirms. A SELL reference is issued only by the server.'};
     }
     if (c.kind === 'retry') {
-      const r = d.records().find((r) => r.localId === c.localId && isOwnDemo(r));
+      const r = d.records().find((r) => r.localId === c.localId && isOwn(r));
       if (!r || r.status !== 'failed') return {status: 'failed', message: 'Only your own failed demo draft can be retried here.'};
       await d.queue(r.localId); d.syncSoon(); return {status: 'pending', localId: r.localId, message: 'Your existing operation was queued again. No duplicate listing was created.'};
     }
     if (!d.online()) return {status: 'failed', message: 'Offline. No inquiry was sent or queued. Connect before confirming an inquiry.'};
-    if (!(LIBERIA_COUNTIES as readonly string[]).includes(c.county) || !(INQUIRY_MESSAGES as readonly string[]).includes(c.message)) return {status: 'failed', message: 'Choose one of the synthetic demo questions and a valid county.'};
+    if (!(LIBERIA_COUNTIES as readonly string[]).includes(c.county) || !((realMode ? REAL_INQUIRY_MESSAGES : INQUIRY_MESSAGES) as readonly string[]).includes(c.message)) return {status: 'failed', message: 'Choose one of the listed questions and a valid county.'};
     const listed = state.listings.find((l) => l.id === c.listingId);
     if (!listed?.code) return {status: 'failed', message: 'This listing is not in the demo list. Refresh before sending. Nothing was sent.'};
     // A stale snapshot can never authorize an inquiry about hidden, sold-out or non-demo produce.
     let current: HarvestListing;
     try { current = (await deadline(() => d.get<{listing: HarvestListing}>(`/harvest/listings/${encodeURIComponent(listed.code!)}`))).listing; }
     catch { return {status: 'failed', message: 'The listing could not be confirmed with the server. Nothing was sent. Refresh before trying again.'}; }
-    if (!isDemo(current) || current.id !== c.listingId || current.status === 'Sold Out') return {status: 'failed', message: 'This demo listing is unavailable. Nothing was sent.'};
+    if ((realMode ? isDemo(current) : !isDemo(current)) || current.id !== c.listingId || current.status === 'Sold Out') return {status: 'failed', message: 'This demo listing is unavailable. Nothing was sent.'};
     const key = d.requesterKey();
     if (key !== d.requesterKey()) return {status: 'failed', message: 'This browser cannot retain its private device key. Nothing was sent. Use a browser that permits storage.'};
     const op = operationKeys.get(c.token) ?? d.uuid(); operationKeys.set(c.token, op);
     try {
-      const r = await deadline(() => d.post<{inquiry: {id: number}}>('/marketplace/listings/' + c.listingId + '/inquiries', {buyerName: 'Synthetic USSD Buyer', buyerCounty: c.county, message: c.message, requesterKey: key, buyerToken: '', buyerPhoneConsent: false, isSimulated: true}, {'Idempotency-Key': op}));
+      const r = await deadline(() => d.post<{inquiry: {id: number}}>('/marketplace/listings/' + c.listingId + '/inquiries', {buyerName: realMode ? identity() : 'Synthetic USSD Buyer', buyerCounty: c.county, message: c.message, requesterKey: key, buyerToken: '', buyerPhoneConsent: false, isSimulated: !realMode}, {'Idempotency-Key': op}));
       if (!r.inquiry?.id) throw new Error('No confirmation');
       return {status: 'synced', message: `Server confirmed demo inquiry ${r.inquiry.id}. Read it in My Inquiries after refreshing. No phone number was shared.`};
     } catch (error) {

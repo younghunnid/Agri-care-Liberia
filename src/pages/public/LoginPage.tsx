@@ -64,7 +64,7 @@ export const LoginPage: React.FC = () => {
         <form onSubmit={(e) => void handleLogin(e)} className="space-y-4">
           <div>
             <label htmlFor="login-ident" className="block text-sm font-semibold mb-1.5">Phone Number or Email</label>
-            <input id="login-ident" type="text" required autoComplete="username" value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="+231770000101" className="w-full min-h-[48px] rounded-xl border border-[#183B2B]/20 px-3.5 text-base" />
+            <input id="login-ident" type="text" required autoComplete="username" value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="077 012 3456" className="w-full min-h-[48px] rounded-xl border border-[#183B2B]/20 px-3.5 text-base" />
           </div>
           <div>
             <label htmlFor="login-password" className="block text-sm font-semibold mb-1.5">Password</label>
