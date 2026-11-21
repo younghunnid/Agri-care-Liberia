@@ -8,6 +8,7 @@ import {getOfflineGuides} from '../../lib/offlineStorage';
 import {getDemoOwnerToken, getDemoSavedAdvice, getRecentlyViewedGuides} from '../../lib/demoStorage';
 import {useResource} from '../../lib/useResource';
 import {WorkspaceShell} from '../../components/WorkspaceShell';
+import {PhoneStatusNote} from '../../components/PhoneStatusNote';
 import {MetricCard, PanelState, SectionCard} from '../../components/workspace/DashboardBits';
 
 export const FARMER_NAV = [
@@ -50,6 +51,7 @@ export const FarmerDashboardPage: React.FC = () => {
       subtitle="Your saved advice, expert questions, marketplace activity and offline downloads in one place."
       navItems={FARMER_NAV}
     >
+      <PhoneStatusNote online={isOnline} />
       {!isOnline && <PanelState kind="offline" title="You are offline">Counts that need the server are hidden instead of shown as zero. Saved advice and offline guides on this phone still work.</PanelState>}
       {summary.error && isOnline && <PanelState kind="error" title="Some account counts could not be loaded" onRetry={summary.reload}>{summary.error}</PanelState>}
 

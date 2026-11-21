@@ -20,7 +20,7 @@ let proc: ChildProcess; let dir = ''; let base = ''; let out = '';
 const db = () => new DatabaseSync(path.join(dir, 'p.db'));
 const freePort = (): Promise<number> => new Promise((r) => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = (s.address() as net.AddressInfo).port; s.close(() => r(p)); }); });
 const reg = (jar: CookieJar, phone: string, name = 'Test Farmer', password = PW) =>
-  req(jar, '/api/v1/auth/register', {method: 'POST', body: {displayName: name, phone, password, county: 'Bong', preferredLanguage: 'en', cropsOfInterest: ['Cassava']}});
+  req(jar, '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: name, phone, password, county: 'Bong', preferredLanguage: 'en', cropsOfInterest: ['Cassava']}});
 const login = (jar: CookieJar, identifier: string, password: string) => req(jar, '/api/v1/auth/login', {method: 'POST', body: {identifier, password}});
 const clearLimits = () => { const d = db(); d.prepare('DELETE FROM rate_limit_attempts').run(); d.close(); }; // the disposable database only: lets several scenarios share one address
 

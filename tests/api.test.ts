@@ -127,7 +127,7 @@ test('4. Farmer registration, isolation, and SQL injection resistance', async ()
   const regA = await req(jarA, '/api/v1/auth/register', {
     method: 'POST',
     body: {
-      displayName: 'Farmer A',
+      privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Farmer A',
       phone: '+231771111111',
       password: 'SafePassword123',
       county: 'Lofa',
@@ -154,7 +154,7 @@ test('4. Farmer registration, isolation, and SQL injection resistance', async ()
   const regB = await req(jarB, '/api/v1/auth/register', {
     method: 'POST',
     body: {
-      displayName: 'Farmer B',
+      privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Farmer B',
       phone: '+231772222222',
       password: 'SafePassword123',
       county: 'Nimba',
@@ -569,7 +569,7 @@ test('13. Farmer registration validates Liberian phone, rejects duplicates and i
     method: 'POST',
     skipCsrf: true,
     body: {
-      displayName: 'No CSRF Farmer',
+      privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'No CSRF Farmer',
       phone: '0770333333',
       password: 'SafePassword123',
       county: 'Bong',
@@ -589,7 +589,7 @@ test('13. Farmer registration validates Liberian phone, rejects duplicates and i
       'X-CSRF-Token': 'invalid-csrf-token-1234567890',
     },
     body: JSON.stringify({
-      displayName: 'Bad CSRF Farmer',
+      privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Bad CSRF Farmer',
       phone: '0770333333',
       password: 'SafePassword123',
       county: 'Bong',
@@ -604,7 +604,7 @@ test('13. Farmer registration validates Liberian phone, rejects duplicates and i
   const invalidPhone = await req(regJar, '/api/v1/auth/register', {
     method: 'POST',
     body: {
-      displayName: 'Invalid Phone Farmer',
+      privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Invalid Phone Farmer',
       phone: '+1-555-123-4567',
       password: 'SafePassword123',
       county: 'Bong',
@@ -617,7 +617,7 @@ test('13. Farmer registration validates Liberian phone, rejects duplicates and i
   const validReg = await req(regJar, '/api/v1/auth/register', {
     method: 'POST',
     body: {
-      displayName: 'Korpo Flomo',
+      privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Korpo Flomo',
       phone: '0770333333',
       password: 'SafePassword123',
       county: 'Bong',
@@ -635,7 +635,7 @@ test('13. Farmer registration validates Liberian phone, rejects duplicates and i
   const dupReg = await req(dupJar, '/api/v1/auth/register', {
     method: 'POST',
     body: {
-      displayName: 'Duplicate Farmer',
+      privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Duplicate Farmer',
       phone: '+231 77 033 3333',
       password: 'SafePassword123',
       county: 'Bong',
@@ -699,6 +699,7 @@ test('14. HTTPS preview proxy headers issue single SameSite=None Secure Partitio
       'X-CSRF-Token': csrfData.csrfToken,
     },
     body: JSON.stringify({
+      privacyConsent: true, privacyVersion: 'privacy-v1',
       displayName: 'Preview Farmer',
       phone: '0770444444',
       password: 'SafePassword123',
@@ -921,7 +922,7 @@ test('21. Only the key holder, the signed-in seller or an admin can edit or dele
   const other = new CookieJar();
   const reg = await req(other, '/api/v1/auth/register', {
     method: 'POST',
-    body: {displayName: 'Other Farmer', phone: '+231773333333', password: 'SafePassword123', county: 'Bong', preferredLanguage: 'en', cropsOfInterest: []},
+    body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Other Farmer', phone: '+231773333333', password: 'SafePassword123', county: 'Bong', preferredLanguage: 'en', cropsOfInterest: []},
   });
   assert.equal(reg.status, 201);
   assert.equal((await req(other, base, {method: 'PATCH', body: {priceLrd: 1}})).status, 403);
@@ -938,7 +939,7 @@ test('22. A signed-in seller and an administrator can manage a listing without t
   const seller = new CookieJar();
   await req(seller, '/api/v1/auth/register', {
     method: 'POST',
-    body: {displayName: 'Seller Account', phone: '+231774444444', password: 'SafePassword123', county: 'Nimba', preferredLanguage: 'en', cropsOfInterest: []},
+    body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Seller Account', phone: '+231774444444', password: 'SafePassword123', county: 'Nimba', preferredLanguage: 'en', cropsOfInterest: []},
   });
   const created = await req(seller, '/api/v1/marketplace/listings', {method: 'POST', body: listingBody('acct', {ownerKey: undefined})});
   assert.equal(created.status, 201);

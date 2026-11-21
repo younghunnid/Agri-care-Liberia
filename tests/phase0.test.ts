@@ -174,7 +174,7 @@ test('3. the demo environment refuses a database that already holds the publishe
 test('4. the demo environment accepts only synthetic phone numbers (and no e-mail) at registration and sign-in', async () => {
   const d = await boot(demoEnv());
   try {
-    const reg = (phone: string, extra: Record<string, unknown> = {}) => call(d.base, new Jar(), 'POST', '/api/v1/auth/register', {displayName: 'Test Person', phone, password: PW, county: 'Bong', ...extra});
+    const reg = (phone: string, extra: Record<string, unknown> = {}) => call(d.base, new Jar(), 'POST', '/api/v1/auth/register', {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Test Person', phone, password: PW, county: 'Bong', ...extra});
     for (const real of ['+231886123456', '0886123456', '+231 77 123 4567', '+231770011234', '+23177 0011 234', '231550123456']) {
       const r = await reg(real);
       assert.equal(r.status, 422, `${real} must be refused`); assert.equal(r.j.error.code, 'PHONE_NOT_ALLOWED');
@@ -198,7 +198,7 @@ test('5. login throttle uses the NORMALIZED identifier: spacing, local format an
   const d = await boot(demoEnv());
   try {
     const phone = '+231770009100';
-    assert.equal((await call(d.base, new Jar(), 'POST', '/api/v1/auth/register', {displayName: 'Throttle Test', phone, password: PW, county: 'Bong'})).status, 201);
+    assert.equal((await call(d.base, new Jar(), 'POST', '/api/v1/auth/register', {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Throttle Test', phone, password: PW, county: 'Bong'})).status, 201);
     const spellings = ['+231770009100', '0770009100', '+231 770 009 100', '+231-770-009-100', '770009100', '+231  770009100', ' +231770009100 ', '0770 009 100', '+231 7700 09100', '(+231) 770 009 100', '0770-009-100', '+231770009100'];
     const statuses: number[] = [];
     const jar = new Jar();
@@ -242,9 +242,9 @@ test('8. password checks do not block the event loop: the server keeps answering
   const d = await boot(prodEnv({LOGIN_IP_FAIL_MAX: '1000', TRUST_PROXY: '1'}));
   try {
     const N = 24;
-    for (let i = 0; i < N; i++) assert.equal((await call(d.base, new Jar(), 'POST', '/api/v1/auth/register', {displayName: `Load Test ${i}`, phone: `+23177000${7000 + i}`, password: PW, county: 'Bong'}, {'X-Forwarded-For': `198.51.100.${i + 1}`})).status, 201);
+    for (let i = 0; i < N; i++) assert.equal((await call(d.base, new Jar(), 'POST', '/api/v1/auth/register', {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: `Load Test ${i}`, phone: `+23188000${7000 + i}`, password: PW, county: 'Bong'}, {'X-Forwarded-For': `198.51.100.${i + 1}`})).status, 201);
     const burst: Promise<Res>[] = [];
-    for (let i = 0; i < N; i++) burst.push(call(d.base, new Jar(), 'POST', '/api/v1/auth/login', {identifier: `+23177000${7000 + i}`, password: 'WrongPassw0rd!x'}, {'X-Forwarded-For': `198.51.100.${i + 1}`}));
+    for (let i = 0; i < N; i++) burst.push(call(d.base, new Jar(), 'POST', '/api/v1/auth/login', {identifier: `+23188000${7000 + i}`, password: 'WrongPassw0rd!x'}, {'X-Forwarded-For': `198.51.100.${i + 1}`}));
     const lat: number[] = [];
     const pinger = (async () => { for (let i = 0; i < 25; i++) { const t = Date.now(); await fetch(`${d.base}/api/v1/health`); lat.push(Date.now() - t); await new Promise((r) => setTimeout(r, 15)); } })();
     const all = await Promise.all(burst); await pinger;
@@ -259,12 +259,12 @@ test('8. password checks do not block the event loop: the server keeps answering
 test('9. an unknown account costs the same as a wrong password (no account-enumeration timing)', async () => {
   const d = await boot(prodEnv({LOGIN_IP_FAIL_MAX: '1000'}));
   try {
-    assert.equal((await call(d.base, new Jar(), 'POST', '/api/v1/auth/register', {displayName: 'Timing Test', phone: '+231770009200', password: PW, county: 'Bong'})).status, 201);
+    assert.equal((await call(d.base, new Jar(), 'POST', '/api/v1/auth/register', {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Timing Test', phone: '+231880009200', password: PW, county: 'Bong'})).status, 201);
     const median = (a: number[]) => a.sort((x, y) => x - y)[Math.floor(a.length / 2)];
     const known: number[] = [], unknown: number[] = [];
     for (let i = 0; i < 9; i++) {
       // alternate so both see the same machine conditions; distinct formatting keeps each attempt under the per-account throttle
-      known.push((await login(d.base, new Jar(), ['0770009200', '+231770009200', '770009200'][i % 3], 'WrongPassw0rd!x' + i)).ms);
+      known.push((await login(d.base, new Jar(), ['0880009200', '+231880009200', '880009200'][i % 3], 'WrongPassw0rd!x' + i)).ms);
       unknown.push((await login(d.base, new Jar(), `+23177000${String(5000 + i)}`, 'WrongPassw0rd!x' + i)).ms);
     }
     const mk = median(known), mu = median(unknown);

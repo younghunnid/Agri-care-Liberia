@@ -75,6 +75,7 @@ export const ForgotPasswordPage: React.FC = () => {
           <h1 className="font-display text-2xl font-extrabold text-[#183B2B]">Forgot your password?</h1>
           <p className="text-base text-[#183B2B]" data-testid="assisted-recovery">Your password cannot be reset by entering a phone number. This site does not send text messages, and your phone number has not been verified, so we cannot tell that a request really comes from you.</p>
           <p className="text-base text-[#183B2B]">To recover your account, contact the Agricare Liberia team for verified assistance. They will confirm who you are before helping. Until then, try the password again, or register a new account with a different number.</p>
+          <p className="text-base text-[#183B2B]">Already have a one-time code from the team? <Link to="/recover-account" className="font-bold text-[#16803C] underline" data-testid="have-recovery-code">Use your recovery code</Link>.</p>
           <Link to="/login" className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-[#16803C] px-5 text-base font-extrabold text-white">Back to sign in</Link>
         </div>
       </div>

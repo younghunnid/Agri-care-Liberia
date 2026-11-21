@@ -14,6 +14,8 @@ import {authSecurityRouter} from './authSecurity.ts';
 import {adviceRouter} from './advice.ts';
 import {harvestRouter} from './harvest.ts';
 import {participantsRouter} from './participants.ts';
+import {recoveryRouter} from './recovery.ts';
+import {PRIVACY_VERSION} from '../../src/lib/privacy.ts';
 import {
   CHALLENGE_COOKIE, CLAIM_COOKIE, DEVICE_COOKIE, challengeCookieOptions, clearHold, findTrustedDevice, getSessionVersion, hasPhoneOnFile, passwordProblem, resolvePhoneForRegistration,
 } from '../authSecurity.ts';
@@ -58,6 +60,7 @@ v1Router.use(authSecurityRouter);
 v1Router.use(adviceRouter);
 v1Router.use(harvestRouter);
 v1Router.use(participantsRouter);
+v1Router.use(recoveryRouter);
 
 // 1. Health & CSRF
 v1Router.get('/health', (_req, res) => {
@@ -334,7 +337,7 @@ v1Router.post('/auth/register', asyncRoute(async (req: AuthedRequest, res) => {
     return;
   }
 
-  const {displayName, phone, email, password, county, preferredLanguage, cropsOfInterest} = req.body ?? {};
+  const {displayName, phone, email, password, county, preferredLanguage, cropsOfInterest, privacyConsent, privacyVersion} = req.body ?? {};
   const cleanName = typeof displayName === 'string' ? displayName.trim() : '';
   const phoneCheck = normalizeLiberianPhone(typeof phone === 'string' ? phone : '');
   const cleanPhone = phoneCheck.normalized;
@@ -347,6 +350,11 @@ v1Router.post('/auth/register', asyncRoute(async (req: AuthedRequest, res) => {
     ? cropsOfInterest.filter((c): c is string => typeof c === 'string').slice(0, 10)
     : [];
 
+  // Registration needs an explicit, versioned acceptance of the privacy notice (recorded with the account).
+  if (privacyConsent !== true || privacyVersion !== PRIVACY_VERSION) {
+    res.status(400).json({error: {code: 'PRIVACY_CONSENT_REQUIRED', message: 'Please read and accept the privacy notice to create an account.'}});
+    return;
+  }
   if (cleanName.length < 2 || cleanName.length > 80) {
     res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'Name must be 2 to 80 characters.'}});
     return;
@@ -364,6 +372,11 @@ v1Router.post('/auth/register', asyncRoute(async (req: AuthedRequest, res) => {
   }
   if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
     res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'Enter a valid email address.'}});
+    return;
+  }
+  // A real (production) deployment never creates accounts on the reserved demonstration number range: they would be indistinguishable from demo accounts.
+  if (getAuthConfig().production && cleanPhone.startsWith('+23177000')) {
+    res.status(422).json({error: {code: 'PHONE_RESERVED', message: 'Numbers starting +23177000 are reserved for demonstration accounts. Please use your own phone number.'}});
     return;
   }
   // Protected demonstration environment: ONLY synthetic test numbers (and no e-mail) so that no real person's contact details are ever stored.
@@ -429,6 +442,7 @@ v1Router.post('/auth/register', asyncRoute(async (req: AuthedRequest, res) => {
        VALUES (?, ?, ?, ?)`
     ).run(userId, cleanCounty, cleanLang, JSON.stringify(cleanCrops));
     db.prepare('INSERT INTO language_preferences (user_id, language_code) VALUES (?, ?)').run(userId, cleanLang);
+    db.prepare('INSERT INTO privacy_consents (user_id, notice_version) VALUES (?, ?)').run(userId, PRIVACY_VERSION);
 
     db.exec('COMMIT;');
   } catch (err) {
@@ -1195,6 +1209,7 @@ v1Router.get('/admin/users', requireRole('admin'), (_req, res) => {
   const users = db
     .prepare(
       `SELECT u.id, u.display_name, u.phone, u.email, u.status, u.created_at,
+              CASE WHEN u.phone_verified_at IS NULL THEN 0 ELSE 1 END AS phone_verified,
               fp.county, fp.preferred_language,
               GROUP_CONCAT(r.name) AS roles
        FROM users u

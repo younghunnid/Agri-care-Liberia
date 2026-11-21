@@ -227,7 +227,7 @@ test('7. unknown phone: login and forgot-password answers are identical to a kno
 // ============================================================ 8 phone ownership
 test('8. a verified number is never taken; an unexpired unverified claim is not taken; an expired claim is released (never a silent takeover)', async () => {
   const verified = await user();
-  const reg = (p: string, jar = new CookieJar()) => call(jar, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'New Person', phone: p, password: PW, county: 'Bong'}});
+  const reg = (p: string, jar = new CookieJar()) => call(jar, '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'New Person', phone: p, password: PW, county: 'Bong'}});
   const r1 = await reg(verified.phone); assert.equal(r1.status, 409); assert.equal(r1.data.error.code, 'PHONE_EXISTS');
   const claimant = phone();
   const first = await reg(claimant); assert.equal(first.status, 201);
@@ -248,7 +248,7 @@ test('8. a verified number is never taken; an unexpired unverified claim is not 
 });
 test('8b. phone-claim recovery: proof of possession frees an unverified claim for the real owner, and only that browser may register it first', async () => {
   const squatted = phone();
-  const squatter = await call(new CookieJar(), '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Squatter', phone: squatted, password: PW, county: 'Bong'}});
+  const squatter = await call(new CookieJar(), '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Squatter', phone: squatted, password: PW, county: 'Bong'}});
   assert.equal(squatter.status, 201);
   const owner = new CookieJar();
   const start = await call(owner, '/api/v1/auth/phone-claim/start', {method: 'POST', body: {phone: squatted}});
@@ -259,9 +259,9 @@ test('8b. phone-claim recovery: proof of possession frees an unverified claim fo
   assert.equal(ok.status, 200); assert.equal(ok.data.released, true);
   assert.equal((await call(owner, '/api/v1/auth/phone-claim/verify', {method: 'POST', body: {code}})).status, 400, 'single use');
   // somebody else cannot front-run the owner
-  const racer = await call(new CookieJar(), '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Racer', phone: squatted, password: PW, county: 'Bong'}});
+  const racer = await call(new CookieJar(), '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Racer', phone: squatted, password: PW, county: 'Bong'}});
   assert.equal(racer.status, 409);
-  const mine = await call(owner, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Real Owner', phone: squatted, password: PW, county: 'Bong'}});
+  const mine = await call(owner, '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Real Owner', phone: squatted, password: PW, county: 'Bong'}});
   assert.equal(mine.status, 201);
   // the squatter's account is not deleted, it just lost the number and its sessions
   assert.equal(await me((() => { const j = new CookieJar(); j.set('agri_session', squatter.headers.getSetCookie().find((c) => c.startsWith('agri_session='))!.split(';')[0].split('=')[1]); return j; })()), null);
@@ -528,7 +528,7 @@ test('19b. a phone change cancels a pending login challenge; the old challenge c
 test('19c. unverified phone: confirm it from Account Security with a code', async () => {
   const p = phone();
   const reg = new CookieJar();
-  const r = await call(reg, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Fresh Farmer', phone: p, password: PW, county: 'Bong'}});
+  const r = await call(reg, '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Fresh Farmer', phone: p, password: PW, county: 'Bong'}});
   assert.equal(r.status, 201);
   assert.equal((await req(reg, '/api/v1/account/security')).data.phone.verified, false);
   const s = await call(reg, '/api/v1/account/phone/confirm/start', {method: 'POST', body: {}});
@@ -549,7 +549,7 @@ test('19d. existing account with an unverified phone must verify it at its next 
   assert.equal((await fx.userByPhone(u.phone)).phone_verified_at !== null, true);
 });
 test('19e. password policy at registration: 10 characters minimum', async () => {
-  const bad = await call(new CookieJar(), '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Short Pw', phone: phone(), password: 'Short9chr', county: 'Bong'}});
+  const bad = await call(new CookieJar(), '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Short Pw', phone: phone(), password: 'Short9chr', county: 'Bong'}});
   assert.equal(bad.status, 400); assert.match(bad.data.error.message, /10 characters/);
 });
 
@@ -612,7 +612,7 @@ test('16b. a real production-mode server: refuses to start with the simulated pr
     assert.ok(!inboxText.includes('messages') && !inboxText.includes('Operator token'), 'no inbox content in production');
     const jar = new CookieJar();
     const p = '+231770777001';
-    const reg = await req(jar, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Prod Check', phone: p, password: PW, county: 'Bong'}});
+    const reg = await req(jar, '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Prod Check', phone: p, password: PW, county: 'Bong'}});
     assert.equal(reg.status, 201);
     await req(jar, '/api/v1/auth/logout', {method: 'POST', body: {}});
     const login = await req(new CookieJar(), '/api/v1/auth/login', {method: 'POST', body: {identifier: p, password: PW}});
@@ -774,7 +774,7 @@ test('23. password recovery with the in-website inbox; an unknown number gets an
 test('24. phone verification and phone change through the in-website inbox (each step shows only its own message)', async () => {
   const p = phone();
   const reg = new CookieJar();
-  assert.equal((await call(reg, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Inbox Farmer', phone: p, password: PW, county: 'Bong'}})).status, 201);
+  assert.equal((await call(reg, '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Inbox Farmer', phone: p, password: PW, county: 'Bong'}})).status, 201);
   assert.equal((await call(reg, '/api/v1/account/phone/confirm/start', {method: 'POST', body: {}})).data.demoInbox, true);
   const c = await inlineCode(reg, 'phone_confirm');
   assert.equal((await call(reg, '/api/v1/account/phone/confirm/verify', {method: 'POST', body: {code: c}})).status, 200);
@@ -843,7 +843,7 @@ test('26b. a real APP_ENV=demo server: protections stay on, only synthetic numbe
     setBaseUrl(d.base);
     const p = '+231770007001';
     const jar = new CookieJar();
-    assert.equal((await req(jar, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Demo Env Farmer', phone: p, password: PW, county: 'Bong'}})).status, 201);
+    assert.equal((await req(jar, '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Demo Env Farmer', phone: p, password: PW, county: 'Bong'}})).status, 201);
     await req(jar, '/api/v1/auth/logout', {method: 'POST', body: {}});
     const fresh = new CookieJar();
     const login = await req(fresh, '/api/v1/auth/login', {method: 'POST', body: {identifier: p, password: PW}});
@@ -863,7 +863,7 @@ test('26b. a real APP_ENV=demo server: protections stay on, only synthetic numbe
     assert.equal((await req(f2, '/api/v1/auth/me')).data.user.phone, p);
     // real (non-synthetic) numbers cannot receive messages; the operator inbox still needs its token
     const real = new CookieJar();
-    await req(real, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'Real Number', phone: '+231886123499', password: PW, county: 'Bong'}});
+    await req(real, '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Real Number', phone: '+231886123499', password: PW, county: 'Bong'}});
     await req(real, '/api/v1/auth/logout', {method: 'POST', body: {}});
     const rl = await req(new CookieJar(), '/api/v1/auth/login', {method: 'POST', body: {identifier: '+231886123499', password: PW}});
     assert.equal(rl.status, 422); assert.equal(rl.data.error.code, 'PHONE_NOT_ALLOWED');
@@ -879,7 +879,7 @@ test('26b. a real APP_ENV=demo server: protections stay on, only synthetic numbe
     setBaseUrl(off.base);
     const p = '+231770007002';
     const j = new CookieJar();
-    await req(j, '/api/v1/auth/register', {method: 'POST', body: {displayName: 'No Inbox', phone: p, password: PW, county: 'Bong'}});
+    await req(j, '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'No Inbox', phone: p, password: PW, county: 'Bong'}});
     await req(j, '/api/v1/auth/logout', {method: 'POST', body: {}});
     const l = await req(new CookieJar(), '/api/v1/auth/login', {method: 'POST', body: {identifier: p, password: PW}});
     assert.equal(l.status, 202); assert.equal(l.data.demoInbox, false);

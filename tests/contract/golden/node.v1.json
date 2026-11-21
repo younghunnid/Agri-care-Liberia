@@ -2733,6 +2733,7 @@
             "email": null,
             "id": "<id>",
             "phone": "+231771234001",
+            "phone_verified": 0,
             "preferred_language": "en",
             "roles": "farmer",
             "status": "active"
@@ -2744,6 +2745,7 @@
             "email": null,
             "id": "<id>",
             "phone": "+231771234002",
+            "phone_verified": 1,
             "preferred_language": "en",
             "roles": "farmer",
             "status": "active"
@@ -2755,6 +2757,7 @@
             "email": null,
             "id": "<id>",
             "phone": "+231775550001",
+            "phone_verified": 1,
             "preferred_language": null,
             "roles": "admin",
             "status": "active"
@@ -2766,6 +2769,7 @@
             "email": "expert.demo@agri-advisory.lr",
             "id": "<id>",
             "phone": "+231770000201",
+            "phone_verified": 1,
             "preferred_language": null,
             "roles": "expert",
             "status": "active"
@@ -2777,6 +2781,7 @@
             "email": "farmer.demo@agri-advisory.lr",
             "id": "<id>",
             "phone": "+231770000101",
+            "phone_verified": 1,
             "preferred_language": "en",
             "roles": "farmer",
             "status": "active"

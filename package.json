@@ -46,7 +46,9 @@
     "test:password-policy": "tsx --test tests/password-policy.test.ts",
     "test:brand": "node --import ./tests/assets-loader/register.mjs --import tsx --test tests/brand.test.tsx",
     "test:password-auth": "tsx --test tests/password-auth.test.ts",
-    "test:auth-ussd": "tsx --test tests/auth-ussd-integration.test.ts"
+    "test:auth-ussd": "tsx --test tests/auth-ussd-integration.test.ts",
+    "test:recovery": "tsx --test tests/recovery.test.ts",
+    "test:backup-restore": "tsx --test tests/backup-restore.test.ts"
   },
   "dependencies": {
     "@google/genai": "^3.4.0",

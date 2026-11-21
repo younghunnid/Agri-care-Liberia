@@ -22,6 +22,8 @@ const HarvestMarketPage = lazy(() => import('./pages/public/HarvestMarketPage').
 const FarmToMarketDemoPage = lazy(() => import('./pages/public/FarmToMarketDemoPage').then((m) => ({default: m.FarmToMarketDemoPage})));
 const FarmCalculatorPage = lazy(() => import('./pages/public/FarmCalculatorPage').then((m) => ({default: m.FarmCalculatorPage})));
 const VerifyCodePage = lazy(() => import('./pages/public/VerifyCodePage').then((m) => ({default: m.VerifyCodePage})));
+const PrivacyPage = lazy(() => import('./pages/public/PrivacyPage').then((m) => ({default: m.PrivacyPage})));
+const RecoverAccountPage = lazy(() => import('./pages/public/RecoverAccountPage').then((m) => ({default: m.RecoverAccountPage})));
 const ForgotPasswordPage = lazy(() => import('./pages/public/ForgotPasswordPage').then((m) => ({default: m.ForgotPasswordPage})));
 const DemoSmsInboxPage = lazy(() => import('./pages/public/DemoSmsInboxPage').then((m) => ({default: m.DemoSmsInboxPage})));
 const AccountSecurityPage = lazy(() => import('./pages/farmer/AccountSecurityPage').then((m) => ({default: m.AccountSecurityPage})));
@@ -134,6 +136,8 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/verify" element={<VerifyCodePage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/recover-account" element={<RecoverAccountPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ForgotPasswordPage />} />
             <Route path="/demo/sms-inbox" element={<DemoSmsInboxPage />} />

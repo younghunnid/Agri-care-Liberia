@@ -358,7 +358,7 @@ test('10. anonymous photo/voice quotas: per-item caps, a global byte budget and 
     assert.equal(rec.status, 507);
     // signed-in accounts keep the original 2.5 MB items and are not limited by the visitor budget
     const acct = new Jar();
-    assert.equal((await call(d.base, acct, 'POST', '/api/v1/auth/register', {displayName: 'Quota Farmer', phone: '+231770009500', password: PW, county: 'Bong'})).status, 201);
+    assert.equal((await call(d.base, acct, 'POST', '/api/v1/auth/register', {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Quota Farmer', phone: '+231880009500', password: PW, county: 'Bong'})).status, 201);
     const mine = await call(d.base, acct, 'POST', '/api/v1/expert-requests/demo', expertBody('acct', {requesterKey: undefined, photoDataUrl: img(1_200_000)}));
     assert.equal(mine.status, 201); assert.equal(mine.j.request.photo_data_url.length, 1_200_000);
     // the total of visitor media never exceeds the budget

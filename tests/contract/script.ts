@@ -62,8 +62,8 @@ export const STEPS: Step[] = [
   {name: 'public home', jar: 'anon', path: '/api/v1/public/home'},
   // --- auth
   {name: 'me (anonymous)', jar: 'anon', path: '/api/v1/auth/me'},
-  {name: 'register farmer', jar: 'farmer', method: 'POST', path: '/api/v1/auth/register', body: {displayName: 'Contract Farmer', phone: '+231771234001', password: 'SafePassword123', county: 'Lofa', preferredLanguage: 'en', cropsOfInterest: ['Cassava']}},
-  {name: 'register duplicate phone', jar: 'farmer2', method: 'POST', path: '/api/v1/auth/register', body: {displayName: 'Dup Farmer', phone: '+231771234001', password: 'SafePassword123', county: 'Lofa', preferredLanguage: 'en', cropsOfInterest: []}},
+  {name: 'register farmer', jar: 'farmer', method: 'POST', path: '/api/v1/auth/register', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Contract Farmer', phone: '+231771234001', password: 'SafePassword123', county: 'Lofa', preferredLanguage: 'en', cropsOfInterest: ['Cassava']}},
+  {name: 'register duplicate phone', jar: 'farmer2', method: 'POST', path: '/api/v1/auth/register', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Dup Farmer', phone: '+231771234001', password: 'SafePassword123', county: 'Lofa', preferredLanguage: 'en', cropsOfInterest: []}},
   {name: 'me (farmer)', jar: 'farmer', path: '/api/v1/auth/me'},
   {name: 'login wrong password', jar: 'farmer2', method: 'POST', path: '/api/v1/auth/login', body: {identifier: '+231771234001', password: 'WrongPassword!1'}},
   {name: 'login ok', jar: 'farmer2', method: 'POST', path: '/api/v1/auth/login', body: {identifier: '+231771234001', password: 'SafePassword123'},

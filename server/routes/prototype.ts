@@ -16,6 +16,8 @@ import {
   verifyOwnerKey,
   writeAuditLog,
   isSharedDemoAccount,
+  isSyntheticAccount,
+  realUsersDeployment,
   writeLimit,
 } from '../security.ts';
 import {idempotent} from '../idempotency.ts';
@@ -574,6 +576,11 @@ prototypeRouter.post('/marketplace/listings/:id/inquiries', idempotent('marketpl
     res.status(400).json({error: {code: 'VALIDATION_ERROR', message: 'The device key must be a random key made by the app (at least 10 different characters), not a guessable one.'}});
     return;
   }
+  // A synthetic account never contacts a genuine seller in a real deployment (and genuine users never receive demonstration enquiries).
+  if (realUsersDeployment() && req.user && isSyntheticAccount(req.user.id)) {
+    const real = db.prepare('SELECT 1 AS x FROM marketplace_listings WHERE id = ? AND is_fictional_seller = 0').get(listingId);
+    if (real) { res.status(403).json({error: {code: 'SYNTHETIC_ACCOUNT', message: 'Demonstration accounts cannot contact real sellers.'}}); return; }
+  }
   const demoBuyerPhone = demoPhoneProblem(buyerPhone, 'The buyer phone number');
   if (demoBuyerPhone) {
     res.status(422).json({error: {code: 'PHONE_NOT_ALLOWED', message: demoBuyerPhone}});
@@ -843,7 +850,8 @@ const isSampleRow = (r: RawExpertRequestRow): boolean => r.requester_token.start
  */
 function responderScope(req: AuthedRequest): {sharedDemoAccount: boolean; seesQueue: boolean} {
   const isResponder = Boolean(req.user?.roles.some((r) => r === 'expert' || r === 'admin'));
-  const sharedDemoAccount = isResponder && isSharedDemoAccount(req.user!.id);
+  // In a real deployment ANY synthetic account (not only published-password ones) is an untrusted responder: it may work only on the fictional samples.
+  const sharedDemoAccount = isResponder && (isSharedDemoAccount(req.user!.id) || (realUsersDeployment() && isSyntheticAccount(req.user!.id)));
   return {sharedDemoAccount, seesQueue: isResponder && !sharedDemoAccount};
 }
 

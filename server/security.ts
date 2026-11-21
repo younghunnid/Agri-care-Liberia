@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import {getAuthConfig} from './authConfig.ts';
 import net from 'node:net';
 import type {CookieOptions, NextFunction, Request, Response} from 'express';
 import {getDb} from './db.ts';
@@ -538,6 +539,18 @@ export function isSharedDemoAccount(userId: number): boolean {
   const row = getDb().prepare('SELECT is_shared_demo AS f FROM users WHERE id = ?').get(userId) as {f: number} | undefined;
   return row?.f === 1;
 }
+
+/**
+ * A SYNTHETIC account is a demonstration account: a shared (published-password) account, or any account on the reserved demonstration number range.
+ * In a REAL (production) deployment such accounts are untrusted: they may only work with fictional sample content and can never answer, message or
+ * act on genuine users' records. (In the protected demo environment everything is synthetic, so no extra restriction applies.)
+ */
+export function isSyntheticAccount(userId: number): boolean {
+  const row = getDb().prepare("SELECT is_shared_demo AS f, phone FROM users WHERE id = ?").get(userId) as {f: number; phone: string} | undefined;
+  return Boolean(row && (row.f === 1 || row.phone.startsWith('+23177000')));
+}
+/** True when a genuine-user deployment must keep synthetic accounts away from real people (production only). */
+export const realUsersDeployment = (): boolean => getAuthConfig().production;
 
 /**
  * Start-up backfill for databases seeded before the flag existed: an account on a documented phone number that STILL has its published password is

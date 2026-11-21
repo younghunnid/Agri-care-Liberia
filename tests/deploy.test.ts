@@ -111,7 +111,7 @@ async function register(base: string, phone: string, extra: Record<string, strin
   const c = await fetch(`${base}/api/v1/csrf-token`, {headers: extra});
   const {csrfToken} = (await c.json()) as {csrfToken: string};
   const jar = cookiesOf(c).map((x) => x.split(';')[0]).join('; ');
-  const r = await fetch(`${base}/api/v1/auth/register`, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken, Cookie: jar, ...extra}, body: JSON.stringify({displayName: 'Deploy Check', phone, password: PW, county: 'Bong'})});
+  const r = await fetch(`${base}/api/v1/auth/register`, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken, Cookie: jar, ...extra}, body: JSON.stringify({privacyConsent: true, privacyVersion: 'privacy-v1', displayName: 'Deploy Check', phone, password: PW, county: 'Bong'})});
   return {r, jar: [...cookiesOf(c), ...cookiesOf(r)].map((x) => x.split(';')[0]).join('; '), csrfToken};
 }
 

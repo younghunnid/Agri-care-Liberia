@@ -384,7 +384,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
               <li><Link to="/ministry" className="hover:text-[#16803C]">Ministry Food Security View</Link></li>
               <li><Link to="/demo" className="hover:text-[#16803C]">Hackathon Demo Mode</Link></li>
               <li><Link to="/dashboard" className="hover:text-[#16803C]">Farmer Dashboard (Demo)</Link></li>
-              <li><Link to="/about" className="hover:text-[#16803C]">About</Link> · <Link to="/contact" className="hover:text-[#16803C]">Contact</Link> · <Link to="/coming-soon" className="hover:text-[#16803C]">Roadmap</Link></li>
+              <li><Link to="/about" className="hover:text-[#16803C]">About</Link> · <Link to="/contact" className="hover:text-[#16803C]">Contact</Link> · <Link to="/privacy" className="hover:text-[#16803C]">Privacy</Link> · <Link to="/coming-soon" className="hover:text-[#16803C]">Roadmap</Link></li>
             </ul>
           </div>
         </div>
@@ -528,6 +528,7 @@ export const Layout: React.FC<{children: React.ReactNode}> = ({children}) => {
                       {to: '/coming-soon', label: 'Coming Soon Innovations', icon: Sparkles},
                       {to: '/about', label: 'About Team 8 Platform', icon: Info},
                       {to: '/contact', label: 'Contact & Feedback', icon: MessageSquare},
+                      {to: '/privacy', label: 'Privacy notice', icon: Info},
                     ],
                   },
                 ].map((group) => (

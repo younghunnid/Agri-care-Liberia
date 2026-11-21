@@ -6,6 +6,8 @@ import {apiFetch} from '../../lib/api';
 import {type ClientUser, useApp} from '../../context/AppContext';
 import {LANGUAGE_OPTIONS, type LanguageCode} from '../../lib/i18n';
 import {normalizeLiberianPhone} from '../../lib/phone';
+import {PRIVACY_VERSION} from '../../lib/privacy';
+import {goHomeFor} from '../../components/SecurityBits';
 
 const LIBERIA_COUNTIES = [
   'Bomi', 'Bong', 'Gbarpolu', 'Grand Bassa', 'Grand Cape Mount',
@@ -20,6 +22,7 @@ export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
+  const [privacy, setPrivacy] = useState(false);
   const [noSms, setNoSms] = useState(false); // this site sends no verification messages
   useEffect(() => { let live = true; fetch('/api/v1/environment').then((r) => (r.ok ? r.json() : null)).then((j: {phoneVerification?: string} | null) => { if (live && j?.phoneVerification === 'none') setNoSms(true); }).catch(() => undefined); return () => { live = false; }; }, []);
   const [email, setEmail] = useState('');
@@ -49,6 +52,7 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
+    if (!privacy) { setError('Please read and accept the privacy notice to create an account.'); return; }
     setLoading(true);
     try {
       const res = await apiFetch<{user: ClientUser}>('/auth/register', {
@@ -61,11 +65,14 @@ export const RegisterPage: React.FC = () => {
           county,
           preferredLanguage,
           cropsOfInterest,
+          privacyConsent: true,
+          privacyVersion: PRIVACY_VERSION,
         }),
       });
       setUser(res.user);
       await setLanguage(preferredLanguage);
-      navigate('/account/security'); // the new number is not verified yet: ask the farmer to confirm it
+      // Without SMS the number cannot be verified, so there is nothing to do on Account Security: go to the dashboard (it shows the phone status).
+      navigate(noSms ? goHomeFor(res.user.roles) : '/account/security');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to complete registration.');
     } finally {
@@ -217,6 +224,11 @@ export const RegisterPage: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full min-h-[44px] rounded-xl border border-[#183B2B]/20 px-3.5 text-sm"
             />
+          </div>
+
+          <div className="flex items-start gap-3">
+            <input id="reg-privacy" data-testid="reg-privacy" type="checkbox" required checked={privacy} onChange={(e) => setPrivacy(e.target.checked)} className="mt-1 w-6 h-6 accent-[#16803C] shrink-0" />
+            <label htmlFor="reg-privacy" className="text-sm text-[#183B2B]">I have read the <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#16803C] underline">privacy notice</Link> and I agree that Agricare Liberia keeps the information I enter, as described there.</label>
           </div>
 
           <button

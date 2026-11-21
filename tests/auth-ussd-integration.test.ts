@@ -19,7 +19,7 @@ const db = () => new DatabaseSync(path.join(dir, 'p.db'));
 const freePort = (): Promise<number> => new Promise((r) => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = (s.address() as net.AddressInfo).port; s.close(() => r(p)); }); });
 const clearLimits = () => { const d = db(); d.prepare('DELETE FROM rate_limit_attempts').run(); d.close(); };
 const deviceKey = () => crypto.randomBytes(24).toString('hex');
-const register = (jar: CookieJar, phone: string, name: string) => req(jar, '/api/v1/auth/register', {method: 'POST', body: {displayName: name, phone, password: PW, county: 'Bong', preferredLanguage: 'en', cropsOfInterest: []}});
+const register = (jar: CookieJar, phone: string, name: string) => req(jar, '/api/v1/auth/register', {method: 'POST', body: {privacyConsent: true, privacyVersion: 'privacy-v1', displayName: name, phone, password: PW, county: 'Bong', preferredLanguage: 'en', cropsOfInterest: []}});
 const enroll = (jar: CookieJar, key: string, body: Record<string, unknown> = {}) => req(jar, '/api/v1/participants/enroll', {method: 'POST', headers: {'X-Requester-Key': key}, body: {category: 'Farmer', county: 'Bong', consent: true, consentVersion: 'ussd-demo-v1', ...body}});
 const me = (jar: CookieJar, key: string) => req(jar, '/api/v1/participants/me', {headers: {'X-Requester-Key': key}});
 const count = (sql: string, ...a: string[]) => (db().prepare(sql).get(...a) as {c: number}).c;
