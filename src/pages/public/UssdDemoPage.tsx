@@ -4,6 +4,7 @@ import {UssdPhone} from '../../components/ussd/UssdPhone';
 import {StatusLabel} from '../../components/StatusLabel';
 import {DEFAULT_TIMEOUT_S, DEMO_LABEL, MAIN_ITEMS} from '../../lib/ussd/engine';
 import {USSD_NOTICE} from '../../lib/ministryAnalytics';
+import {PROPOSED_USSD_CODE} from '../../lib/ussd/enrollment';
 const DemoQr = lazy(() => import('../../components/ussd/DemoQr').then((m) => ({default: m.DemoQr})));
 
 /** Public browser simulator. Telecom is simulated; explicitly confirmed marketplace actions use the existing app. */
@@ -15,7 +16,7 @@ export const UssdDemoPage: React.FC = () => {
       <header className="space-y-2 px-1">
         <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[#183B2B]">Basic phone demonstration</h1>
         <p role="note" className="rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-base font-bold text-amber-950" data-testid="ussd-demo-label">{DEMO_LABEL}</p>
-        <p className="text-base">Press <strong>Call / Send</strong>, choose a number, then Send. Menu <strong>3</strong> opens Buy &amp; Sell Produce.</p>
+        <p className="text-base">Dial <strong>{PROPOSED_USSD_CODE}</strong> on the keypad, then Call / Send. This proposed code works only in this browser simulator; it is not assigned or connected to a telecom network. Press 1 at the welcome screen for automatic reading.</p>
       </header>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <UssdPhone timeoutSeconds={timeout} />
@@ -42,7 +43,8 @@ export const UssdDemoPage: React.FC = () => {
           </section>
           <section className="rounded-2xl bg-white border border-[#183B2B]/15 p-4 space-y-2" aria-labelledby="kb-h" data-testid="ussd-keyboard">
             <h2 id="kb-h" className="text-xl font-extrabold">Keyboard</h2>
-            <p className="text-base">Digits enter a choice, Enter sends, Backspace deletes and Escape cancels. A focused button keeps its normal Enter/Space action. Tab reaches every key.</p>
+            <p className="text-base">Digits enter a choice, Enter sends, Backspace deletes and Escape cancels. A focused button keeps its normal Enter/Space action. Tab reaches every key. Hold 0 for about 1.5 seconds to mute; short presses still enter 0. Voice and Repeat controls remain visible.</p>
+            <p className="text-sm">Enrollment uses a private browser key or your signed-in account. No phone number is detected. Choose a synthetic category and county, read the consent, then confirm. Agricultural Expert is a participant category, never verified-expert access. Confirmed registration may finish after Cancel; public advice remains available without consent.</p>
           </section>
           <Suspense fallback={<p role="status">Opening the presentation QR section…</p>}><DemoQr /></Suspense>
           <nav className="flex flex-wrap gap-3" aria-label="Related pages"><Link to="/today" className="agri-button-secondary">My farm today</Link><Link to="/guidance" className="agri-button-secondary">Planting and storage guidance</Link><Link to="/demo/farm-to-market" className="agri-button-secondary">Presenter walkthrough</Link></nav>

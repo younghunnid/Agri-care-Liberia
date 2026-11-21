@@ -8,6 +8,7 @@ import {MINISTRY_VIEWS, ministryDestination, publishedRows} from '../../lib/mini
 import {WorkspaceScaffold} from '../../components/workspace/WorkspaceScaffold';
 import {MetricCard, PanelState, SectionCard, SourceBadge} from '../../components/workspace/DashboardBits';
 import {PublishedInsights} from '../../components/ministry/PublishedInsights';
+import {ParticipantRegistryPanel} from '../../components/ministry/ParticipantRegistryPanel';
 import {MinistryAnalyticsPage} from './MinistryAnalyticsPage';
 import {MinistryDashboardPage} from './MinistryDashboardPage';
 import {LANGUAGE_OPTIONS, type LanguageCode} from '../../lib/i18n';
@@ -47,6 +48,7 @@ export function MinistryWorkspacePage(){
   <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-[#EDF5EF] px-4 py-3 text-sm" role="note"><p><strong>Demonstration workspace.</strong> Not an official Ministry system or endorsed statistics. No farmer-level records are shown.</p><Link to="/ministry/data-quality" className="min-h-[44px] shrink-0 font-bold text-[#0F5C2A] underline">About these data</Link></div>
   {!active&&<PanelState kind="unavailable" title="This Ministry view does not exist"><Link to="/ministry" className="underline">Return to Overview</Link></PanelState>}
   {view===''&&<>
+   <ParticipantRegistryPanel />
    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
     <MetricCard label="Published county groups" value={coverage('county')} loading={busy&&!result.data} source={sourceLabel} note="Named harvest groups only. Not a national county or farmer total." />
     <MetricCard label="Minimum publication group" value={result.data?.privacy.minGroup??null} loading={busy&&!result.data} source="Existing privacy rule" note="Both record count and distinct contributors must meet the rule." />

@@ -237,10 +237,10 @@ test('14. routes, navigation, the Farmer Today link and the presenter walkthroug
   assert.ok(routes.has('/ussd-demo')); assert.ok(NAV_GROUPS.find((g) => g.id === 'tools')!.items.some((i) => i.to === '/ussd-demo' && i.kinds.includes('simulated')));
   const today = read('src/pages/public/FarmerTodayPage.tsx'); assert.ok(today.includes('to="/ussd-demo"') && today.includes('data-testid="go-ussd"') && today.includes('Demonstration only. No mobile network.'));
   assert.equal(FARM_TO_MARKET_STEPS.length, 16); const s3 = FARM_TO_MARKET_STEPS[2]; const s4 = FARM_TO_MARKET_STEPS[3];
-  assert.equal(s3.to, '/ussd-demo'); assert.ok(s3.kinds.includes('simulated') && s3.kinds.includes('draft')); assert.match(s3.note, /works offline/); assert.match(s3.note, /no mobile network and no dial code/);
+  assert.equal(s3.to, '/ussd-demo'); assert.ok(s3.kinds.includes('simulated') && s3.kinds.includes('draft')); assert.match(s3.note, /works offline/); assert.match(s3.note, /proposed code is for this browser only/);
   assert.equal(s4.to, '/ussd-demo'); assert.ok(s4.kinds.includes('simulated') && s4.kinds.includes('future')); assert.match(s4.note, /require explicit confirmation/); assert.match(s4.note, /no translation or recording exists/);
   assert.deepEqual(FARM_TO_MARKET_STEPS.map((s) => s.n), Array.from({length: 16}, (_x, i) => i + 1)); for (const s of FARM_TO_MARKET_STEPS) assert.ok(routes.has(s.to.split('#')[0].split('?')[0]) || /^\/advice-cards\/ADV/.test(s.to), s.to);
-  assert.ok(!fs.readdirSync(path.join(root, 'server/migrations')).some((f) => /^012_/.test(f)), 'Phase 2B adds no migration'); assert.ok(!fs.existsSync(path.join(root, 'server/routes/ussd.ts')), 'and no server route: the simulator is client-side only');
+  assert.ok(!read('src/lib/ussd/engine.ts').includes('/participants/enroll'), 'the original advice engine remains independent of the additive enrollment registry'); assert.ok(!fs.existsSync(path.join(root, 'server/routes/ussd.ts')), 'and no server route: the simulator is client-side only');
   for (const county of LIBERIA_COUNTIES) assert.ok(go([...pick('7', '4', '2', '650', '62')]).text.length > 0, county);
 });
 

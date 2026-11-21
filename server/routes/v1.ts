@@ -13,6 +13,7 @@ import {normalizeLiberianPhone} from '../../src/lib/phone.ts';
 import {authSecurityRouter} from './authSecurity.ts';
 import {adviceRouter} from './advice.ts';
 import {harvestRouter} from './harvest.ts';
+import {participantsRouter} from './participants.ts';
 import {
   CHALLENGE_COOKIE, CLAIM_COOKIE, DEVICE_COOKIE, challengeCookieOptions, clearHold, findTrustedDevice, getSessionVersion, hasPhoneOnFile, passwordProblem, resolvePhoneForRegistration,
 } from '../authSecurity.ts';
@@ -56,6 +57,7 @@ v1Router.use(prototypeRouter);
 v1Router.use(authSecurityRouter);
 v1Router.use(adviceRouter);
 v1Router.use(harvestRouter);
+v1Router.use(participantsRouter);
 
 // 1. Health & CSRF
 v1Router.get('/health', (_req, res) => {
