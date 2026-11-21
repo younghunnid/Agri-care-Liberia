@@ -40,7 +40,7 @@ test('index.html and the PWA manifest use the Agricare Liberia name and the new 
 
 test('no retired product name remains in application source, server code, or the HTML shell', () => {
   const files = [...walk('src/'), ...walk('server/'), 'server.ts', 'index.html', 'vite.config.ts'].filter((f) => /\.(tsx?|html|css|json)$/.test(f));
-  const bad = files.filter((f) => /Agriccare|Agri-Advisory|Agri-Care|AgriLiberia/.test(read(f)));
+  const bad = files.filter((f) => /Agriccare|Agri-Advisory|AGRI-ADVISORY|Agri-Care|AgriLiberia/.test(read(f)));
   assert.deepEqual(bad, []);
 });
 

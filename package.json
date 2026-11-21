@@ -39,6 +39,7 @@
     "test:ussd-enrollment": "tsx --test tests/ussd-enrollment.test.ts",
     "test:ussd-enrollment-browser": "tsx tests/ussd-enrollment-browser.ts",
     "test:voice-mobile": "tsx tests/voice-mobile-emulation.ts",
+    "test:ussd-only": "tsx tests/ussd-only-browser.ts",
     "test:real-mode-browser": "tsx tests/real-mode-browser.ts",
     "test:offline-qa": "node --import tsx --test tests/offline-qa.test.ts",
     "test:browser-qa": "node --import tsx tests/browser-qa.ts",

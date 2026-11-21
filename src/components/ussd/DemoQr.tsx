@@ -19,7 +19,7 @@ export const DemoQr: React.FC<{poster?: boolean; configured?: string}> = ({poste
         <p className="text-base">Browser-based USSD simulator. No active telecom service, payment or money transfer.</p>
       </> : <div role="note" className="rounded-xl border border-amber-400 bg-amber-50 p-4 text-left space-y-2" data-testid="qr-setup">
         <p className="font-bold">Public demo link needs setup</p><p>{'message' in target ? target.message : 'The QR code could not be generated.'}</p>
-        <p>Use the address where this application is actually hosted. Verify that /ussd-demo opens there before printing. Do not put a password, access token or sign-in link in this setting.</p>
+        <p>Use the address where this application is actually hosted. Verify that /ussd opens there (a full-screen phone, no website around it) before printing. Do not put a password, access token or sign-in link in this setting.</p>
       </div>}
       {!poster && <Link to="/ussd-demo/poster" className="agri-button-secondary">Open printable QR poster</Link>}
     </section>

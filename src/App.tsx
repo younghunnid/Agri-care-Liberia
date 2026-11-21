@@ -1,6 +1,6 @@
 import {lazy} from 'react';
 import {RouteContent} from './components/PageBoundary';
-import {BrowserRouter, Route, Routes} from 'react-router-dom';
+import {BrowserRouter, Route, Routes, useLocation} from 'react-router-dom';
 import {AppProvider} from './context/AppContext';
 import {Layout} from './components/Layout';
 import {ProtectedRoute} from './components/ProtectedRoute';
@@ -24,6 +24,7 @@ const FarmCalculatorPage = lazy(() => import('./pages/public/FarmCalculatorPage'
 const VerifyCodePage = lazy(() => import('./pages/public/VerifyCodePage').then((m) => ({default: m.VerifyCodePage})));
 const PrivacyPage = lazy(() => import('./pages/public/PrivacyPage').then((m) => ({default: m.PrivacyPage})));
 const RecoverAccountPage = lazy(() => import('./pages/public/RecoverAccountPage').then((m) => ({default: m.RecoverAccountPage})));
+const UssdOnlyPage = lazy(() => import('./pages/public/UssdOnlyPage').then((m) => ({default: m.UssdOnlyPage})));
 const ForgotPasswordPage = lazy(() => import('./pages/public/ForgotPasswordPage').then((m) => ({default: m.ForgotPasswordPage})));
 const DemoSmsInboxPage = lazy(() => import('./pages/public/DemoSmsInboxPage').then((m) => ({default: m.DemoSmsInboxPage})));
 const AccountSecurityPage = lazy(() => import('./pages/farmer/AccountSecurityPage').then((m) => ({default: m.AccountSecurityPage})));
@@ -81,11 +82,13 @@ const QuestionManagementPage = lazy(() => import('./pages/admin/QuestionManageme
 const ReportsAuditLogsPage = lazy(() => import('./pages/admin/ReportsAuditLogsPage').then((m) => ({default: m.ReportsAuditLogsPage})));
 const PlatformSettingsPage = lazy(() => import('./pages/admin/PlatformSettingsPage').then((m) => ({default: m.PlatformSettingsPage})));
 
-export default function App() {
+/** Standalone pages (the QR code target) are rendered WITHOUT the website layout: no header, menu, footer, banners or install prompts. */
+const STANDALONE = /^\/ussd\/?$/;
+function Shell() {
+  const {pathname} = useLocation();
+  if (STANDALONE.test(pathname)) return <RouteContent><UssdOnlyPage /></RouteContent>;
   return (
-    <AppProvider>
-      <BrowserRouter>
-        <Layout>
+    <Layout>
           <RouteContent>
           <Routes>
             {/* Public & Hackathon Prototype Routes */}
@@ -171,7 +174,15 @@ export default function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
           </RouteContent>
-        </Layout>
+    </Layout>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <BrowserRouter>
+        <Shell />
       </BrowserRouter>
     </AppProvider>
   );

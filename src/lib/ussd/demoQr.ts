@@ -6,13 +6,13 @@ export function demoDestination(configured: unknown): DemoDestination {
   if (typeof configured !== 'string' || !configured.trim()) return {ok: false, message: 'No public demo URL is configured. Ask the presenter to configure VITE_PUBLIC_DEMO_URL and rebuild the app.'};
   try {
     const u = new URL(configured.trim()); const host = u.hostname.toLowerCase();
-    if (u.protocol !== 'https:' || u.username || u.password || u.search || u.hash || u.port || !['/', '/ussd-demo', '/ussd-demo/'].includes(u.pathname)) throw new Error();
+    if (u.protocol !== 'https:' || u.username || u.password || u.search || u.hash || u.port || !['/', '/ussd', '/ussd/', '/ussd-demo', '/ussd-demo/'].includes(u.pathname)) throw new Error();
     // QR posters must never send a judge to loopback, a private LAN, an IP literal or a placeholder hostname.
     if (!host.includes('.') || host.endsWith('.') || host.endsWith('.home.arpa') || /[:\[\]]/.test(host) || /^\d+(\.\d+){3}$/.test(host) || /(^|\.)(localhost|local|lan|internal|test|invalid|example)$/.test(host) || /(^|\.)example\.(com|org|net)$/.test(host)) throw new Error();
     if (u.href.length > 240) throw new Error();
-    return {ok: true, url: `${u.origin}/ussd-demo`};
+    return {ok: true, url: `${u.origin}/ussd`}; // the standalone phone page (no website around it)
   } catch {
-    return {ok: false, message: 'Configure VITE_PUBLIC_DEMO_URL with the public HTTPS origin (or its /ussd-demo URL). Localhost, IP addresses, custom ports, credentials, query strings and fragments cannot be used on the poster.'};
+    return {ok: false, message: 'Configure VITE_PUBLIC_DEMO_URL with the public HTTPS origin (or its /ussd URL). Localhost, IP addresses, custom ports, credentials, query strings and fragments cannot be used on the poster.'};
   }
 }
 export function qrMatrix(url: string): boolean[][] {

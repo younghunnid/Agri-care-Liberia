@@ -18,7 +18,8 @@ const LETTERS: Record<string, string> = {'1': ' ', '2': 'ABC', '3': 'DEF', '4': 
 const FOCUS = 'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#F5B942] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1B2430]';
 
 /** Browser phone; marketplace writes happen only after the final numbered confirmation. No telecom or phone-number identity. */
-export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds = DEFAULT_TIMEOUT_S}) => {
+/** `compact`: the standalone /ussd page. Same phone, voice and flows, but the explanatory paragraphs and links into the website are left out. */
+export const UssdPhone: React.FC<{timeoutSeconds?: number; compact?: boolean}> = ({timeoutSeconds = DEFAULT_TIMEOUT_S, compact = false}) => {
   const {isOnline, user, loadingAuth} = useApp();
   const onlineRef = useRef(isOnline); onlineRef.current = isOnline;
   const service = useRef<ReturnType<typeof createBrowserUssdMarket> | null>(null);
@@ -141,7 +142,7 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
       <div className="ussd-handset rounded-[2.5rem] bg-gradient-to-b from-[#354150] via-[#1B2430] to-[#10161D] p-3 sm:p-5 space-y-3 shadow-xl border-4 border-[#10161D]">
         <div className="flex items-center justify-center gap-2 py-1" aria-hidden><span className="w-2 h-2 rounded-full bg-[#10161D] border border-slate-500" /><span className="h-2 w-20 rounded-full bg-[#10161D] border border-slate-500" /></div>
         <div className="flex flex-wrap items-center justify-between gap-1 text-sm font-bold text-[#E8EDF3]">
-          <span data-testid="ussd-caller">AGRI-ADVISORY · DEMO</span>
+          <span data-testid="ussd-caller">AGRICARE · DEMO</span>
           <span className="inline-flex items-center gap-1" data-testid="ussd-net" data-online={isOnline ? 'yes' : 'no'}>{isOnline ? <Wifi className="w-4 h-4" aria-hidden /> : <WifiOff className="w-4 h-4" aria-hidden />}{isOnline ? 'Internet' : 'Offline'}</span>
         </div>
         <div className="rounded-xl bg-[#CFEAA8] border-4 border-[#0A1A0E] p-3 min-h-[250px] flex flex-col justify-between shadow-inner" data-testid="ussd-screen" data-frame={screen.frameId ?? 'idle'} data-kind={screen.kind} aria-busy={working}>
@@ -190,16 +191,16 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
             </button>
           ))}
         </div>
-        <p className="text-sm">The voice pauses one second after each option and one and a half seconds after a heading. Your speed choice is remembered on this device. Hold 0 for about 1.5 seconds to mute. A short press still enters 0. Browser speech may need an installed voice; no telecom voice service is connected.</p>
+        {compact ? <p className="text-sm text-center">Hold 0 for 1.5 seconds to mute the voice.</p> : <p className="text-sm">The voice pauses one second after each option and one and a half seconds after a heading. Your speed choice is remembered on this device. Hold 0 for about 1.5 seconds to mute. A short press still enters 0. Browser speech may need an installed voice; no telecom voice service is connected.</p>}
         {voiceNotice && <p role="status" data-testid="ussd-voice-notice">{voiceNotice}</p>}
         {voiceInfo && <p role="status" className="text-sm" data-testid="ussd-voice-info">{voiceInfo}</p>}
         {!inMenu && <button type="button" className="agri-button-secondary" onClick={enrollment.publicAdvice} data-testid="ussd-public-advice">Browse public advice without registering</button>}
         {inMenu && <p data-testid="ussd-identity">{authorized ? `${enrollment.state.participant!.synthetic ? 'Synthetic' : 'Registered'} ${enrollment.state.participant!.category} · ${enrollment.state.participant!.county}. ${isOnline ? (enrollment.state.real ? 'Identified by your signed-in account. Your phone number is not verified.' : 'Identified by your browser key or signed-in account.') : 'Saved device registration; offline copy.'}` : 'Public advice only. No personalized registry information or marketplace submissions.'} <button type="button" className="min-h-[44px] underline" onClick={enrollment.restart}>Dial again</button></p>}
-        <p className="text-sm font-bold" data-testid="ussd-net-note">{netText}</p>
-        <p className={`text-sm rounded-xl border p-3 ${authorized && marketplace.allowed ? 'bg-[#DDEFE0] border-[#16803C]/40' : 'bg-amber-50 border-amber-300'}`} data-testid="ussd-write-status">{authorized && marketplace.allowed ? (marketplace.mode === 'real' ? 'Interactive marketplace enabled for your account. Nothing is saved or sent until you read the details and confirm. Your phone number is not shared and is not verified. This handset is a simulation: The proposed dial code is not an active telecom service.' : 'Interactive synthetic demo enabled. Nothing is saved or sent until you read the details and confirm. Uses this browser’s existing device keys/account; no phone number identity.') : !authorized ? (enrollment.state.real ? 'Register with your account before personal marketplace actions. Public advice and selling practice remain available.' : 'Register or identify your demo participation before personal marketplace actions. Public advice and selling practice remain available.') : marketplace.reason || 'Checking whether this is a protected synthetic demo server. Submissions stay disabled until confirmed.'}</p>
+        {!compact && <p className="text-sm font-bold" data-testid="ussd-net-note">{netText}</p>}
+        {!compact && <p className={`text-sm rounded-xl border p-3 ${authorized && marketplace.allowed ? 'bg-[#DDEFE0] border-[#16803C]/40' : 'bg-amber-50 border-amber-300'}`} data-testid="ussd-write-status">{authorized && marketplace.allowed ? (marketplace.mode === 'real' ? 'Interactive marketplace enabled for your account. Nothing is saved or sent until you read the details and confirm. Your phone number is not shared and is not verified. This handset is a simulation: The proposed dial code is not an active telecom service.' : 'Interactive synthetic demo enabled. Nothing is saved or sent until you read the details and confirm. Uses this browser’s existing device keys/account; no phone number identity.') : !authorized ? (enrollment.state.real ? 'Register with your account before personal marketplace actions. Public advice and selling practice remain available.' : 'Register or identify your demo participation before personal marketplace actions. Public advice and selling practice remain available.') : marketplace.reason || 'Checking whether this is a protected synthetic demo server. Submissions stay disabled until confirmed.'}</p>}
         <button type="button" onClick={() => void refresh()} disabled={refreshing || working} className="agri-button-secondary" data-testid="market-refresh"><RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />{refreshing ? 'Refreshing demo market…' : 'Refresh market & inquiries'}</button>
         {marketplace.error && <p role="alert" className="text-base font-bold text-[#7A1010]" data-testid="market-error">{marketplace.error}</p>}
-        {screen.appLink && <Link to={screen.appLink.to} className="agri-button-secondary" data-testid="ussd-applink">{screen.appLink.label}</Link>}
+        {!compact && screen.appLink && <Link to={screen.appLink.to} className="agri-button-secondary" data-testid="ussd-applink">{screen.appLink.label}</Link>}
         <p className="sr-only">{DEMO_LABEL}</p>
       </div>
     </div>

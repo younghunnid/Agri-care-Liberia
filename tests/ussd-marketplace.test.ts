@@ -139,11 +139,13 @@ test('unstable requester storage refuses private inquiries rather than losing ow
 const URL_FIXTURE = 'https://openai.com';
 test('QR configuration rejects local, placeholder, credential and token-bearing destinations', () => {
   for (const bad of ['', 'http://openai.com', 'https://localhost', 'https://localhost.', 'https://demo.home.arpa', 'https://127.0.0.1', 'https://192.168.0.1', 'https://[::1]', 'https://demo.local', 'https://example.org', 'https://user:password@openai.com', 'https://openai.com?token=secret', 'https://openai.com/#credential', 'https://openai.com:3000', 'https://openai.com/login']) assert.equal(demoDestination(bad).ok, false, bad);
-  assert.deepEqual(demoDestination(URL_FIXTURE), {ok: true, url: URL_FIXTURE+'/ussd-demo'});
+  assert.deepEqual(demoDestination(URL_FIXTURE), {ok: true, url: URL_FIXTURE+'/ussd'}); // the QR opens the standalone phone page
+  for (const same of ['/', '/ussd', '/ussd/', '/ussd-demo']) assert.deepEqual(demoDestination(URL_FIXTURE + same), {ok: true, url: URL_FIXTURE + '/ussd'}, same);
+  assert.equal(demoDestination(URL_FIXTURE + '/marketplace').ok, false, 'no other path can be encoded');
   const absent = renderToStaticMarkup(React.createElement(DemoQr, {poster: true, configured: ''})); assert.match(absent, /Public demo link needs setup/); assert.ok(!absent.includes('data-testid="qr-code"'));
 });
 
-test('QR decodes to the configured /ussd-demo destination and its navigation link matches', () => {
+test('QR decodes to the configured /ussd destination and its navigation link matches', () => {
   const target = demoDestination(URL_FIXTURE); assert.ok(target.ok); if (!target.ok) return;
   const matrix = qrMatrix(target.url); const scale = 7, side = (matrix.length + 8) * scale; const pixels = new Uint8ClampedArray(side * side * 4).fill(255);
   // Decode pixels rasterized from the actual SVG path, including its quiet zone.
