@@ -150,7 +150,13 @@ try {
       if (kg === 702) { await page.getByTestId('ussd-identity').getByRole('button', {name: 'Dial again'}).click(); await enterParticipantMenu(page); }
       for (const choice of ['3', '2', '4', String(kg), '62', '2', '1']) await choose(page, choice);
       await review(page); await choose(page, '1');
-      await page.waitForFunction(async (quantity) => (await (await fetch('/api/v1/harvest/listings?includeSoldOut=1')).json()).listings.some((r: any) => r.quantityKg === quantity && r.description.startsWith('USSD DEMO:')), kg, {timeout: 45000});
+      // Poll explicitly: a Promise-returning waitForFunction predicate does not wait for the fetch, which made this check race the queued sale.
+      let seen = false;
+      for (let i = 0; i < 90 && !seen; i++) {
+        seen = await page.evaluate(async (quantity) => (await (await fetch('/api/v1/harvest/listings?includeSoldOut=1')).json()).listings.some((r: any) => r.quantityKg === quantity && r.description.startsWith('USSD DEMO:')), kg);
+        if (!seen) await page.waitForTimeout(500);
+      }
+      assert.ok(seen, `the confirmed ${kg} kg sale reached the server`);
     }
     const quantities = await page.evaluate(async () => (await (await fetch('/api/v1/harvest/listings?includeSoldOut=1')).json()).listings.filter((r: any) => [701, 702].includes(r.quantityKg) && r.description.startsWith('USSD DEMO:')).map((r: any) => r.quantityKg).sort());
     assert.deepEqual(quantities, [701, 702]);
