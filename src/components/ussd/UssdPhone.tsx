@@ -8,7 +8,7 @@ import {EMPTY_MARKETPLACE, type MarketplaceEnv} from '../../lib/ussd/marketTypes
 import {DEFAULT_TIMEOUT_S, DEMO_LABEL, finishMarket, newSession, press, tick, view, type Key, type Session, type UssdEnv} from '../../lib/ussd/engine';
 import {enrollmentText} from '../../lib/ussd/enrollment';
 import {useEnrollment} from '../../lib/ussd/useEnrollment';
-import {createScreenSpeaker} from '../../lib/ussd/screenVoice';
+import {VOICE_SPEEDS, createScreenSpeaker, loadVoiceSpeed, saveVoiceSpeed, type VoiceSpeed} from '../../lib/ussd/screenVoice';
 import {UssdAccountForm} from './UssdAccountForm';
 import {useEnvironment} from '../../lib/useEnvironment';
 
@@ -37,10 +37,11 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceNotice, setVoiceNotice] = useState('');
   const [voiceInfo, setVoiceInfo] = useState('');
+  const [voiceSpeed, setVoiceSpeedState] = useState<VoiceSpeed>(() => loadVoiceSpeed());
   const spokenScreenRef = useRef('');
   const lastRead = useRef<string | null>(null);
   const speaker = useRef<ReturnType<typeof createScreenSpeaker> | null>(null);
-  if (!speaker.current) speaker.current = createScreenSpeaker(setVoiceNotice);
+  if (!speaker.current) speaker.current = createScreenSpeaker(setVoiceNotice, voiceSpeed);
   const voice = useCallback((enabled: boolean) => {
     setVoiceEnabled(enabled);
     if (enabled) {
@@ -180,7 +181,16 @@ export const UssdPhone: React.FC<{timeoutSeconds?: number}> = ({timeoutSeconds =
             speaker.current!.read('Agricare voice test. If you can hear this sentence, screen reading works on this device.');
           }}>Test voice on this device</button>
         </div>
-        <p className="text-sm">The voice speaks slowly (speed 0.75) with a pause after each option. Hold 0 for about 1.5 seconds to mute. A short press still enters 0. Browser speech may need an installed voice; no telecom voice service is connected.</p>
+        <div role="group" aria-label="Voice speed" className="flex flex-wrap items-center gap-2" data-testid="ussd-voice-speed">
+          <span className="text-sm font-bold">Voice speed:</span>
+          {(['slow', 'normal', 'fast'] as const).map((id) => (
+            <button key={id} type="button" aria-pressed={voiceSpeed === id} data-testid={`ussd-speed-${id}`} className={`min-h-[44px] rounded-xl border-2 px-3 text-sm font-bold ${voiceSpeed === id ? 'border-[#16803C] bg-[#DDEFE0]' : 'border-[#183B2B]/25 bg-white'}`}
+              onClick={() => { setVoiceSpeedState(id); saveVoiceSpeed(id); speaker.current!.setSpeed(id); if (voiceEnabled) { lastRead.current = spokenScreenRef.current; speaker.current!.read(spokenScreenRef.current); } }}>
+              {id === 'slow' ? 'Slow' : id === 'normal' ? 'Normal' : 'Fast'} ({VOICE_SPEEDS[id].toFixed(2)})
+            </button>
+          ))}
+        </div>
+        <p className="text-sm">The voice pauses one second after each option and one and a half seconds after a heading. Your speed choice is remembered on this device. Hold 0 for about 1.5 seconds to mute. A short press still enters 0. Browser speech may need an installed voice; no telecom voice service is connected.</p>
         {voiceNotice && <p role="status" data-testid="ussd-voice-notice">{voiceNotice}</p>}
         {voiceInfo && <p role="status" className="text-sm" data-testid="ussd-voice-info">{voiceInfo}</p>}
         {!inMenu && <button type="button" className="agri-button-secondary" onClick={enrollment.publicAdvice} data-testid="ussd-public-advice">Browse public advice without registering</button>}

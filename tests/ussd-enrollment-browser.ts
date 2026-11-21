@@ -8,7 +8,7 @@ import {chromium, type BrowserContext, type Page} from 'playwright';
 import {startBackend} from './harness/backend.ts';
 import {CookieJar, req} from './harness/http.ts';
 import {getDb} from '../server/db.ts';
-import {speechText} from '../src/lib/ussd/screenVoice.ts';
+import {speechSegments} from '../src/lib/ussd/screenVoice.ts';
 import {choosePhone as choose, readPhonePages as review, enterParticipantMenu, phoneText as screen} from './ussdBrowserHelpers.ts';
 assert.ok(!process.env.API_BASE_URL, 'browser enrollment QA requires its own disposable backend');
 const backend = await startBackend();
@@ -16,27 +16,32 @@ const browser = await chromium.launch({executablePath: process.env.QA_CHROME || 
 const errors: string[] = []; const passed: string[] = [];
 const contexts: BrowserContext[] = [];
 const check = async (name: string, f: () => Promise<void>) => { await f(); passed.push(name); console.log('PASS ' + name); };
-async function profile(speech = true) {
+async function profile(speech = true, pauseScale = 0.02) {
   const c = await browser.newContext({viewport: {width: 375, height: 812}, serviceWorkers: 'allow'}); contexts.push(c); c.setDefaultTimeout(15000);
   // Literal browser script avoids TypeScript runner helper functions leaking into the page.
   await c.addInitScript({content: `
     window.__spoken = [];
     window.__rates = [];
+    window.__pitches = [];
+    window.__volumes = [];
+    window.__spokenAt = [];
+    window.__agriVoicePauseScale = ${pauseScale};
     window.__speechCancels = 0;
     class Utterance { constructor(text) { this.text = text; } }
     Object.defineProperty(window, 'SpeechSynthesisUtterance', {configurable: true, value: Utterance});
-    Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: ${speech ? "{getVoices: () => [], cancel: () => { window.__speechCancels++; }, speak: (u) => { window.__rates.push(u.rate); window.__spoken.push(u.text); if(u.onstart)u.onstart(); if(u.onend)u.onend(); }}" : "undefined"}});
+    Object.defineProperty(window, 'speechSynthesis', {configurable: true, value: ${speech ? "{getVoices: () => [], cancel: () => { window.__speechCancels++; }, speak: (u) => { window.__rates.push(u.rate); window.__pitches.push(u.pitch); window.__volumes.push(u.volume); window.__spokenAt.push(Date.now()); window.__spoken.push(u.text); if(u.onstart)u.onstart(); if(u.onend)u.onend(); }}" : "undefined"}});
   `});
   c.on('page', (p) => p.on('pageerror', (e) => errors.push(e.message)));
   return c;
 }
 const stage = async (p: Page, value: string) => p.getByTestId('ussd-screen').filter({has: screen(p)}).and(p.locator(`[data-frame="${value}"]`)).waitFor();
 const count = () => (getDb().prepare('SELECT count(*) n FROM participant_registrations').get() as {n: number}).n;
+const segmentsOf = async (p: Page) => speechSegments(await screen(p).innerText()).map((x) => x.text);
 const automaticallyRead = async (p: Page) => {
-  const expected = speechText(await screen(p).innerText());
-  await p.waitForFunction((text) => (window as any).__spoken.at(-1) === text, expected);
+  const expected = await segmentsOf(p);
+  await p.waitForFunction((want) => { const spoken = (window as any).__spoken as string[]; return spoken.slice(-want.length).join('|') === want.join('|'); }, expected);
   assert.equal(await p.getByTestId('ussd-voice-toggle').getAttribute('aria-pressed'), 'true');
-  assert.ok((await p.evaluate(() => (window as any).__rates as number[])).every((r) => r === 0.75), 'every utterance is spoken at the slow default rate 0.75');
+  assert.ok((await p.evaluate(() => (window as any).__rates as number[])).every((r) => r === 0.75), 'every utterance is spoken at the default rate 0.75');
 };
 try {
   const context = await profile(); const page = await context.newPage();
@@ -59,7 +64,8 @@ try {
     await page.getByTestId('key-home').click(); await stage(page, 'main'); await automaticallyRead(page);
     assert.match(await screen(page).innerText(), /8 Sell & market/);
     const spoken = await page.evaluate(() => (window as any).__spoken as string[]);
-    assert.ok(spoken.some((s) => s.includes('Farmer') && s.includes('Buyer')), JSON.stringify({spoken, voice: await page.getByTestId('ussd-voice-toggle').getAttribute('aria-pressed'), notice: await page.getByTestId('ussd-voice-notice').allTextContents(), implementation: await page.evaluate(() => String(window.speechSynthesis?.speak))})); assert.ok(spoken.some((s) => s.includes('FARM ADVICE')));
+    const allSpoken = spoken.join(' ').toLowerCase(); assert.ok(allSpoken.includes('press one for farmer') && allSpoken.includes('press two for buyer'), 'menu numbers are read as instructions: ' + allSpoken.slice(0, 300));
+    assert.ok(allSpoken.includes('star, four four zero, hash') || !allSpoken.includes('*440'), 'the dial code is never spoken as symbols');
   });
   await check('repeat, pointer long-press mute, short 0 Back, physical 0 and keyboard long-press', async () => {
     await choose(page, '1');
@@ -75,8 +81,8 @@ try {
     const mutedCount = await page.evaluate(() => (window as any).__spoken.length);
     await choose(page, '8'); await page.getByTestId('key-home').click();
     assert.equal(await page.evaluate(() => (window as any).__spoken.length), mutedCount, 'subsequent screens stay silent while muted');
-    const before = await page.evaluate(() => (window as any).__spoken.length);
-    await page.getByTestId('ussd-voice-repeat').click(); assert.equal(await page.evaluate(() => (window as any).__spoken.length), before + 1);
+    const before = await page.evaluate(() => (window as any).__spoken.length); const pieces = (await segmentsOf(page)).length;
+    await page.getByTestId('ussd-voice-repeat').click(); await page.waitForFunction(([b, n]) => (window as any).__spoken.length === b + n, [before, pieces]);
     await page.getByTestId('ussd-voice-toggle').click();
     await page.locator('h1').click(); await page.keyboard.down('0'); await page.waitForTimeout(1650); await page.keyboard.up('0');
     assert.equal(await page.getByTestId('ussd-voice-toggle').getAttribute('aria-pressed'), 'false');
@@ -134,6 +140,55 @@ try {
       assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, `Ministry overflow at ${width}`);
       await p.screenshot({path: path.join(os.tmpdir(), `agricare-440-ministry-${width}.png`), fullPage: true});
     }
+  });
+  await check('voice speed settings (slow 0.60, normal 0.75, fast 1.0), remembered on the device; pitch and volume natural', async () => {
+    const c = await profile(true, 0.02); const p = await c.newPage(); await p.goto(backend.baseUrl + '/ussd-demo'); await p.getByTestId('ussd-phone').waitFor();
+    assert.equal(await p.getByTestId('ussd-speed-normal').getAttribute('aria-pressed'), 'true', 'Normal is the default');
+    await choose(p, '*440#'); await choose(p, '1'); await stage(p, 'enroll.category'); await automaticallyRead(p);
+    const rates = async () => p.evaluate(() => (window as any).__rates as number[]);
+    for (const [id, rate] of [['slow', 0.6], ['fast', 1], ['normal', 0.75]] as const) {
+      await p.getByTestId(`ussd-speed-${id}`).click(); assert.equal(await p.getByTestId(`ussd-speed-${id}`).getAttribute('aria-pressed'), 'true');
+      const n = (await segmentsOf(p)).length; await p.waitForFunction(([r, count]) => ((window as any).__rates as number[]).slice(-count).every((x) => x === r) && ((window as any).__rates as number[]).length >= count, [rate, n]);
+      assert.equal((await rates()).at(-1), rate, `${id} speaks at ${rate}`);
+    }
+    assert.ok((await p.evaluate(() => (window as any).__pitches as number[])).every((x) => x === 1), 'pitch stays natural (1.0)'); assert.ok((await p.evaluate(() => (window as any).__volumes as number[])).every((x) => x === 1), 'volume stays 1.0');
+    await p.getByTestId('ussd-speed-slow').click();
+    await p.reload(); await p.getByTestId('ussd-phone').waitFor();
+    assert.equal(await p.getByTestId('ussd-speed-slow').getAttribute('aria-pressed'), 'true', 'the selected speed is remembered after a reload');
+    assert.equal(await p.evaluate(() => localStorage.getItem('agri_ussd_voice_speed_v1')), 'slow');
+    await choose(p, '*440#'); await choose(p, '1'); await stage(p, 'enroll.category'); await p.waitForFunction(() => ((window as any).__rates as number[]).length > 0 && ((window as any).__rates as number[]).every((x) => x === 0.6));
+  });
+  await check('real pauses: 1.5 s after the heading, 1 s between numbered options; Press-one wording; *440# read as words', async () => {
+    const c = await profile(true, 1); const p = await c.newPage(); await p.goto(backend.baseUrl + '/ussd-demo'); await p.getByTestId('ussd-phone').waitFor();
+    await choose(p, '*440#'); await choose(p, '1'); await stage(p, 'enroll.category');
+    const want = await segmentsOf(p); assert.ok(want.length >= 6, want.join('|'));
+    await p.waitForFunction((w) => { const sp = (window as any).__spoken as string[]; return sp.slice(-w.length).join('|') === w.join('|'); }, want, {timeout: 40000});
+    const spoken = await p.evaluate(() => (window as any).__spoken as string[]); const at = await p.evaluate(() => (window as any).__spokenAt as number[]);
+    const first = spoken.length - want.length; assert.deepEqual(spoken.slice(first), want);
+    const gaps = want.slice(1).map((_, i) => at[first + i + 1] - at[first + i]);
+    assert.ok(gaps[0] >= 1400 && gaps[0] < 2300, `heading pause about 1.5 s, was ${gaps[0]}`);
+    const optionIdx = want.map((t, i) => (/^Press \w+ for /.test(t) ? i : -1)).filter((i) => i >= 0 && i < want.length - 1);
+    assert.ok(optionIdx.length >= 3); for (const i of optionIdx) assert.ok(gaps[i] >= 900 && gaps[i] < 1700, `option pause about 1 s, was ${gaps[i]} after "${want[i]}"`);
+    assert.match(want.join(' '), /Press one for farmer\./);
+    const dial = speechSegments('Dial *440#, then Send.').map((x) => x.text).join(' '); assert.match(dial, /Star, four four zero, hash/); assert.ok(!/\*|#/.test(dial));
+  });
+  await check('mute cancels pending speech and pauses at once; navigating never overlaps readings', async () => {
+    const c = await profile(true, 1); const p = await c.newPage(); await p.goto(backend.baseUrl + '/ussd-demo'); await p.getByTestId('ussd-phone').waitFor();
+    await choose(p, '*440#'); await choose(p, '1'); await stage(p, 'enroll.category');
+    await p.waitForFunction(() => ((window as any).__spoken as string[]).length >= 2);
+    const box = await p.getByTestId('key-0').boundingBox(); assert.ok(box); const cancels = await p.evaluate(() => (window as any).__speechCancels);
+    await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await p.mouse.down(); await p.waitForTimeout(1650); await p.mouse.up();
+    assert.equal(await p.getByTestId('ussd-voice-toggle').getAttribute('aria-pressed'), 'false'); assert.ok(await p.evaluate(() => (window as any).__speechCancels) > cancels);
+    const frozen = await p.evaluate(() => (window as any).__spoken.length); await p.waitForTimeout(3500);
+    assert.equal(await p.evaluate(() => (window as any).__spoken.length), frozen, 'no pending piece is spoken after muting: the queue and the pauses were cancelled');
+    // overlap: switch voice on again and move quickly between menus; only the LAST screen is read to the end
+    await p.getByTestId('ussd-voice-toggle').click(); await choose(p, '1'); await choose(p, '1'); await choose(p, '1');
+    await p.waitForTimeout(100); await choose(p, '0'); await p.waitForTimeout(100); await choose(p, '2');
+    const want = await segmentsOf(p); await p.waitForFunction((w) => { const s = (window as any).__spoken as string[]; return s.slice(-w.length).join('|') === w.join('|'); }, want, {timeout: 40000});
+    const len = await p.evaluate(() => (window as any).__spoken.length); await p.waitForTimeout(2500);
+    assert.equal(await p.evaluate(() => (window as any).__spoken.length), len, 'nothing from an earlier screen is spoken after the last screen finished');
+    const spoken = await p.evaluate(() => (window as any).__spoken as string[]); const start = spoken.length - want.length;
+    assert.deepEqual(spoken.slice(start), want, 'the last screen was read in order and complete, with no interleaved pieces');
   });
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({base: backend.baseUrl, browser: await browser.version(), evidence: 'Headless Chrome, mobile viewport and network emulation. Speech calls are instrumented; this does not establish audible playback on a real device.', passed}, null, 2));

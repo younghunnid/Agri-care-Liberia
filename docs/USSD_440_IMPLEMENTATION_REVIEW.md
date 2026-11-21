@@ -213,5 +213,10 @@ Pre-commit evidence: 40 focused registry/USSD tests passed, including the new un
 5. The wording of the proposed `*440#` code with the team: it is not assigned or connected to any telecom service.
 
 
-## 10. Voice speed (default 0.75)
-The default speaking rate is **0.75** (`VOICE_RATE` in `src/lib/ussd/screenVoice.ts`). `speechText()` turns each screen line into its own sentence and adds an extra pause mark (an ellipsis) after every menu option, in ONE utterance per screen so activation stays inside the user gesture (needed on iPhone Safari). The privacy filter is unchanged. Whether the pauses sound right on each device voice needs a real-device check.
+## 10. Voice speed and clarity (src/lib/ussd/screenVoice.ts)
+- **Speeds:** Slow 0.60, **Normal 0.75 (default)**, Fast 1.0, chosen with three buttons under the phone and remembered on the device (`localStorage` key `agri_ussd_voice_speed_v1`, a preference only). Pitch 1.0, volume 1.0.
+- **Wording:** numbered options are read as instructions ("1 Crops & planting" becomes "Press one for crops and planting."; "0 Back" becomes "Press zero to go back."; "00 Home" becomes "Press zero zero to go to the main menu."). The dial code is read as "Star, four four zero, hash". The privacy filter (typed input, credentials, phone numbers never spoken) is applied first.
+- **Pauses:** 1.5 s after the heading, 1 s after each option, 0.7 s after other lines (timed by the speaker, one utterance per piece).
+- **Control:** every new screen is read automatically while voice is on; pressing 1 on the welcome screen turns voice on; Repeat and the long-press 0 mute are unchanged. Mute (and a new screen) increments a generation counter, clears the pause timer and cancels the engine, so queued pieces and pauses are dropped immediately and readings never overlap.
+- **Tests:** `tests/ussd-enrollment.test.ts` (text, pauses, speaker sequencing, mute, overlap, persistence), `tests/ussd-enrollment-browser.ts` (speeds, real 1.5 s and 1 s timings, mute, no overlap), `tests/voice-mobile-emulation.ts` (Android Chrome profile with touch long-press).
+- **Not verified on real devices:** iPhone Safari (WebKit is not installed for testing here) and Android Chrome hardware. Risk to check on the iPhone: after the first piece (started in the tap) the later pieces start from a timer; if Safari blocks that, only the first sentence of each screen would be heard.

@@ -8,7 +8,7 @@ import {CookieJar, req} from './harness/http.ts';
 import {getDb, closeDb, runMigrations} from '../server/db.ts';
 import {PARTICIPANT_CATEGORIES, REGISTRY_CONSENT_VERSION} from '../src/lib/participantRegistry.ts';
 import {newEnrollment, enrollmentPress, enrollmentText, type EnrollmentState, PROPOSED_USSD_CODE} from '../src/lib/ussd/enrollment.ts';
-import {safeScreenSpeech, createScreenSpeaker, speechText, VOICE_RATE} from '../src/lib/ussd/screenVoice.ts';
+import {safeScreenSpeech, createScreenSpeaker, speechText, speechSegments, loadVoiceSpeed, saveVoiceSpeed, VOICE_RATE, VOICE_SPEEDS, DEFAULT_VOICE_SPEED, VOICE_PITCH, VOICE_VOLUME, HEADING_PAUSE_MS, OPTION_PAUSE_MS} from '../src/lib/ussd/screenVoice.ts';
 import {registryAggregates} from '../server/participantRegistry.ts';
 import type {Key} from '../src/lib/ussd/engine.ts';
 import {SESSION_COOKIE_NAME, signSessionToken} from '../server/security.ts';
@@ -200,17 +200,40 @@ test('speech boundary omits credentials, private phone numbers and long device t
   let notice = ''; createScreenSpeaker((s) => { notice = s; }).read('1 Crops'); assert.match(notice, /unavailable/);
 });
 
-test('voice speed defaults to 0.75 and every menu option is followed by a clear pause, without changing what is read', () => {
-  assert.equal(VOICE_RATE, 0.75);
-  const screen = 'FARM ADVICE (DEMO)\n1 Crops & planting\n2 Pests & disease\n3 Buy & Sell Produce\nPassword abc\n+231 77 123 4567';
-  const spoken = speechText(screen);
-  assert.equal(spoken, 'FARM ADVICE (DEMO). 1 Crops & planting. … 2 Pests & disease. … 3 Buy & Sell Produce. … Private information omitted. [private number omitted].'.replace('[private number omitted].', '[private number omitted].'));
-  assert.ok(!/abc|4567/.test(spoken), 'the privacy boundary still applies');
-  for (const line of ['1 Crops & planting', '2 Pests & disease', '3 Buy & Sell Produce']) assert.match(spoken, new RegExp(`${line.replace(/[&]/g, '\\&')}\\. … `));
-  assert.equal(speechText('0 Back 00 Home'), '0 Back 00 Home. …', 'a trailing option pause is trimmed, not dropped');
-  const g = globalThis as unknown as {window?: unknown}; const saved = g.window; const made: {text: string; rate: number}[] = [];
-  g.window = {speechSynthesis: {getVoices: () => [], cancel: () => undefined, speak: (u: {text: string; rate: number; onstart?: () => void}) => { made.push({text: u.text, rate: u.rate}); u.onstart?.(); }}, SpeechSynthesisUtterance: class { constructor(public text: string) {} rate = 1; lang = ''; voice = null; }};
-  const Utt = (g.window as {SpeechSynthesisUtterance: unknown}).SpeechSynthesisUtterance; const gg = globalThis as unknown as {SpeechSynthesisUtterance?: unknown}; const savedU = gg.SpeechSynthesisUtterance; gg.SpeechSynthesisUtterance = Utt;
-  try { createScreenSpeaker(() => undefined).read('1 Crops'); } finally { g.window = saved; gg.SpeechSynthesisUtterance = savedU; }
-  assert.equal(made.length, 1, 'one utterance per screen'); assert.equal(made[0].rate, 0.75); assert.equal(made[0].text, '1 Crops. …');
+test('voice text: numbers are read as instructions, *440# as words, headings and options become timed pieces, privacy filter intact', () => {
+  assert.equal(VOICE_RATE, 0.75); assert.deepEqual(VOICE_SPEEDS, {slow: 0.6, normal: 0.75, fast: 1}); assert.equal(DEFAULT_VOICE_SPEED, 'normal');
+  assert.equal(VOICE_PITCH, 1); assert.equal(VOICE_VOLUME, 1); assert.equal(HEADING_PAUSE_MS, 1500); assert.equal(OPTION_PAUSE_MS, 1000);
+  const seg = speechSegments('FARM ADVICE (DEMO)\n1 Crops & planting\n2 Pests & disease\n3 Buy & Sell Produce\nPassword abc\n+231 77 123 4567\n0 Back 00 Home');
+  assert.deepEqual(seg.map((s) => s.text), ['FARM ADVICE (DEMO).', 'Press one for crops & planting.', 'Press two for pests & disease.', 'Press three for buy & Sell Produce.', 'Private information omitted.', '[private number omitted].', 'Press zero to go back.', 'Press zero zero to go to the main menu.']);
+  assert.deepEqual(seg.map((s) => s.pauseMs), [1500, 1000, 1000, 1000, 700, 700, 1000, 0], 'heading 1.5 s, options 1 s, other lines 0.7 s, nothing after the last piece');
+  assert.ok(!/abc|4567/.test(speechText('x\nPassword abc\n+231 77 123 4567')));
+  assert.equal(speechSegments('Dial *440#, then Send.\nProposed code for this browser only.')[0].text, 'Dial Star, four four zero, hash, then Send.');
+  assert.equal(speechSegments('Menu\n1 Agree & register\n2 Decline').map((s) => s.text).join(' '), 'Menu. Press one for agree & register. Press two for decline.');
+});
+
+test('speaker: rate, pitch and volume; Slow/Normal/Fast; pauses; mute cancels everything; a new screen never overlaps the old one; speed is remembered', async () => {
+  const g = globalThis as unknown as Record<string, unknown>; const saved = {window: g.window, utt: g.SpeechSynthesisUtterance, storage: g.localStorage, scale: g.__agriVoicePauseScale};
+  type Utt = {text: string; rate: number; pitch: number; volume: number; lang: string; voice: unknown; onstart?: () => void; onend?: () => void; onerror?: () => void};
+  const spoken: Utt[] = []; let cancels = 0; let autoEnd = true;
+  g.SpeechSynthesisUtterance = class { rate = 1; pitch = 0; volume = 0; lang = ''; voice = null; onstart?: () => void; onend?: () => void; onerror?: () => void; constructor(public text: string) {} };
+  g.window = {SpeechSynthesisUtterance: g.SpeechSynthesisUtterance, speechSynthesis: {getVoices: () => [], cancel: () => { cancels++; }, speak: (u: Utt) => { spoken.push(u); u.onstart?.(); if (autoEnd) u.onend?.(); }}};
+  const store = new Map<string, string>(); g.localStorage = {getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => { store.set(k, v); }};
+  try {
+    g.__agriVoicePauseScale = 0;
+    assert.equal(loadVoiceSpeed(), 'normal', 'default'); saveVoiceSpeed('slow'); assert.equal(loadVoiceSpeed(), 'slow', 'remembered'); store.set('agri_ussd_voice_speed_v1', 'bogus'); assert.equal(loadVoiceSpeed(), 'normal', 'an invalid stored value falls back to the default'); store.delete('agri_ussd_voice_speed_v1');
+    const sp = createScreenSpeaker(() => undefined);
+    const tick = () => new Promise((r) => setTimeout(r, 40));
+    sp.read('Menu\n1 Crops\n2 Pests'); await tick(); assert.deepEqual(spoken.map((u) => u.text), ['Menu.', 'Press one for crops.', 'Press two for pests.']);
+    assert.ok(spoken.every((u) => u.rate === 0.75 && u.pitch === 1 && u.volume === 1 && u.lang === 'en-US'));
+    spoken.length = 0; sp.setSpeed('slow'); sp.read('A\n1 B'); await tick(); assert.equal(spoken.length, 2); assert.ok(spoken.every((u) => u.rate === 0.6)); spoken.length = 0; sp.setSpeed('fast'); sp.read('A\n1 B'); await tick(); assert.equal(spoken.length, 2); assert.ok(spoken.every((u) => u.rate === 1)); assert.equal(sp.speed(), 'fast');
+    // mute during a pause: nothing more is spoken, even after the pause would have ended
+    spoken.length = 0; autoEnd = false; g.__agriVoicePauseScale = 0.05; sp.setSpeed('normal'); sp.read('Heading\n1 One\n2 Two\n3 Three');
+    assert.equal(spoken.length, 1, 'only the first piece starts inside the call'); spoken[0].onend?.(); // heading finished: a 75 ms pause (scaled) begins
+    const before = cancels; sp.stop(); assert.ok(cancels > before, 'stop cancels the speech engine');
+    await new Promise((r) => setTimeout(r, 300)); assert.equal(spoken.length, 1, 'the pending pieces and the pause were cancelled');
+    // a new screen replaces the old one: late callbacks of the old reading are ignored, no overlap
+    spoken.length = 0; sp.read('First\n1 A\n2 B'); const old = spoken[0]; sp.read('Second\n1 C'); assert.equal(spoken.at(-1)?.text, 'Second.');
+    old.onend?.(); old.onerror?.(); await new Promise((r) => setTimeout(r, 300)); assert.deepEqual(spoken.map((u) => u.text), ['First.', 'Second.'], 'the old reading never continues');
+    spoken[1].onend?.(); await new Promise((r) => setTimeout(r, 300)); assert.deepEqual(spoken.map((u) => u.text), ['First.', 'Second.', 'Press one for c.'], 'the new reading continues in order');
+  } finally { g.window = saved.window; g.SpeechSynthesisUtterance = saved.utt; g.localStorage = saved.storage; g.__agriVoicePauseScale = saved.scale; }
 });
