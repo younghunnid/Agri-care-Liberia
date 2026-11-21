@@ -83,8 +83,12 @@ export default defineConfig(() => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff2,jpg,jpeg,webp,m4a}'],
           cleanupOutdatedCaches: true,
           // Take control on the very first install so the first visit is already offline-capable.
-          // Updates still wait for the user's "Update now" tap (skipWaiting is NOT enabled).
+          // A new version also activates BY ITSELF (skipWaiting) and public/sw-update.js reloads the open pages of the old version once. Before this, a waiting
+          // worker kept serving the old app (and its old "page not found" screen for new routes such as /ussd) until every tab was closed or "Update now" was tapped.
+          skipWaiting: true,
           clientsClaim: true,
+          importScripts: ['sw-update.js'],
+          globIgnores: ['sw-update.js'],
           navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [

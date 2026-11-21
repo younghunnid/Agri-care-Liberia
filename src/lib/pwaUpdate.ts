@@ -32,8 +32,14 @@ export function initPwa(): void {
         setState({offlineReady: true});
       },
       onRegisteredSW(_swUrl, registration) {
-        // Look for a new version hourly while the app stays open.
+        // Look for a new version right away (a visitor holding an old version gets the current one without waiting) and then hourly while the app stays open.
         if (registration) {
+          if (navigator.onLine) void registration.update().catch(() => undefined);
+          // Safari only re-checks for a new version now and then: also check whenever the app comes back to the foreground (at most every 5 minutes).
+          let lastCheck = Date.now();
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && navigator.onLine && Date.now() - lastCheck > 5 * 60 * 1000) { lastCheck = Date.now(); void registration.update().catch(() => undefined); }
+          });
           setInterval(() => {
             if (navigator.onLine) void registration.update().catch(() => undefined);
           }, 60 * 60 * 1000);
@@ -42,6 +48,12 @@ export function initPwa(): void {
       onRegisterError() {
         // Registration can fail on insecure origins; the online app keeps working.
       },
+    });
+    // public/sw-update.js reloads open pages itself; this is the fallback when the browser refuses that (the page is told instead), at most once per 20 seconds.
+    navigator.serviceWorker?.addEventListener('message', (event: MessageEvent) => {
+      if (event.data?.type !== 'AGRICARE_SW_UPDATED') return;
+      try { const last = Number(sessionStorage.getItem('agri_sw_reload_at') || 0); if (Date.now() - last < 20000) return; sessionStorage.setItem('agri_sw_reload_at', String(Date.now())); } catch { /* storage unavailable: reload anyway */ }
+      location.reload();
     });
   } catch {
     // Service workers unsupported: nothing to do.
