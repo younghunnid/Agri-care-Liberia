@@ -29,6 +29,7 @@ import {SafeImage} from '../../components/SafeImage';
 import {SpeakButton} from '../../components/SpeakButton';
 import {generateOwnerKey, hasListingKey, ownerHeaders, removeListingKey, saveListingKey} from '../../lib/listingKeys';
 import {compressPhoto} from '../../lib/imageCompress';
+import {listingPicture} from '../../data/productImages';
 import {LIBERIA_COUNTIES, MARKETPLACE_CATEGORIES, MARKETPLACE_UNITS} from '../../../server/constants';
 import {
   DraftError,
@@ -68,15 +69,6 @@ export interface MarketplaceListing {
   created_at: string;
 }
 
-const PRESET_IMAGES = [
-  {label: 'Rice / Crops', url: '/src/assets/images/crop_rice_1794924195882.jpg'},
-  {label: 'Cassava Harvest', url: '/src/assets/images/crop_cassava_1794924193991.jpg'},
-  {label: 'Pepper & Okra', url: '/src/assets/images/crop_pepper_okra_1794924192995.jpg'},
-  {label: 'Poultry / Eggs', url: '/src/assets/images/liberia_poultry_farm_1794996421585.jpg'},
-  {label: 'Tilapia / Fish', url: '/src/assets/images/liberia_aquaculture_pond_1794996421723.jpg'},
-  {label: 'Livestock / Goats', url: '/src/assets/images/liberia_livestock_goats_1794996422377.jpg'},
-  {label: 'Seeds / Inputs / Tools', url: '/src/assets/images/liberia_agri_market_1794996422856.jpg'},
-];
 
 const AVAILABILITY_BADGE_CLASS: Record<string, string> = {
   Available: 'bg-[#DDEFE0] text-[#16803C] border-[#16803C]/20',
@@ -158,7 +150,7 @@ export const MarketplacePage: React.FC = () => {
   const [description, setDescription] = useState('');
   const [sellerPhone, setSellerPhone] = useState('');
   const [phoneConsent, setPhoneConsent] = useState(false);
-  const [imageUrl, setImageUrl] = useState(PRESET_IMAGES[0].url);
+  const [imageUrl, setImageUrl] = useState('');
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const [postSuccess, setPostSuccess] = useState<string | null>(null);
@@ -430,7 +422,7 @@ export const MarketplacePage: React.FC = () => {
     setDescription(d.description);
     setSellerPhone(d.sellerPhone);
     setPhoneConsent(d.phoneConsent);
-    setImageUrl(d.photoDataUrl || PRESET_IMAGES[0].url);
+    setImageUrl(d.photoDataUrl || '');
     setPostError(null);
     setViewMode('sell');
   };
@@ -860,19 +852,23 @@ export const MarketplacePage: React.FC = () => {
                     return (
                       <article
                         key={item.id}
+                        data-testid="listing-card" data-listing-id={item.id}
                         className="rounded-3xl bg-white border border-[#183B2B]/10 shadow-xs hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between"
                       >
                         <div>
                           {/* Product Image + Badges */}
                           <div className="relative bg-[#DDEFE0]">
                             {!lowBandwidth ? (
-                              <div className="h-48 overflow-hidden">
+                              <div className="relative h-48 overflow-hidden">
                                 <SafeImage
-                                  src={item.image_url}
-                                  alt={item.product_name}
+                                  src={listingPicture(item).src}
+                                  alt={listingPicture(item).representative ? `${item.product_name} (representative illustration)` : item.product_name}
                                   className="w-full h-full object-cover"
                                   fallbackTitle={item.product_name}
+                                  loading="lazy"
+                                  key={`${item.id}-${listingPicture(item).src.slice(-40)}`}
                                 />
+                                {listingPicture(item).representative && <span className="absolute left-3 top-3 rounded-lg bg-white/90 px-2 py-0.5 text-[11px] font-bold text-[#183B2B] shadow" data-testid="listing-picture-note">Representative illustration</span>}
                               </div>
                             ) : (
                               <div className="h-20 flex items-center px-4 text-xs font-semibold text-[#16803C]">
@@ -1282,29 +1278,14 @@ export const MarketplacePage: React.FC = () => {
           {!editingId && (
             <div className="rounded-2xl bg-[#F3F8F0] p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-[#183B2B]">Product Photo (Upload or Sample Image)</p>
+                <p className="text-xs font-semibold text-[#183B2B]">Product photo (optional)</p>
                 <label className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#183B2B]/15 text-xs font-semibold cursor-pointer">
                   <Camera className="w-4 h-4 text-[#16803C]" aria-hidden="true" />
                   <span>Upload Photo</span>
                   <input type="file" accept="image/*" onChange={(e) => void handlePhotoUpload(e)} className="sr-only" />
                 </label>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {PRESET_IMAGES.map((img) => (
-                  <button
-                    key={img.label}
-                    type="button"
-                    onClick={() => setImageUrl(img.url)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border ${
-                      imageUrl === img.url
-                        ? 'bg-[#16803C] border-[#16803C] text-white'
-                        : 'bg-white border-[#183B2B]/15 text-[#183B2B]'
-                    }`}
-                  >
-                    {img.label}
-                  </button>
-                ))}
-              </div>
+              <p className="text-sm text-[#183B2B]" data-testid="photo-note">{imageUrl ? 'Your photo will be shown with this listing.' : 'No photo? A representative illustration of your product is shown, clearly marked as an illustration, never as your own photo.'}</p>
             </div>
           )}
 
@@ -1432,14 +1413,18 @@ export const MarketplacePage: React.FC = () => {
             <div className="p-5 sm:p-7 space-y-6">
               {/* Large Image */}
               {!lowBandwidth && (
-                <div className="h-56 sm:h-72 rounded-2xl overflow-hidden bg-[#DDEFE0] border border-[#183B2B]/10">
-                  <SafeImage
-                    src={detailsListing.image_url}
-                    alt={detailsListing.product_name}
-                    className="w-full h-full object-cover"
-                    fallbackTitle={detailsListing.product_name}
-                  />
-                </div>
+                <figure className="m-0">
+                  <div className="h-56 sm:h-72 rounded-2xl overflow-hidden bg-[#DDEFE0] border border-[#183B2B]/10">
+                    <SafeImage
+                      src={listingPicture(detailsListing).src}
+                      alt={listingPicture(detailsListing).representative ? `${detailsListing.product_name} (representative illustration)` : detailsListing.product_name}
+                      className="w-full h-full object-cover"
+                      fallbackTitle={detailsListing.product_name}
+                      key={`${detailsListing.id}-${listingPicture(detailsListing).src.slice(-40)}`}
+                    />
+                  </div>
+                  <figcaption className="mt-1 text-sm font-semibold text-[#183B2B]" data-testid="detail-picture-caption">{listingPicture(detailsListing).caption}</figcaption>
+                </figure>
               )}
 
               {/* Title + Highlighted Green Price Section */}

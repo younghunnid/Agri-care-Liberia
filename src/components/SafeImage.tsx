@@ -7,9 +7,10 @@ interface SafeImageProps {
   alt: string;
   className?: string;
   fallbackTitle?: string;
+  loading?: 'lazy' | 'eager';
 }
 
-export const SafeImage: React.FC<SafeImageProps> = ({src, alt, className = '', fallbackTitle}) => {
+export const SafeImage: React.FC<SafeImageProps> = ({src, alt, className = '', fallbackTitle, loading}) => {
   const [failed, setFailed] = useState(false);
   // Pictures saved for offline use (/offline-img/...) are read from IndexedDB first, so they show even
   // when the service worker is unavailable (insecure http:// address) or the server is unreachable.
@@ -66,6 +67,8 @@ export const SafeImage: React.FC<SafeImageProps> = ({src, alt, className = '', f
       src={resolved}
       alt={alt}
       referrerPolicy="no-referrer"
+      loading={loading}
+      decoding="async"
       onError={() => setFailed(true)}
       className={className}
     />
